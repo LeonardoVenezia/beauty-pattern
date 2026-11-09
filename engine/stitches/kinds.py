@@ -29,6 +29,8 @@ class StitchKind(StrEnum):
     CABLE_FRONT = "cable_front"
     CABLE_BACK = "cable_back"
     BOBBLE = "bobble"
+    BRIOCHE_KNIT = "brioche_knit"
+    BRIOCHE_PURL = "brioche_purl"
     TURN = "turn"
 
     # Crochet
@@ -67,6 +69,10 @@ _EFFECTS: dict[StitchKind, Effect] = {
     StitchKind.KFB: Effect(1, 2),
     StitchKind.SL1: Effect(1, 1),
     StitchKind.BOBBLE: Effect(1, 1),
+    # Representacion atomica de una columna de canale ingles: consume y
+    # produce un punto por vuelta. El texto explica la tecnica completa.
+    StitchKind.BRIOCHE_KNIT: Effect(1, 1),
+    StitchKind.BRIOCHE_PURL: Effect(1, 1),
     StitchKind.TURN: Effect(0, 0),
     StitchKind.SC: Effect(1, 1),
     StitchKind.HDC: Effect(1, 1),

@@ -28,6 +28,26 @@ acepta.
 se probo contra el endpoint real. Todo quedo verificado con `FAKE_AI=1` y con
 un cliente simulado en los tests. Ver `DECISIONS.md` D001.
 
-## Hitos 2-11
+## Hito 2 — Catalogo de puntos y graficos SVG
+
+Completado y verificado.
+
+- [x] Catalogo declarativo con: jersey, bobo, arroz, musgo, elasticos 1x1/2x2/3x1,
+  canale ingles, trenzas 2/2 y 3/3 (frente y atras), ochitos, calado basico,
+  bobos, nido de abeja, punto bajo, medio punto alto, punto alto y anillo
+  magico.
+- [x] Cada punto declara multiplo, vueltas, operaciones y notas; el motor de
+  prendas ajusta conteos al multiplo.
+- [x] Graficos SVG generados desde las mismas operaciones, con grilla,
+  numeros de vuelta, leyenda y accesibilidad (`title`/`desc`).
+- [x] Validacion automatica del catalogo y tests de render (XML valido).
+- [x] `ruff` y `mypy` en verde.
+
+**ASUNCION:** canale ingles se representa como columnas atomicas
+(`brk`/`brp`) para que el simulador pueda contar puntos; el texto explica la
+tecnica. El nido de abeja es una representacion simplificada con cruces
+alternados. Ver `docs/fuentes.md`.
+
+## Hitos 3-11
 
 Pendientes.
