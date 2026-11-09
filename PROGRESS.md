@@ -48,6 +48,18 @@ Completado y verificado.
 tecnica. El nido de abeja es una representacion simplificada con cruces
 alternados. Ver `docs/fuentes.md`.
 
-## Hitos 3-11
+## Hito 3 — Simulador de puntos
+
+Completado y verificado.
+
+- [x] `engine/simulator/` interpreta la IR final vuelta por vuelta.
+- [x] Comprueba consumo exacto, conteo declarado, total de aumentos y
+  disminuciones por seccion, medidas objetivo con tolerancia y uniones.
+- [x] Errores tipados (`Issue`) y `SimulationReport.raise_if_failed()`.
+- [x] Tests unitarios y de propiedades con hypothesis (patrones validos,
+  mutaciones que deben fallar y uniones).
+- [x] `ruff` y `mypy` en verde; suite completa en verde.
+
+## Hitos 4-11
 
 Pendientes.

@@ -73,3 +73,18 @@ fuente publica verificada.
 - **Decision:** PDF con ReportLab; SVG propio.
 - **Alternativas:** WeasyPrint (depende de librerias nativas del sistema).
   ReportLab es mas portable y suficiente para el diseno del patron.
+
+## D009 — Semantica de efectos del simulador
+
+- **Decision:** el simulador usa la tabla de `engine/stitches/kinds.py` como
+  unica fuente de verdad. `m1l`/`m1r`/`yo`/`ch` consumen 0 y producen 1;
+  `kfb` y `crochet_inc` consumen 1 y producen 2; las disminuciones consumen 2 y
+  producen 1; el anillo magico produce 6 puntos.
+- **Motivo:** modela como se teje realmente: un aumento levantado o una lazada
+  no consumen un punto existente, se intercalan entre puntos. Los generadores
+  deben incluir los puntos tejidos de la vuelta ademas de los aumentos.
+- **Consecuencia:** `build_step` falla si la suma de consumos no coincide con
+  los puntos disponibles; el simulador vuelve a comprobarlo sobre la IR final.
+- **Conteos declarados:** una seccion puede declarar
+  `meta.expected_increases` y `meta.expected_decreases`; el simulador suma los
+  aumentos/disminuciones reales (no el delta neto) y los compara.
