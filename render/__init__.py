@@ -1,0 +1,1 @@
+"""Render SVG y PDF."""
