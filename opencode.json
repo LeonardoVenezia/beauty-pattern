@@ -1,0 +1,16 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "instructions": ["PROYECTO.md"],
+  "permission": {
+    "edit": "allow",
+    "webfetch": "allow",
+    "bash": {
+      "*": "allow",
+      "sudo *": "deny",
+      "rm -rf /*": "deny",
+      "rm -rf ~*": "deny",
+      "git push --force*": "deny",
+      "git push -f*": "deny"
+    }
+  }
+}
