@@ -31,6 +31,8 @@ class ChartSymbol(StrEnum):
     BRIOCHE_PURL = "brioche_purl"
     CROCHET_INC = "crochet_inc"
     CROCHET_DEC = "crochet_dec"
+    CAST_ON = "cast_on"
+    TURN = "turn"
 
 
 _SYMBOL_BY_KIND: dict[StitchKind, ChartSymbol] = {
@@ -60,6 +62,8 @@ _SYMBOL_BY_KIND: dict[StitchKind, ChartSymbol] = {
     StitchKind.CROCHET_INC: ChartSymbol.CROCHET_INC,
     StitchKind.CROCHET_DEC: ChartSymbol.CROCHET_DEC,
     StitchKind.MAGIC_RING: ChartSymbol.MAGIC_RING,
+    StitchKind.CAST_ON: ChartSymbol.CAST_ON,
+    StitchKind.TURN: ChartSymbol.TURN,
 }
 
 

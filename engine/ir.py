@@ -7,6 +7,7 @@ nunca los calculos internos del generador.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from typing import Literal
 
@@ -115,7 +116,7 @@ class Step:
 def build_step(
     number: int,
     start_stitches: int,
-    items: list[Item] | tuple[Item, ...],
+    items: Sequence[Item],
     note_key: str | None = None,
 ) -> Step:
     """Construye un paso que consume exactamente los puntos disponibles.

@@ -25,18 +25,20 @@ class BodySize:
     upper_arm_cm: float
     neck_cm: float
     cross_back_cm: float
+    armhole_cm: float = 21.0
+    wrist_cm: float = 17.0
 
 
 # Medidas en cm. `body_length_cm` es de nuca a cadera; `sleeve_length_cm` de
 # hombro a muneca. ASUNCION: valores intermedios para tejido con holgura.
 BODY_SIZES: dict[str, BodySize] = {
-    "XS": BodySize("XS", 74, 58, 84, 54, 56, 26, 35, 36),
-    "S": BodySize("S", 84, 68, 92, 56, 57, 28, 36, 38),
-    "M": BodySize("M", 94, 76, 100, 58, 58, 30, 37, 40),
-    "L": BodySize("L", 104, 84, 108, 60, 59, 32, 38, 42),
-    "XL": BodySize("XL", 114, 92, 116, 62, 60, 34, 39, 44),
-    "2XL": BodySize("2XL", 124, 100, 124, 63, 61, 37, 40, 46),
-    "3XL": BodySize("3XL", 134, 108, 132, 64, 62, 40, 41, 48),
+    "XS": BodySize("XS", 74, 58, 84, 54, 56, 26, 35, 36, 19, 15),
+    "S": BodySize("S", 84, 68, 92, 56, 57, 28, 36, 38, 20, 16),
+    "M": BodySize("M", 94, 76, 100, 58, 58, 30, 37, 40, 21, 16.5),
+    "L": BodySize("L", 104, 84, 108, 60, 59, 32, 38, 42, 22, 17),
+    "XL": BodySize("XL", 114, 92, 116, 62, 60, 34, 39, 44, 23, 18),
+    "2XL": BodySize("2XL", 124, 100, 124, 63, 61, 37, 40, 46, 24, 19),
+    "3XL": BodySize("3XL", 134, 108, 132, 64, 62, 40, 41, 48, 25, 20),
 }
 
 # Holgura positiva por ajuste (cm sobre el contorno del cuerpo).
@@ -57,6 +59,8 @@ MEASUREMENT_KEYS = (
     "upper_arm",
     "neck",
     "cross_back",
+    "armhole",
+    "wrist",
 )
 
 
@@ -87,4 +91,6 @@ def resolve_body_size(
         upper_arm_cm=overrides.get("upper_arm", base.upper_arm_cm),
         neck_cm=overrides.get("neck", base.neck_cm),
         cross_back_cm=overrides.get("cross_back", base.cross_back_cm),
+        armhole_cm=overrides.get("armhole", base.armhole_cm),
+        wrist_cm=overrides.get("wrist", base.wrist_cm),
     )

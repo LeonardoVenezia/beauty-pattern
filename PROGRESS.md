@@ -60,6 +60,32 @@ Completado y verificado.
   mutaciones que deben fallar y uniones).
 - [x] `ruff` y `mypy` en verde; suite completa en verde.
 
-## Hitos 4-11
+## Hito 4 — Pullover raglan top-down
+
+Completado y verificado.
+
+- [x] Generador `engine/garments/raglan.py`: canesu compuesto (aumentos de
+  cuerpo y mangas en la misma vuelta o separados), separacion de mangas con
+  montado de axila, cuerpo circular, mangas y puños.
+- [x] Planificacion determinista de conteos: busca axila y aumentos que mejor
+  cierran el contorno de busto y brazo; ajusta a multiplos de 4/2.
+- [x] Variantes: escotes crew, V, barco, cuello alto, embudo y cuadrado;
+  largos de cuerpo cropped/hip/tunic/long; mangas corta, tres cuartos y larga.
+  Sin mangas se rechaza con error claro (familia de chaleco, hito posterior).
+- [x] Canesu con aumentos en vueltas alternas; si el largo de manga o la
+  profundidad de sisa no cierran, usa aumentos en cada vuelta y lo advierte.
+- [x] Texto determinista es/en, esquema SVG de medidas y PDF con ReportLab.
+- [x] Simulador en verde para 224 combinaciones de talle x grosor de hilo x
+  ajuste, y para todas las variantes de escote/largo; tests de propiedades con
+  densidades y medidas generadas.
+- [x] Golden talle M (DK 22 pts/30 vtas): cuello 80, canesu 80->328, cuerpo
+  200->220, mangas 74->40, puños 40; profundidad de canesu 25 cm.
+- [x] `ruff` y `mypy` en verde; suite completa (400 tests) en verde.
+
+**ASUNCION:** el canesu, cuerpo y mangas se generan en jersey; si se pide otro
+punto base se advierte y se teje jersey (el catalogo de texturas se integrara
+en un hito posterior). Ver `DECISIONS.md` D010.
+
+## Hitos 5-11
 
 Pendientes.

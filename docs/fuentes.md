@@ -47,6 +47,11 @@ publica verificada se marca **ASUNCION**.
 
 - Raglan top-down: reparto de canesu en 30 % espalda, 30 % delantero, 20 % por
   manga (ASUNCION), linea de raglan de 1 punto, 8 aumentos cada dos vueltas.
+  **ASUNCION:** canesu compuesto (aumentos de cuerpo y manga pueden separarse),
+  4 cm de axila, 4 cm de holgura de brazo, 4 cm de ruedo/puno, 3 cm de cuello
+  (8 cm en cuello alto), mangas corta/tres cuartos/larga; si el canesu estandar
+  no deja lugar para la manga pedida, se aumenta en cada vuelta. Sin mangas se
+  rechaza (familia chaleco). Ver `DECISIONS.md` D010.
 - Hombro caido: mangas rectangulares, sisa recta, sin copa (ASUNCION de
   proporcion: largo de sisa = 18-24 % del contorno de pecho).
 - Canesu circular: profundidad de canesu = 18-22 % del contorno de pecho

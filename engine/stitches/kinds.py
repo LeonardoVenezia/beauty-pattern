@@ -32,6 +32,7 @@ class StitchKind(StrEnum):
     BRIOCHE_KNIT = "brioche_knit"
     BRIOCHE_PURL = "brioche_purl"
     TURN = "turn"
+    CAST_ON = "cast_on"
 
     # Crochet
     SC = "sc"
@@ -74,6 +75,7 @@ _EFFECTS: dict[StitchKind, Effect] = {
     StitchKind.BRIOCHE_KNIT: Effect(1, 1),
     StitchKind.BRIOCHE_PURL: Effect(1, 1),
     StitchKind.TURN: Effect(0, 0),
+    StitchKind.CAST_ON: Effect(0, 1),
     StitchKind.SC: Effect(1, 1),
     StitchKind.HDC: Effect(1, 1),
     StitchKind.DC: Effect(1, 1),

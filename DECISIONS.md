@@ -88,3 +88,27 @@ fuente publica verificada.
 - **Conteos declarados:** una seccion puede declarar
   `meta.expected_increases` y `meta.expected_decreases`; el simulador suma los
   aumentos/disminuciones reales (no el delta neto) y los compara.
+
+## D010 — Supuestos del raglan top-down
+
+- **Decision:** el primer generador de prenda usa raglan compuesto: los
+  aumentos de cuerpo y de manga pueden ocurrir en la misma vuelta o en
+  vueltas separadas; la axila se monta al separar las mangas.
+- **ASUNCION:** canesu, cuerpo y mangas en jersey. Si se pide otro punto base
+  se advierte y se usa jersey; las texturas y el colorwork se integraran en
+  hitos posteriores.
+- **ASUNCION:** 4 cm de axila, 4 cm de holgura de brazo, 4 cm de ruedo y puño,
+  3 cm de cuello (8 cm en cuello alto/embudo). Tolerancia de medidas 2.5 cm
+  (1 cm en largos).
+- **ASUNCION:** si el canesu estandar (aumentos en vueltas alternas) no deja
+  lugar para el largo de manga pedido, se aumenta en cada vuelta y se advierte.
+  Esto permite mangas cortas y tres cuartos sin hileras cortas.
+- **ASUNCION:** escotes V, barco, cuadrado y cuello alto cambian el contorno
+  de montado y el borde, no la geometria del canesu. Sin mangas se rechaza:
+  pertenece a la familia chaleco.
+- **Motivo:** mantener el primer generador verificable y explicito; toda
+  limitacion se declara en el patron y en `PROGRESS.md`.
+- **ASUNCION:** una manga larga que no alcanza el contorno de muneca dentro de
+  la tolerancia se rechaza con `ImpossibleProportionsError`; en mangas corta y
+  tres cuartos el contorno de puno no se compara contra la muneca (el largo
+  termina antes) y se advierte si las disminuciones no alcanzan.
