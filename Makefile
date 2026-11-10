@@ -11,7 +11,7 @@ test:
 	$(UV) run pytest
 
 lint:
-	$(UV) run ruff check engine ai vision api render tests
+	$(UV) run ruff check engine ai vision api render tests evals scripts
 	$(UV) run mypy
 
 typecheck: lint

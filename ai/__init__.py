@@ -6,6 +6,15 @@ patron se toma de estas respuestas.
 """
 
 from ai.config import AIConfig
-from ai.errors import AICapabilityError, AIConfigError, AIError
+from ai.errors import AICapabilityError, AIConfigError, AIError, ExtractionError
+from ai.extractor import ExtractionResult, extract_garment
 
-__all__ = ["AICapabilityError", "AIConfig", "AIConfigError", "AIError"]
+__all__ = [
+    "AICapabilityError",
+    "AIConfig",
+    "AIConfigError",
+    "AIError",
+    "ExtractionError",
+    "ExtractionResult",
+    "extract_garment",
+]

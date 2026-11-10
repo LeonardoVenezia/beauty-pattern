@@ -17,3 +17,7 @@ class AICapabilityError(AIError):
 
 class AIResponseError(AIError):
     """La respuesta no tiene el formato esperado."""
+
+
+class ExtractionError(AIError):
+    """No se pudo obtener una extraccion valida tras los reintentos."""

@@ -1,0 +1,44 @@
+[
+  {
+    "id": "synthetic_raglan_1",
+    "seed": 1,
+    "expected": {
+      "categoria": "pullover",
+      "tecnica": "needles",
+      "construccion": "raglan_top_down",
+      "escote": "crew",
+      "largo_cuerpo": "hip",
+      "largo_manga": "long",
+      "ajuste": "regular",
+      "punto_base": "stockinette"
+    }
+  },
+  {
+    "id": "synthetic_raglan_2",
+    "seed": 2,
+    "expected": {
+      "categoria": "pullover",
+      "tecnica": "needles",
+      "construccion": "raglan_top_down",
+      "escote": "crew",
+      "largo_cuerpo": "hip",
+      "largo_manga": "long",
+      "ajuste": "regular",
+      "punto_base": "stockinette"
+    }
+  },
+  {
+    "id": "synthetic_raglan_3",
+    "seed": 3,
+    "expected": {
+      "categoria": "pullover",
+      "tecnica": "needles",
+      "construccion": "raglan_top_down",
+      "escote": "crew",
+      "largo_cuerpo": "hip",
+      "largo_manga": "long",
+      "ajuste": "regular",
+      "punto_base": "stockinette"
+    }
+  }
+]

@@ -112,3 +112,31 @@ fuente publica verificada.
   la tolerancia se rechaza con `ImpossibleProportionsError`; en mangas corta y
   tres cuartos el contorno de puno no se compara contra la muneca (el largo
   termina antes) y se advierte si las disminuciones no alcanzan.
+
+## D011 — Extractor con votacion y evaluacion fake
+
+- **Decision:** el extractor ejecuta N=3 muestras con temperatura 0.4, valida
+  cada salida con `GarmentSpec`, repara como maximo 2 veces devolviendo el error
+  y consolida por mayoria campo por campo. La confianza es el acuerdo entre
+  muestras; los desacuerdos se agregan a `incertidumbres`.
+- **Decision:** si una muestra sigue invalida se descarta y se usan las demas;
+  si ninguna es valida, falla con `ExtractionError`.
+- **Decision:** se intenta `response_format` JSON schema; si el endpoint lo
+  rechaza, se reintenta sin el y se valida igual contra Pydantic.
+- **Decision:** con `FAKE_AI=1` las respuestas son deterministas y la eval mide
+  el flujo/votacion, no la vision real. Se informa como tal en el reporte.
+- **Motivo:** el modelo es barato pero poco fiable; la redundancia y la
+  validacion son la garantia, no la confianza en una sola respuesta.
+
+## D012 — Umbrales de vision clasica
+
+- **ASUNCION:** cuantizacion k-means en Lab con `random_state=0`, muestreo
+  deterministico de hasta 20 000 pixeles y filtro de mediana 3x3 para limpiar
+  etiquetas aisladas.
+- **ASUNCION:** deteccion de repeticion por diferencia media de la imagen
+  desplazada; el periodo de mayor score entre `min_period` y un tercio del
+  lado. Es una aproximacion, no un detector de motivos de tejido.
+- **ASUNCION:** segmentacion por color de borde con umbral 42 y componente
+  conexa mas grande; rembg/SAM quedan detrás de la misma interfaz.
+- **ASUNCION:** la eval usa imagenes sinteticas hasta incorporar fotos reales
+  con derechos claros.

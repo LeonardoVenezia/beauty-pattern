@@ -89,3 +89,40 @@ en un hito posterior). Ver `DECISIONS.md` D010.
 ## Hitos 5-11
 
 Pendientes.
+
+## Hito 5 — Percepcion (preprocesado, extractor, color y motivos)
+
+Completado y verificado con tests; la IA real no se probo por falta de clave.
+
+- [x] `vision/preprocess.py`: valida formato/tamano/pixeles, corrige orientacion
+  EXIF, elimina metadatos, redimensiona a 1344 px y genera recortes de pecho,
+  puno y textura.
+- [x] `ai/prompts/extractor_v1.py`: prompt versionado, observaciones antes de
+  clasificar, listas cerradas y esquema JSON derivado de `GarmentSpec`.
+- [x] `ai/extractor.py`: N muestras (3 por defecto), validacion Pydantic,
+  reparacion acotada (2 reintentos), votacion campo por campo, confianza por
+  acuerdo, desacuerdos e incertidumbres; tolera muestras invalidas si queda al
+  menos una valida.
+- [x] Cache por hash de imagen + prompt en el cliente existente; uso de tokens
+  y costo agregados por extraccion.
+- [x] `vision/color.py`: cuantizacion k-means en Lab, paleta ordenada y
+  limpieza de pixeles aislados.
+- [x] `vision/repeat.py`: deteccion de periodo por autocorrelacion y ajuste del
+  motivo a un divisor del total de puntos.
+- [x] `vision/segmentation.py`: interfaz intercambiable, no-op y heuristica por
+  color de borde (rembg/SAM quedan como implementaciones futuras).
+- [x] `evals/`: 3 casos sinteticos, reporte por campo y por version de prompt;
+  `make eval` usa `FAKE_AI=1` si no hay clave. `make demo` genera texto, SVG y
+  PDF verificados.
+- [x] Tests de preprocesado, color, repeticion, segmentacion, extractor
+  (votacion/reparacion/muestras invalidas), eval y schema.
+- [x] `ruff` y `mypy` en verde; suite completa en verde.
+
+**Limitacion honesta:** las imagenes de `evals/` son sinteticas, no fotos
+reales; con `FAKE_AI=1` la precision de 1.0 mide el flujo y la votacion sobre
+respuestas grabadas, no la vision del modelo. No habia `AI_API_KEY` para correr
+la evaluacion real. Ver `DECISIONS.md` D011 y D012.
+
+## Hitos 6-11
+
+Pendientes.
