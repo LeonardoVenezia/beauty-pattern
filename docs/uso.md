@@ -42,8 +42,9 @@ npm run dev      # http://localhost:3000
 
 La web usa `NEXT_PUBLIC_API_URL` para ubicar la API; por defecto
 `http://localhost:8000`. `make dev` levanta API y web en paralelo. El flujo es:
-subir foto -> revisar atributos detectados -> elegir talle, hilo y muestra ->
-ver el patron verificado -> descargar PDF o esquema SVG.
+subir foto -> revisar atributos detectados -> elegir hilo, muestra y las
+medidas o el talle que correspondan -> ver el patron verificado -> descargar
+PDF o esquema SVG.
 
 Con `FAKE_AI=1` la extraccion es simulada; la web funciona igual y sirve para
 probar todo el flujo sin red ni costo.
@@ -52,28 +53,42 @@ probar todo el flujo sin red ni costo.
 
 El motor genera pullover raglán top-down, pullover hombro caído, pullover con
 canesú circular, pullover con manga encajada, cardigan y chaleco. También genera
-gorro, bufanda, cuello circular, mitones, medias tubulares, chal rectangular y
-manta rectangular. Las familias planas se tejen en piezas y se cosen; el canesú
-no incluye gráfico de jacquard en esta versión y la manga encajada usa una copa
-simplificada. El patrón siempre se pasa por el simulador antes de mostrarse.
+gorro, bufanda, cuello circular, mitones, medias tubulares, chal rectangular,
+manta rectangular, bolso rectangular y una pieza plana genérica. Las familias
+planas se tejen en piezas y se cosen; el canesú no incluye gráfico de jacquard
+en esta versión y la manga encajada usa una copa simplificada. El patrón
+siempre se pasa por el simulador antes de mostrarse.
 
 Para accesorios se pueden enviar medidas propias en
 `params.dimensiones_cm` (por ejemplo `{"width": 30, "length": 150}`,
 `{"head": 57}` o `{"foot_length": 26}`).
 
 En crochet se generan amigurumis (esfera, cilindro y cono), un granny square
-sólido simplificado y una bufanda plana. Para amigurumi se usan
-`dimensiones_cm` con `diameter` y `height`; la forma se elige con
-`spec.forma` (`straight`, `boxy`, `a_line` o `curved`). El granny square usa
-`dimensiones_cm["size"]`.
+sólido simplificado, una bufanda plana, un bolso rectangular y una pieza plana
+genérica. Para amigurumi se usan `dimensiones_cm` con `diameter` y `height`; la
+forma se elige con `spec.forma` (`straight`, `boxy`, `a_line` o `curved`). El
+granny square usa `dimensiones_cm["size"]`; el bolso y la pieza plana usan
+`width` y `length`.
 
-## Medidas propias
+El bolso y la pieza plana son paneles rectangulares: no incluyen asas, forro,
+cierre ni uniones de módulos. La pieza plana es el recurso para una foto que no
+se reconoce como una categoría concreta; se advierte en el patrón. Los mitones
+se generan como dos piezas reutilizables (mano y pulgar) que se cortan dos veces
+cada una y se cosen.
 
-En la pantalla de medidas podés completar las medidas de la categoría elegida
-(busto, largo, contorno de cabeza, palma, pie, diámetro, etc.). Si dejás un
-campo vacío, se usa el valor típico del talle o de la categoría. Las medidas se
-envían como `medidas_cm` para prendas y como `dimensiones_cm` para accesorios,
-crochet y piezas del hogar.
+## Medidas propias y talle
+
+La pantalla de medidas se adapta a la categoría:
+
+- **Prendas** (pullover, cardigan, chaleco): muestra talle, holgura y medidas
+  corporales.
+- **Accesorios y crochet** (gorro, bufanda, mitones, bolso, amigurumi, etc.):
+  no muestra talle; muestra solo las medidas que usa esa categoría.
+
+Si dejás un campo vacío, se usa el valor típico de la categoría (o del talle en
+las prendas). Las medidas se envían como `medidas_cm` para prendas y como
+`dimensiones_cm` para accesorios, crochet y piezas del hogar. Las categorías sin
+familia disponible se marcan antes de generar y no se envían al motor.
 
 ## Modo tejiendo, contador y proyectos
 

@@ -227,7 +227,8 @@ fuente publica verificada.
 - **Decisión:** el gorro se genera en redondo con corona de 4 disminuciones por
   vuelta hasta 4 puntos; las medias son tubulares, sin talón; los mitones son
   cuatro piezas planas (mano y pulgar delantero/trasero) que se cosen; el chal
-  y la manta son rectangulares.
+  y la manta son rectangulares. (Actualizado por D019: dos secciones
+  reutilizables, mano y pulgar, con nota de armado).
 - **Motivo:** cubrir accesorios con números deterministas y verificables sin
   prometer construcciones que todavía no están modeladas. Las limitaciones se
   declaran con advertencias visibles en el patrón.
@@ -271,3 +272,26 @@ fuente publica verificada.
 - **Limitación:** los proyectos no se comparten entre dispositivos; SQLite no
   escala a varias réplicas; el e2e de Playwright no se ejecutó por falta de
   navegadores instalados.
+
+## D019 — Medidas por categoría, bolso/pieza plana y mitones
+
+- **Decisión:** la UI de medidas muestra talle y holgura solo para prendas
+  (pullover, cardigan, chaleco). Para accesorios, crochet y piezas del hogar
+  muestra únicamente las medidas de esa categoría. La confirmación también
+  oculta escote, largos y ajuste cuando no aplican.
+- **Decisión:** las técnicas ofrecidas se limitan por categoría
+  (`supportedTechniques`) y se normalizan al cambiar de categoría. Las
+  categorías sin familia se bloquean antes de llamar al motor.
+- **Decisión:** bolso y `otra prenda` se generan como paneles rectangulares
+  (en dos agujas/circular y en crochet) con una advertencia que declara que no
+  se modelan asas, forro, cierre ni unión de módulos. La pieza plana es el
+  fallback honesto para una foto no reconocida.
+- **Decisión:** los mitones se generan como dos secciones reutilizables (mano y
+  pulgar), con una nota que indica hacer dos piezas de cada una y coserlas. El
+  SVG/PDF dibuja una silueta de mitón con el pulgar, en lugar del rectángulo
+  genérico. Esto reemplaza las cuatro secciones repetidas de D016.
+- **Motivo:** evitar errores 422 evitables, no pedir talles a quien teje un
+  cuadrado y que el PDF represente la prenda que se va a tejer.
+- **Limitación:** el bolso no tiene asas/forro/cierre; la pieza plana no infiere
+  una prenda; los mitones siguen siendo piezas planas cosidas, no tejidos en
+  redondo con pulgar integrado.

@@ -282,3 +282,25 @@ y build de la web en verde.
 **Limitaciones:** no hay autenticación ni proyectos compartidos entre
 dispositivos; SQLite es para una instancia pequeña; el Wake Lock depende del
 navegador; no se ejecutó Playwright e2e en este entorno.
+
+## Correcciones posteriores al hito 11
+
+- [x] La pantalla de medidas distingue prendas de accesorios: el talle solo se
+  muestra para pullover, cardigan y chaleco; los accesorios usan únicamente sus
+  medidas. Se ocultan escote, largos y ajuste cuando no aplican.
+- [x] La pantalla de confirmación limita las técnicas a las soportadas por la
+  categoría y normaliza la selección al cambiar de categoría; las categorías
+  sin familia se marcan antes de generar.
+- [x] Bolso rectangular soportado en dos agujas/circular y crochet; pieza plana
+  genérica para fotos no reconocidas. Se declaran las limitaciones (sin asas,
+  forro, cierre ni módulos unidos).
+- [x] Mitones: de cuatro secciones repetidas a dos piezas reutilizables (mano y
+  pulgar), con nota de armado; esquema SVG y PDF con forma de mitón en lugar de
+  un rectángulo.
+- [x] Los textos de accesorios ya no muestran un talle que no aplica; se
+  mantiene el talle solo en prendas.
+- [x] Mensajes de error de la web traducidos para técnicas, categorías y
+  proporciones no soportadas.
+- [x] Tests nuevos de bolso, pieza plana, mitones y crochet; 2133 tests en
+  verde, `ruff`/`mypy` limpios y build de la web en verde. El SVG/PDF del mitón
+  se verificó visualmente con una silueta y el pulgar adjunto.

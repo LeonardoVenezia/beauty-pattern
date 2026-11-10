@@ -63,8 +63,14 @@ def _dimension(params: PatternParams, key: str, default: float) -> float:
     return default
 
 
+_CROCHET_IDS = {"crochet_sc", "crochet_hdc", "crochet_dc"}
+
+
 def _base_id(spec: GarmentSpec) -> str:
-    return catalog_id_for_name(spec.punto_base or StitchPatternName.STOCKINETTE)
+    pattern_id = catalog_id_for_name(
+        spec.punto_base or StitchPatternName.STOCKINETTE
+    )
+    return "stockinette" if pattern_id in _CROCHET_IDS else pattern_id
 
 
 def _meta(
@@ -124,6 +130,7 @@ def _flat_rect_section(
     target_cm: float,
     *,
     note_key: str | None = None,
+    note_keys: tuple[str, ...] = (),
 ) -> Section:
     pattern = get_stitch(pattern_id)
     steps: list[Step] = [
@@ -158,6 +165,7 @@ def _flat_rect_section(
         ),
         meta={"row_count": rows, "cast_on": stitches},
         bind_off=True,
+        note_keys=note_keys,
     )
 
 
@@ -279,6 +287,34 @@ def _rectangular(
             ("notion.tapestry_needle", "notion.tape_measure"),
         ),
         warnings=tuple(warnings),
+    )
+
+
+def generate_bag(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    return _rectangular(
+        spec,
+        params,
+        family="bag",
+        title_key="title.bag",
+        section_id="bag",
+        section_key="section.bag",
+        default_width=30.0,
+        default_length=30.0,
+        warning=Warning("bag_flat", "warning.bag_flat"),
+    )
+
+
+def generate_flat_piece(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    return _rectangular(
+        spec,
+        params,
+        family="flat_piece",
+        title_key="title.flat_piece",
+        section_id="flat_piece",
+        section_key="section.flat_piece",
+        default_width=20.0,
+        default_length=20.0,
+        warning=Warning("flat_piece", "warning.flat_piece"),
     )
 
 
@@ -512,20 +548,24 @@ def generate_mittens(spec: GarmentSpec, params: PatternParams) -> Pattern:
         pattern_id = "stockinette"
     sections = (
         _flat_rect_section(
-            "hand_front", "section.hand", hand_sts, hand_rows, pattern_id, hand_length,
+            "hand",
+            "section.hand",
+            hand_sts,
+            hand_rows,
+            pattern_id,
+            hand_length,
             note_key="pattern.note.flat_panel",
+            note_keys=("pattern.note.mittens_hand",),
         ),
         _flat_rect_section(
-            "hand_back", "section.hand", hand_sts, hand_rows, pattern_id, hand_length,
+            "thumb",
+            "section.thumb",
+            thumb_sts,
+            thumb_rows,
+            pattern_id,
+            thumb_length,
             note_key="pattern.note.flat_panel",
-        ),
-        _flat_rect_section(
-            "thumb_front", "section.thumb", thumb_sts, thumb_rows, pattern_id, thumb_length,
-            note_key="pattern.note.flat_panel",
-        ),
-        _flat_rect_section(
-            "thumb_back", "section.thumb", thumb_sts, thumb_rows, pattern_id, thumb_length,
-            note_key="pattern.note.flat_panel",
+            note_keys=("pattern.note.mittens_thumb",),
         ),
     )
     warnings = _common_warnings(params)
@@ -570,18 +610,6 @@ def generate_mittens(spec: GarmentSpec, params: PatternParams) -> Pattern:
             ("notion.tapestry_needle", "notion.tape_measure"),
         ),
         warnings=tuple(warnings),
-        joins=(
-            JoinCheck(
-                label_key="join.hand",
-                left=(CountRef("hand_front", "end"),),
-                right=(CountRef("hand_back", "end"),),
-            ),
-            JoinCheck(
-                label_key="join.thumb",
-                left=(CountRef("thumb_front", "end"),),
-                right=(CountRef("thumb_back", "end"),),
-            ),
-        ),
     )
 
 

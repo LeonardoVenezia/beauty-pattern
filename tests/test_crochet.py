@@ -74,6 +74,24 @@ def test_granny_square_is_flat_and_declared_simplified() -> None:
     assert pattern.sections[0].steps[0].expanded_ops()[0].kind.value == "ch"
 
 
+@pytest.mark.parametrize(
+    ("category", "family"),
+    [(Category.BAG, "crochet_bag"), (Category.OTHER, "crochet_flat_piece")],
+)
+def test_crochet_bag_and_flat_piece_simulate(
+    category: Category, family: str
+) -> None:
+    pattern = generate(
+        GarmentSpec(categoria=category, tecnica=Technique.CROCHET),
+        PatternParams(dimensiones_cm={"width": 28.0, "length": 32.0}),
+    )
+    assert simulate(pattern).ok
+    assert pattern.meta.family == family
+    measurements = {m.key: m.value_cm for m in pattern.measurements}
+    assert measurements["width"] == pytest.approx(28.0, abs=1.5)
+    assert measurements["length"] == pytest.approx(32.0, abs=1.5)
+
+
 def test_crochet_scarf_simulates() -> None:
     pattern = generate(
         GarmentSpec(categoria=Category.SCARF, tecnica=Technique.CROCHET),
@@ -89,6 +107,8 @@ def test_crochet_scarf_simulates() -> None:
         amigurumi(),
         GarmentSpec(categoria=Category.BLANKET, tecnica=Technique.CROCHET),
         GarmentSpec(categoria=Category.SCARF, tecnica=Technique.CROCHET),
+        GarmentSpec(categoria=Category.BAG, tecnica=Technique.CROCHET),
+        GarmentSpec(categoria=Category.OTHER, tecnica=Technique.CROCHET),
     ],
 )
 def test_crochet_text_svg_and_pdf(spec: GarmentSpec) -> None:

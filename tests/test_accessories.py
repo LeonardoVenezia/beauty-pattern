@@ -26,6 +26,8 @@ ACCESSORIES = [
     Category.SOCKS,
     Category.SHAWL,
     Category.BLANKET,
+    Category.BAG,
+    Category.OTHER,
 ]
 
 
@@ -81,7 +83,15 @@ def test_mittens_and_rectangular_pieces_are_declared() -> None:
         accessory_spec(Category.MITTENS), PatternParams(talla="M")
     )
     assert simulate(mittens).ok
+    assert [section.id for section in mittens.sections] == ["hand", "thumb"]
     assert any(w.code == "mittens_flat" for w in mittens.warnings)
+    text = render_pattern_text(mittens, lang="es")
+    assert "Hacé 2 piezas iguales para las manos" in text
+    assert "Hacé 2 piezas iguales para los pulgares" in text
+    assert text.count("Mano") == 1
+    svg = render_schematic_svg(mittens)
+    assert "<path" in svg
+    assert "Largo del pulgar" in svg
     shawl = generate(accessory_spec(Category.SHAWL), PatternParams(talla="M"))
     assert any(w.code == "shawl_rectangular" for w in shawl.warnings)
     blanket = generate(accessory_spec(Category.BLANKET), PatternParams(talla="M"))
@@ -113,9 +123,27 @@ def test_accessory_text_svg_and_pdf(category: Category) -> None:
     assert pdf.startswith(b"%PDF")
 
 
+def test_bag_and_flat_piece_are_supported() -> None:
+    for category, family in (
+        (Category.BAG, "bag"),
+        (Category.OTHER, "flat_piece"),
+    ):
+        pattern = generate(
+            GarmentSpec(categoria=category, tecnica=Technique.NEEDLES),
+            PatternParams(dimensiones_cm={"width": 24.0, "length": 28.0}),
+        )
+        assert simulate(pattern).ok
+        assert pattern.meta.family == family
+        measurements = {m.key: m.value_cm for m in pattern.measurements}
+        assert measurements["width"] == pytest.approx(24.0, abs=1.5)
+        assert measurements["length"] == pytest.approx(28.0, abs=1.5)
+        assert "<svg" in render_schematic_svg(pattern)
+        assert render_pattern_pdf(pattern).startswith(b"%PDF")
+
+
 def test_unsupported_accessory_is_rejected_clearly() -> None:
     with pytest.raises(UnsupportedGarmentError):
         generate(
-            GarmentSpec(categoria=Category.BAG, tecnica=Technique.NEEDLES),
+            GarmentSpec(categoria=Category.GLOVES, tecnica=Technique.NEEDLES),
             PatternParams(),
         )

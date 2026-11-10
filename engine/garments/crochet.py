@@ -387,6 +387,38 @@ def _flat_pattern(
     )
 
 
+def generate_crochet_flat_piece(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    width = params.dimensiones_cm.get("width", params.medidas_cm.get("width", 20.0))
+    height = params.dimensiones_cm.get("length", params.medidas_cm.get("length", 20.0))
+    return _flat_pattern(
+        spec,
+        params,
+        family="crochet_flat_piece",
+        title_key="title.flat_piece",
+        section_id="flat_piece",
+        section_key="section.flat_piece",
+        width=width,
+        length=height,
+        warning=Warning("flat_piece", "warning.flat_piece"),
+    )
+
+
+def generate_crochet_bag(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    width = params.dimensiones_cm.get("width", params.medidas_cm.get("width", 30.0))
+    height = params.dimensiones_cm.get("length", params.medidas_cm.get("length", 30.0))
+    return _flat_pattern(
+        spec,
+        params,
+        family="crochet_bag",
+        title_key="title.bag",
+        section_id="bag",
+        section_key="section.bag",
+        width=width,
+        length=height,
+        warning=Warning("bag_flat", "warning.bag_flat"),
+    )
+
+
 def generate_crochet_scarf(spec: GarmentSpec, params: PatternParams) -> Pattern:
     width = params.dimensiones_cm.get("width", params.medidas_cm.get("width", 25.0))
     length = params.dimensiones_cm.get("length", params.medidas_cm.get("length", 180.0))

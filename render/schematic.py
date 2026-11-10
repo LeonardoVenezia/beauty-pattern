@@ -215,6 +215,10 @@ ACCESSORY_FAMILIES = {
     "amigurumi",
     "granny_square",
     "crochet_scarf",
+    "bag",
+    "crochet_bag",
+    "flat_piece",
+    "crochet_flat_piece",
 }
 
 
@@ -226,10 +230,73 @@ def _first_measure(pattern: Pattern, keys: tuple[str, ...]) -> tuple[str, float]
     return None
 
 
+def _mitten_schematic_svg(pattern: Pattern, language: str) -> str:
+    palm = _value(pattern, "palm")
+    length = _value(pattern, "length")
+    thumb = _maybe(pattern, "thumb") or 6.0
+    width, height = 640.0, 760.0
+    margin, label_h = 60.0, 110.0
+    scale = min(
+        (width - 2 * margin) / (palm * 1.35),
+        (height - 2 * margin - label_h) / length,
+    )
+    hand_w = palm * scale
+    hand_h = length * scale
+    thumb_w = max(22.0, hand_w * 0.22)
+    thumb_h = max(28.0, thumb * scale)
+    x = (width - hand_w - thumb_w * 0.3) / 2
+    y = margin + 30.0
+    thumb_x = x + hand_w - thumb_w * 0.6
+    thumb_y = y + hand_h - thumb_h - hand_h * 0.18
+    title = t(pattern.meta.title_key, language)
+    desc = t("pattern.schematic", language)
+    hand_path = (
+        f"M {x + hand_w * 0.12:.1f} {y + hand_h:.1f} "
+        f"L {x + hand_w * 0.08:.1f} {y + hand_h * 0.55:.1f} "
+        f"Q {x + hand_w * 0.06:.1f} {y:.1f} {x + hand_w * 0.5:.1f} {y:.1f} "
+        f"Q {x + hand_w * 0.94:.1f} {y:.1f} {x + hand_w * 0.92:.1f} "
+        f"{y + hand_h * 0.55:.1f} "
+        f"L {x + hand_w * 0.88:.1f} {y + hand_h:.1f} Z"
+    )
+    parts = [
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{width:.0f}" height="{height:.0f}" '
+        f'viewBox="0 0 {width:.0f} {height:.0f}" role="img" '
+        'aria-labelledby="schematic-title schematic-desc">',
+        f'<title id="schematic-title">{escape(title)}</title>',
+        f'<desc id="schematic-desc">{escape(desc)}</desc>',
+        '<rect width="100%" height="100%" fill="#ffffff"/>',
+        '<rect x="50" y="50" width="540" height="660" fill="none" '
+        'stroke="#e5d8ca" stroke-width="1"/>',
+        f'<rect x="{thumb_x:.1f}" y="{thumb_y:.1f}" width="{thumb_w:.1f}" '
+        f'height="{thumb_h:.1f}" rx="{thumb_w / 2:.1f}" fill="#e6d6c4" '
+        'stroke="#6b4f3a" stroke-width="1.5"/>',
+        f'<path d="{hand_path}" fill="#f2e8dc" stroke="#6b4f3a" '
+        'stroke-width="1.5"/>',
+        '<g stroke="#b08b6e" stroke-width="0.8" stroke-dasharray="4 3">',
+        f'<line x1="{x + hand_w * 0.12:.1f}" y1="{y + hand_h * 0.86:.1f}" '
+        f'x2="{x + hand_w * 0.88:.1f}" y2="{y + hand_h * 0.86:.1f}"/>',
+        "</g>",
+        '<g font-family="Helvetica, sans-serif" font-size="12" fill="#3a2a1e">',
+        f'<text x="{width / 2:.1f}" y="{y - 12:.1f}" text-anchor="middle">'
+        f"{escape(_label(pattern, 'palm', language))}: {escape(_fmt(pattern, palm))}</text>",
+        f'<text x="{x + hand_w + 14:.1f}" y="{y + hand_h * 0.5:.1f}">'
+        f"{escape(_label(pattern, 'length', language))}: {escape(_fmt(pattern, length))}</text>",
+        f'<text x="{thumb_x + thumb_w / 2:.1f}" y="{y + hand_h + 42:.1f}" '
+        'text-anchor="middle">'
+        f"{escape(_label(pattern, 'thumb', language))}: {escape(_fmt(pattern, thumb))}</text>",
+        "</g>",
+        "</svg>",
+    ]
+    return "".join(parts)
+
+
 def render_accessory_schematic_svg(
     pattern: Pattern, *, lang: str | None = None
 ) -> str:
     language = lang or pattern.params.idioma
+    if pattern.meta.family == "mittens":
+        return _mitten_schematic_svg(pattern, language)
     width_measure = _first_measure(
         pattern, ("width", "diameter", "circumference", "palm", "head")
     )

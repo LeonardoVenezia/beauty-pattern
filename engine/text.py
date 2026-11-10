@@ -10,6 +10,15 @@ from engine.ir import Item, Op, Pattern, Section, Step
 from engine.spec import Technique, resolve_gauge
 from engine.stitches.kinds import StitchKind
 
+_GARMENT_FAMILIES = {
+    "raglan_top_down",
+    "drop_shoulder",
+    "yoke",
+    "set_in_sleeve",
+    "cardigan",
+    "vest",
+}
+
 
 def _length(value_cm: float, units: str, lang: str) -> tuple[str, str]:
     if units == "in":
@@ -95,19 +104,30 @@ def render_pattern_text(
     language = lang or pattern.params.idioma
     difficulty = level or pattern.params.nivel
     gauge = resolve_gauge(pattern.params)
-    lines: list[str] = [
-        t(pattern.meta.title_key, language),
-        t("pattern.size", language, size=pattern.meta.size),
-        t(
-            "pattern.gauge",
-            language,
-            sts=f"{gauge.stitches_per_10cm:g}",
-            rows=f"{gauge.rows_per_10cm:g}",
-        ),
-        "",
-        t("pattern.materials", language),
-        t("pattern.yarn", language, weight=t(f"yarn.{pattern.materials.yarn_weight.value}", language)),
-    ]
+    lines: list[str] = [t(pattern.meta.title_key, language)]
+    if pattern.meta.family in _GARMENT_FAMILIES:
+        lines.append(t("pattern.size", language, size=pattern.meta.size))
+    lines.extend(
+        [
+            t(
+                "pattern.gauge",
+                language,
+                sts=f"{gauge.stitches_per_10cm:g}",
+                rows=f"{gauge.rows_per_10cm:g}",
+            ),
+            "",
+        ]
+    )
+    lines.extend(
+        [
+            t("pattern.materials", language),
+            t(
+                "pattern.yarn",
+                language,
+                weight=t(f"yarn.{pattern.materials.yarn_weight.value}", language),
+            ),
+        ]
+    )
     if pattern.materials.needle_mm is not None:
         lines.append(
             t("pattern.needles", language, mm=f"{pattern.materials.needle_mm:g}")

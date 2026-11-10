@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from engine.garments.accessories import (
+    generate_bag,
     generate_blanket,
     generate_cowl,
+    generate_flat_piece,
     generate_hat,
     generate_mittens,
     generate_scarf,
@@ -18,6 +20,8 @@ from engine.garments.base import (
 )
 from engine.garments.crochet import (
     generate_amigurumi,
+    generate_crochet_bag,
+    generate_crochet_flat_piece,
     generate_crochet_scarf,
     generate_granny_square,
 )
@@ -38,6 +42,10 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
             return generate_crochet_scarf(spec, params)
         if spec.categoria is Category.BLANKET:
             return generate_granny_square(spec, params)
+        if spec.categoria is Category.BAG:
+            return generate_crochet_bag(spec, params)
+        if spec.categoria is Category.OTHER:
+            return generate_crochet_flat_piece(spec, params)
         raise UnsupportedGarmentError(
             "error.unsupported_technique", technique=spec.tecnica.value
         )
@@ -59,6 +67,10 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
         return generate_shawl(spec, params)
     if spec.categoria is Category.BLANKET:
         return generate_blanket(spec, params)
+    if spec.categoria is Category.BAG:
+        return generate_bag(spec, params)
+    if spec.categoria is Category.OTHER:
+        return generate_flat_piece(spec, params)
     if spec.categoria is Category.CARDIGAN:
         return generate_flat(spec, params, "cardigan")
     if spec.categoria is Category.VEST:
@@ -86,10 +98,14 @@ __all__ = [
     "UnsupportedGarmentError",
     "generate",
     "generate_amigurumi",
+    "generate_bag",
     "generate_blanket",
     "generate_cowl",
+    "generate_crochet_bag",
+    "generate_crochet_flat_piece",
     "generate_crochet_scarf",
     "generate_flat",
+    "generate_flat_piece",
     "generate_granny_square",
     "generate_hat",
     "generate_mittens",

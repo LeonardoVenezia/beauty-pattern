@@ -38,8 +38,31 @@ const techniques = [
   ["needles", "Dos agujas"],
   ["circular", "Circular"],
   ["crochet", "Crochet"],
-  ["machine", "Máquina"],
 ] as const;
+
+const supportedTechniques: Record<string, readonly string[]> = {
+  pullover: ["needles", "circular"],
+  cardigan: ["needles", "circular"],
+  vest: ["needles", "circular"],
+  hat: ["needles", "circular"],
+  scarf: ["needles", "circular", "crochet"],
+  cowl: ["needles", "circular"],
+  mittens: ["needles", "circular"],
+  socks: ["needles", "circular"],
+  shawl: ["needles", "circular"],
+  blanket: ["needles", "circular", "crochet"],
+  bag: ["needles", "circular", "crochet"],
+  amigurumi: ["crochet"],
+  other: ["needles", "circular", "crochet"],
+  gloves: [],
+};
+
+const garmentConstructions = new Set([
+  "raglan_top_down",
+  "drop_shoulder",
+  "set_in_sleeve",
+  "yoke",
+]);
 
 const constructions = [
   ["raglan_top_down", "Raglán de arriba hacia abajo"],
@@ -172,6 +195,14 @@ const dimensionFields: Record<string, readonly DimensionField[]> = {
     ["width", "Ancho", "Ej. 100"],
     ["length", "Largo", "Ej. 120"],
   ],
+  bag: [
+    ["width", "Ancho", "Ej. 30"],
+    ["length", "Alto", "Ej. 30"],
+  ],
+  other: [
+    ["width", "Ancho", "Ej. 20"],
+    ["length", "Alto", "Ej. 20"],
+  ],
   amigurumi: [
     ["diameter", "Diámetro", "Ej. 8"],
     ["height", "Altura", "Ej. 8"],
@@ -204,6 +235,8 @@ const sectionLabels: Record<string, string> = {
   "section.button_band": "Tapa de botones",
   "section.amigurumi": "Amigurumi",
   "section.granny_square": "Granny square",
+  "section.bag": "Bolso",
+  "section.flat_piece": "Pieza plana",
   "section.leg": "Pierna",
   "section.sphere": "Esfera",
   "section.cylinder": "Cilindro",
@@ -222,6 +255,8 @@ const noteLabels: Record<string, string> = {
   "pattern.note.amigurumi_decrease": "Disminuí 6 puntos repartidos.",
   "pattern.note.plain": "Vuelta sin aumentos.",
   "pattern.magic_ring": "Anillo mágico con 6 puntos bajos.",
+  "pattern.note.mittens_hand": "Hacé 2 piezas iguales para las manos y coselas.",
+  "pattern.note.mittens_thumb": "Hacé 2 piezas iguales para los pulgares y coselos.",
 };
 
 const measurementLabels: Record<string, string> = {
@@ -252,6 +287,9 @@ const warningLabels: Record<string, string> = {
   "warning.unsupported_variant": "La variante pedida no está soportada por completo.",
   "warning.fast_increases": "Los aumentos van en todas las vueltas para que el canesú cierre.",
   "warning.unsupported_stitch": "El punto base se simplificó a jersey.",
+  "warning.bag_flat": "El bolso es un panel rectangular simplificado; no incluye asas, forro ni cierre.",
+  "warning.flat_piece": "No se reconoció la prenda; se genera una pieza plana rectangular. Revisá si corresponde a una categoría más específica.",
+  "warning.mittens_flat": "Los mitones son piezas planas simplificadas; el pulgar se cose aparte y el calce debe probarse.",
 };
 
 const numberFormat = new Intl.NumberFormat("es-AR", {
@@ -286,6 +324,21 @@ function optionLabel(
   return options.find(([key]) => key === value)?.[1] ?? "Sin definir";
 }
 
+function normalizeSpec(spec: GarmentSpec): GarmentSpec {
+  const allowed = supportedTechniques[spec.categoria] ?? [];
+  const tecnica = allowed.includes(spec.tecnica)
+    ? spec.tecnica
+    : (allowed[0] ?? spec.tecnica);
+  if (
+    spec.categoria === "pullover" &&
+    spec.construccion &&
+    !garmentConstructions.has(spec.construccion)
+  ) {
+    return { ...spec, tecnica, construccion: "raglan_top_down" };
+  }
+  return { ...spec, tecnica };
+}
+
 export default function HomePage() {
   const [step, setStep] = useState<Step>("upload");
   const [file, setFile] = useState<File | null>(null);
@@ -312,6 +365,15 @@ export default function HomePage() {
 
   const baseStitchOptions =
     spec?.tecnica === "crochet" ? crochetStitches : baseStitches;
+  const isGarment = spec ? garmentCategories.has(spec.categoria) : false;
+  const allowedTechniques = spec
+    ? (supportedTechniques[spec.categoria] ?? [])
+    : [];
+  const techniqueOptions = techniques.filter(([key]) =>
+    allowedTechniques.includes(key),
+  );
+  const unsupportedCategory =
+    spec !== null && allowedTechniques.length === 0;
 
   const activeDimensionFields = useMemo<readonly DimensionField[]>(() => {
     if (!spec) return [];
@@ -391,7 +453,7 @@ export default function HomePage() {
     try {
       const data = await analyzeImage(file);
       setAnalysis(data);
-      setSpec(data.spec);
+      setSpec(normalizeSpec(data.spec));
       setImageId(data.image_id);
       setStep("confirm");
     } catch (caught) {
@@ -403,6 +465,14 @@ export default function HomePage() {
 
   async function onGenerate() {
     if (!spec) return;
+    if (unsupportedCategory) {
+      setError(
+        "Esta categoría todavía no tiene una familia de patrón. Probá con otra categoría o con “Pieza plana”.",
+      );
+      return;
+    }
+    const currentSpec = normalizeSpec(spec);
+    if (currentSpec !== spec) setSpec(currentSpec);
     const stitches = Number(gaugeStitches);
     const rows = Number(gaugeRows);
     const easeValue = Number(ease);
@@ -431,7 +501,7 @@ export default function HomePage() {
     setBusy(true);
     setError(null);
     try {
-      const data = await createPattern(spec, params);
+      const data = await createPattern(currentSpec, params);
       setResult(data);
       setPatternText(data.text.es);
       setCritique(null);
@@ -544,6 +614,12 @@ export default function HomePage() {
 
   function updateSpec<K extends keyof GarmentSpec>(key: K, value: GarmentSpec[K]) {
     setSpec((current) => (current ? { ...current, [key]: value } : current));
+  }
+
+  function updateCategory(value: string) {
+    setSpec((current) =>
+      current ? normalizeSpec({ ...current, categoria: value }) : current,
+    );
   }
 
   function updateNullable(key: keyof GarmentSpec, value: string) {
@@ -678,7 +754,11 @@ export default function HomePage() {
                       onClick={() => loadProject(project)}
                       className="text-left font-semibold text-sage underline-offset-4 hover:underline"
                     >
-                      {project.label} · {project.size}
+                      {project.label}
+                      {project.result.pattern.spec &&
+                      garmentCategories.has(project.result.pattern.spec.categoria)
+                        ? ` · ${project.size}`
+                        : ""}
                       <span className="ml-2 text-xs font-normal text-ink/50">
                         {new Date(project.savedAt).toLocaleDateString("es-AR")}
                       </span>
@@ -713,50 +793,56 @@ export default function HomePage() {
                 confidence={confidenceFor("categoria")}
                 value={spec.categoria}
                 options={categories}
-                onChange={(value) => updateNullable("categoria", value)}
+                onChange={updateCategory}
               />
               <Field
                 label="Técnica"
                 confidence={confidenceFor("tecnica")}
                 value={spec.tecnica}
-                options={techniques}
+                options={techniqueOptions}
                 onChange={(value) => updateNullable("tecnica", value)}
               />
-              <Field
-                label="Construcción"
-                confidence={confidenceFor("construccion")}
-                value={spec.construccion ?? ""}
-                options={constructions}
-                onChange={(value) => updateNullable("construccion", value)}
-              />
-              <Field
-                label="Escote"
-                confidence={confidenceFor("escote")}
-                value={spec.escote ?? ""}
-                options={necklines}
-                onChange={(value) => updateNullable("escote", value)}
-              />
-              <Field
-                label="Largo del cuerpo"
-                confidence={confidenceFor("largo_cuerpo")}
-                value={spec.largo_cuerpo ?? ""}
-                options={bodyLengths}
-                onChange={(value) => updateNullable("largo_cuerpo", value)}
-              />
-              <Field
-                label="Largo de manga"
-                confidence={confidenceFor("largo_manga")}
-                value={spec.largo_manga ?? ""}
-                options={sleeveLengths}
-                onChange={(value) => updateNullable("largo_manga", value)}
-              />
-              <Field
-                label="Ajuste"
-                confidence={confidenceFor("ajuste")}
-                value={spec.ajuste ?? ""}
-                options={fits}
-                onChange={(value) => updateNullable("ajuste", value)}
-              />
+              {spec.categoria === "pullover" ? (
+                <Field
+                  label="Construcción"
+                  confidence={confidenceFor("construccion")}
+                  value={spec.construccion ?? ""}
+                  options={constructions}
+                  onChange={(value) => updateNullable("construccion", value)}
+                />
+              ) : null}
+              {isGarment ? (
+                <>
+                  <Field
+                    label="Escote"
+                    confidence={confidenceFor("escote")}
+                    value={spec.escote ?? ""}
+                    options={necklines}
+                    onChange={(value) => updateNullable("escote", value)}
+                  />
+                  <Field
+                    label="Largo del cuerpo"
+                    confidence={confidenceFor("largo_cuerpo")}
+                    value={spec.largo_cuerpo ?? ""}
+                    options={bodyLengths}
+                    onChange={(value) => updateNullable("largo_cuerpo", value)}
+                  />
+                  <Field
+                    label="Largo de manga"
+                    confidence={confidenceFor("largo_manga")}
+                    value={spec.largo_manga ?? ""}
+                    options={sleeveLengths}
+                    onChange={(value) => updateNullable("largo_manga", value)}
+                  />
+                  <Field
+                    label="Ajuste"
+                    confidence={confidenceFor("ajuste")}
+                    value={spec.ajuste ?? ""}
+                    options={fits}
+                    onChange={(value) => updateNullable("ajuste", value)}
+                  />
+                </>
+              ) : null}
               <Field
                 label="Punto base"
                 confidence={confidenceFor("punto_base")}
@@ -774,6 +860,16 @@ export default function HomePage() {
                 />
               ) : null}
             </div>
+
+            {unsupportedCategory ? (
+              <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink/75">
+                <h3 className="font-semibold">Categoría todavía no disponible</h3>
+                <p className="mt-1">
+                  Esta categoría no tiene una familia de patrón todavía. Elegí
+                  otra categoría compatible para continuar.
+                </p>
+              </div>
+            ) : null}
 
             {spec.incertidumbres.length > 0 || spec.no_visible.length > 0 ? (
               <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4">
@@ -812,7 +908,8 @@ export default function HomePage() {
             <button
               type="button"
               onClick={() => setStep("params")}
-              className="min-h-12 flex-1 rounded-xl bg-sage px-5 py-3 text-lg font-semibold text-white"
+              disabled={unsupportedCategory}
+              className="min-h-12 flex-1 rounded-xl bg-sage px-5 py-3 text-lg font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
               Confirmar y elegir medidas
             </button>
@@ -822,27 +919,32 @@ export default function HomePage() {
 
       {step === "params" ? (
         <section className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
-          <h2 className="text-2xl font-semibold">Tu hilo y tu talle</h2>
+          <h2 className="text-2xl font-semibold">
+            {isGarment ? "Tu hilo y tu talle" : "Tu hilo y tus medidas"}
+          </h2>
           <p className="mt-2 text-ink/70">
-            Con esto calculamos los puntos. Si ya tejiste una muestra, ingresá tu
-            densidad real: es la opción más precisa.
+            {isGarment
+              ? "Con esto calculamos los puntos. Si ya tejiste una muestra, ingresá tu densidad real: es la opción más precisa."
+              : "Este proyecto no se calcula por talle: usamos las medidas de abajo. Si ya tejiste una muestra, ingresá tu densidad real."}
           </p>
 
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
-            <label className="block">
-              <span className="text-sm font-semibold">Talle</span>
-              <select
-                value={size}
-                onChange={(event) => setSize(event.target.value)}
-                className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
-              >
-                {sizes.map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {isGarment ? (
+              <label className="block">
+                <span className="text-sm font-semibold">Talle</span>
+                <select
+                  value={size}
+                  onChange={(event) => setSize(event.target.value)}
+                  className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
+                >
+                  {sizes.map((value) => (
+                    <option key={value} value={value}>
+                      {value}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label className="block">
               <span className="text-sm font-semibold">Grosor del hilo</span>
               <select
@@ -902,8 +1004,9 @@ export default function HomePage() {
                 Medidas propias (opcional)
               </legend>
               <p className="mt-1 text-xs text-ink/55">
-                Si no las completás, usamos las medidas típicas del talle y de la
-                categoría.
+                {isGarment
+                  ? "Si no las completás, usamos las medidas típicas del talle y de la categoría."
+                  : "Si no las completás, usamos medidas típicas de la categoría."}
               </p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 {activeDimensionFields.map(([key, label, placeholder]) => (
@@ -930,22 +1033,24 @@ export default function HomePage() {
             </fieldset>
           ) : null}
 
-          <label className="mt-5 block">
-            <span className="text-sm font-semibold">Holgura extra (opcional)</span>
-            <input
-              type="number"
-              min="-10"
-              max="40"
-              step="0.5"
-              value={ease}
-              onChange={(event) => setEase(event.target.value)}
-              placeholder="Ej. 8"
-              className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
-            />
-            <span className="mt-1 block text-xs text-ink/55">
-              En centímetros, además de la holgura del ajuste elegido.
-            </span>
-          </label>
+          {isGarment ? (
+            <label className="mt-5 block">
+              <span className="text-sm font-semibold">Holgura extra (opcional)</span>
+              <input
+                type="number"
+                min="-10"
+                max="40"
+                step="0.5"
+                value={ease}
+                onChange={(event) => setEase(event.target.value)}
+                placeholder="Ej. 8"
+                className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
+              />
+              <span className="mt-1 block text-xs text-ink/55">
+                En centímetros, además de la holgura del ajuste elegido.
+              </span>
+            </label>
+          ) : null}
 
           <div className="mt-7 flex flex-col gap-3 sm:flex-row">
             <button
@@ -975,7 +1080,8 @@ export default function HomePage() {
                 Patrón verificado
               </span>
               <span className="text-sm text-ink/60">
-                {optionLabel(categories, spec?.categoria ?? null)} · Talle {size}
+                {optionLabel(categories, spec?.categoria ?? null)}
+                {isGarment ? ` · Talle ${size}` : ""}
               </span>
             </div>
             <h2 className="mt-4 text-3xl font-bold">Tu patrón está listo</h2>
