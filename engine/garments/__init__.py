@@ -16,6 +16,11 @@ from engine.garments.base import (
     ImpossibleProportionsError,
     UnsupportedGarmentError,
 )
+from engine.garments.crochet import (
+    generate_amigurumi,
+    generate_crochet_scarf,
+    generate_granny_square,
+)
 from engine.garments.flat import generate_flat
 from engine.garments.raglan import generate_raglan_top_down
 from engine.garments.set_in import generate_set_in
@@ -26,6 +31,16 @@ from engine.spec import Category, Construction, GarmentSpec, PatternParams, Tech
 
 def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
     """Despacha la familia soportada. Falla claro si no hay familia."""
+    if spec.tecnica is Technique.CROCHET:
+        if spec.categoria is Category.AMIGURUMI:
+            return generate_amigurumi(spec, params)
+        if spec.categoria is Category.SCARF:
+            return generate_crochet_scarf(spec, params)
+        if spec.categoria is Category.BLANKET:
+            return generate_granny_square(spec, params)
+        raise UnsupportedGarmentError(
+            "error.unsupported_technique", technique=spec.tecnica.value
+        )
     if spec.tecnica not in {Technique.NEEDLES, Technique.CIRCULAR}:
         raise UnsupportedGarmentError(
             "error.unsupported_technique", technique=spec.tecnica.value
@@ -70,9 +85,12 @@ __all__ = [
     "ImpossibleProportionsError",
     "UnsupportedGarmentError",
     "generate",
+    "generate_amigurumi",
     "generate_blanket",
     "generate_cowl",
+    "generate_crochet_scarf",
     "generate_flat",
+    "generate_granny_square",
     "generate_hat",
     "generate_mittens",
     "generate_raglan_top_down",

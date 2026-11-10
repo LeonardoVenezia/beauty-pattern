@@ -212,6 +212,9 @@ ACCESSORY_FAMILIES = {
     "socks",
     "shawl",
     "blanket",
+    "amigurumi",
+    "granny_square",
+    "crochet_scarf",
 }
 
 
@@ -228,10 +231,10 @@ def render_accessory_schematic_svg(
 ) -> str:
     language = lang or pattern.params.idioma
     width_measure = _first_measure(
-        pattern, ("width", "circumference", "palm", "head")
+        pattern, ("width", "diameter", "circumference", "palm", "head")
     )
     length_measure = _first_measure(
-        pattern, ("length", "foot_length", "body_length")
+        pattern, ("length", "height", "foot_length", "body_length")
     )
     if width_measure is None or length_measure is None:
         raise KeyError("el accesorio no tiene medidas de ancho y largo")

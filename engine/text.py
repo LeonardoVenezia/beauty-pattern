@@ -7,7 +7,7 @@ from __future__ import annotations
 
 from engine.i18n import has_key, t
 from engine.ir import Item, Op, Pattern, Section, Step
-from engine.spec import resolve_gauge
+from engine.spec import Technique, resolve_gauge
 from engine.stitches.kinds import StitchKind
 
 
@@ -48,13 +48,15 @@ def format_step(step: Step, mode: str, lang: str, level: str) -> str:
 
 def _section_intro(section: Section, lang: str) -> str:
     if section.steps:
-        cast_on = sum(
-            op.times
-            for op in section.steps[0].expanded_ops()
-            if op.kind is StitchKind.CAST_ON
-        )
+        first_ops = section.steps[0].expanded_ops()
+        cast_on = sum(op.times for op in first_ops if op.kind is StitchKind.CAST_ON)
         if cast_on:
             return t("pattern.cast_on", lang, n=cast_on)
+        if any(op.kind is StitchKind.MAGIC_RING for op in first_ops):
+            return t("pattern.magic_ring", lang)
+        chains = sum(op.times for op in first_ops if op.kind is StitchKind.CH)
+        if chains:
+            return t("pattern.cast_on_crochet", lang, n=chains)
     if section.id == "neckband":
         return t("pattern.cast_on_round", lang, n=section.start_stitches)
     if section.id == "yoke":
@@ -165,7 +167,15 @@ def render_pattern_text(
         for step in section.steps:
             lines.append(format_step(step, section.mode, language, difficulty))
         if section.bind_off:
-            lines.append(t("pattern.bind_off", language, n=section.end_stitches))
+            bind_key = (
+                "pattern.bind_off_crochet"
+                if pattern.spec.tecnica is Technique.CROCHET
+                else "pattern.bind_off"
+            )
+            if bind_key == "pattern.bind_off_crochet":
+                lines.append(t(bind_key, language))
+            else:
+                lines.append(t(bind_key, language, n=section.end_stitches))
 
     lines.extend(
         [

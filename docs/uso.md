@@ -61,6 +61,12 @@ Para accesorios se pueden enviar medidas propias en
 `params.dimensiones_cm` (por ejemplo `{"width": 30, "length": 150}`,
 `{"head": 57}` o `{"foot_length": 26}`).
 
+En crochet se generan amigurumis (esfera, cilindro y cono), un granny square
+sólido simplificado y una bufanda plana. Para amigurumi se usan
+`dimensiones_cm` con `diameter` y `height`; la forma se elige con
+`spec.forma` (`straight`, `boxy`, `a_line` o `curved`). El granny square usa
+`dimensiones_cm["size"]`.
+
 ## Endpoints principales
 
 - `POST /analyze` — multipart `file`; devuelve `GarmentSpec`, confianza,

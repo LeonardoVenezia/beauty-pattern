@@ -69,6 +69,7 @@ publica verificada se marca **ASUNCION**.
 - Medias: tubo con puno, pierna, pie y puntera; sin talon en esta version
   (ASUNCION).
 - Amigurumi: anillo magico de 6 puntos bajos, esfera/ cilindro/ cono con
-  aumentos y disminuciones uniformes (ASUNCION).
+  aumentos y disminuciones de 6 puntos por vuelta; el granny square de esta
+  version es un cuadrado solido simplificado (ASUNCION).
 
 Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.

@@ -234,3 +234,22 @@ fuente publica verificada.
 - **Limitación:** no se implementaron guantes con dedos, talón de media,
   mitones tubulares ni chal triangular/modular. Quedan para una iteración
   posterior.
+
+## D017 — Crochet: amigurumi y piezas planas
+
+- **Decisión:** la técnica `crochet` se despacha antes que las familias de dos
+  agujas. Amigurumi usa anillo mágico y aumentos/disminuciones de 6 puntos por
+  vuelta; la forma se deriva de `spec.forma` (`straight` = esfera, `boxy` =
+  cilindro, `a_line`/`curved` = cono).
+- **Decisión:** el granny square se genera como un cuadrado sólido en punto
+  alto, no como el motivo clásico de grupos; se declara con
+  `warning.granny_simplified`. Una bufanda en crochet se genera como panel
+  plano rectangular.
+- **Decisión:** las medidas de crochet se toman de `dimensiones_cm` (`diameter`,
+  `height`, `size`, `width`, `length`) y la densidad de la tabla de referencia
+  por grosor de hilo, editable con `densidad`; se advierte que es una
+  referencia de dos agujas (`warning.crochet_gauge`).
+- **Motivo:** entregar amigurumi y piezas planas verificables sin prometer
+  cambios de color, módulos unidos ni el motivo clásico de granny square.
+- **Limitación:** no hay patrones de prendas en crochet, cambios de color,
+  ensamblaje de módulos ni relleno/detalles de amigurumi.

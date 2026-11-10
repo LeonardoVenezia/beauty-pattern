@@ -152,7 +152,7 @@ def _accessory_drawing(pattern: Pattern, lang: str) -> Drawing:
     width_measure = next(
         (
             (key, value)
-            for key in ("width", "circumference", "palm", "head")
+            for key in ("width", "diameter", "circumference", "palm", "head")
             if (value := _maybe_measure(pattern, key)) is not None
         ),
         None,
@@ -160,7 +160,7 @@ def _accessory_drawing(pattern: Pattern, lang: str) -> Drawing:
     length_measure = next(
         (
             (key, value)
-            for key in ("length", "foot_length", "body_length")
+            for key in ("length", "height", "foot_length", "body_length")
             if (value := _maybe_measure(pattern, key)) is not None
         ),
         None,

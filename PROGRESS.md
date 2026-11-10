@@ -232,3 +232,26 @@ suite completa (1982 tests) en verde.
 talón (son tubulares); los mitones son piezas planas simplificadas; el chal y
 la manta son rectangulares, no triangulares ni modulares. La bufanda en jersey
 puede enrollarse. Ver `DECISIONS.md` D016.
+
+## Hito 10 — Crochet
+
+Completado con limitaciones declaradas; tests, `ruff`, `mypy` y suite completa
+(2013 tests) en verde.
+
+- [x] `engine/garments/crochet.py`: amigurumi en esfera, cilindro y cono;
+  granny square simplificado y bufanda plana en crochet.
+- [x] Amigurumi con anillo mágico, aumentos y disminuciones de 6 puntos por
+  vuelta; formas elegidas con `spec.forma` (`straight` esfera, `boxy`
+  cilindro, `a_line`/`curved` cono).
+- [x] Medidas propias `diameter`, `height` y `size` en `dimensiones_cm`.
+- [x] Punto base de crochet (`crochet_sc`, `crochet_hdc`, `crochet_dc`) y
+  ganchillo por grosor de hilo.
+- [x] Texto, SVG y PDF para crochet; apertura con anillo mágico o cadenas y
+  remate específico de crochet.
+- [x] Tests de todas las formas y grosores de hilo, medidas propias, texto,
+  SVG y PDF.
+
+**Limitaciones honestas:** el granny square es un cuadrado sólido simplificado,
+no el motivo clásico de grupos; no hay cambios de color ni uniones de módulos;
+la densidad de crochet usa la tabla de referencia de dos agujas editable. El
+amigurumi no incluye relleno ni detalles de ensamblaje. Ver D017.
