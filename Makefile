@@ -2,10 +2,14 @@ UV ?= $(HOME)/.local/bin/uv
 PY := $(UV) run python
 export PATH := $(HOME)/.local/bin:$(PATH)
 
-.PHONY: setup test lint typecheck eval demo dev api web e2e pdf examples clean
+.PHONY: setup web-install test lint typecheck eval demo dev api web e2e pdf examples clean
 
 setup:
 	$(UV) sync --all-groups
+	cd web && npm ci
+
+web-install:
+	cd web && npm ci
 
 test:
 	$(UV) run pytest

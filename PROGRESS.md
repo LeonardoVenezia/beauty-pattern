@@ -86,10 +86,6 @@ Completado y verificado.
 punto base se advierte y se teje jersey (el catalogo de texturas se integrara
 en un hito posterior). Ver `DECISIONS.md` D010.
 
-## Hitos 5-11
-
-Pendientes.
-
 ## Hito 5 — Percepcion (preprocesado, extractor, color y motivos)
 
 Completado y verificado con tests; la IA real no se probo por falta de clave.
@@ -123,6 +119,36 @@ reales; con `FAKE_AI=1` la precision de 1.0 mide el flujo y la votacion sobre
 respuestas grabadas, no la vision del modelo. No habia `AI_API_KEY` para correr
 la evaluacion real. Ver `DECISIONS.md` D011 y D012.
 
-## Hitos 6-11
+## Hito 6 — API y flujo web completo
+
+Completado y verificado con tests y build de Next.js.
+
+- [x] `engine/serialization.py`: conversion JSON de la IR completa (secciones,
+  pasos, ops, medidas, materiales, advertencias y uniones) para API y
+  almacenamiento.
+- [x] `api/storage.py`: SQLite para patrones e imagenes; vencimiento de imagenes
+  configurable con `IMAGE_TTL_HOURS`.
+- [x] `api/ratelimit.py`: limite en memoria por IP, configurable con
+  `RATE_LIMIT_PER_MINUTE`.
+- [x] Endpoints: `POST /analyze` (multipart, preprocesado + extractor),
+  `POST /pattern` (motor + simulador + texto), `GET /pattern/{id}`,
+  `GET /pattern/{id}/pdf`, `GET /pattern/{id}/svg` y `GET /stitches`.
+- [x] Validacion de subida (tipo/tamano), error 413/422/429/503/502 con mensajes
+  claros; el patron solo se devuelve si el simulador pasa.
+- [x] Web Next.js + TypeScript + Tailwind mobile-first: foto, confirmacion
+  editable de atributos con confianza/incertidumbres, talle/hilo/muestra,
+  vista de medidas/materiales/advertencias e instrucciones, descarga de PDF y
+  esquema SVG.
+- [x] Tests de API: flujo completo analyze -> pattern -> PDF/SVG, imagen
+  invalida, variante imposible, patron inexistente y limite de tasa.
+- [x] `npm run build` de la web en verde; `ruff`, `mypy` y suite completa en
+  verde (424 tests).
+
+**Limitacion honesta:** el flujo end-to-end se verifico con `FAKE_AI=1`; no
+habia `AI_API_KEY` para probar la vision real. La web no se probo con
+automatizacion de navegador (restriccion del entorno); se verifico el build de
+produccion y la API por tests.
+
+## Hitos 7-11
 
 Pendientes.

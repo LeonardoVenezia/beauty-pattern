@@ -3,7 +3,7 @@
 ## Requisitos
 
 - Python 3.12 y `uv`.
-- Node.js 20+ solo para la web (hito 6).
+- Node.js 20+ para la web.
 
 ## Comandos
 
@@ -14,6 +14,8 @@ make lint       # ruff + mypy
 make demo       # patron raglan M verificado -> data/demo/{txt,svg,pdf}
 make eval       # evaluacion del extractor (FAKE_AI=1 si no hay clave)
 make api        # API FastAPI en :8000
+make dev        # API en :8000 y web en :3000
+make web        # solo web Next.js en :3000
 ```
 
 ## Patron de ejemplo
@@ -32,5 +34,26 @@ hasta incorporar fotos reales.
 
 ## Web
 
-La web Next.js mobile-first se construye en el hito 6. `make dev` levantara
-API y web cuando exista `web/`.
+```bash
+cd web
+npm install
+npm run dev      # http://localhost:3000
+```
+
+La web usa `NEXT_PUBLIC_API_URL` para ubicar la API; por defecto
+`http://localhost:8000`. `make dev` levanta API y web en paralelo. El flujo es:
+subir foto -> revisar atributos detectados -> elegir talle, hilo y muestra ->
+ver el patron verificado -> descargar PDF o esquema SVG.
+
+Con `FAKE_AI=1` la extraccion es simulada; la web funciona igual y sirve para
+probar todo el flujo sin red ni costo.
+
+## Endpoints principales
+
+- `POST /analyze` — multipart `file`; devuelve `GarmentSpec`, confianza,
+  desacuerdos e id de imagen.
+- `POST /pattern` — `{spec, params}`; devuelve patron serializado, texto es/en
+  y resultado del simulador.
+- `GET /pattern/{id}` — patron guardado.
+- `GET /pattern/{id}/pdf` y `/svg` — descargas.
+- `GET /stitches` — catalogo de puntos.

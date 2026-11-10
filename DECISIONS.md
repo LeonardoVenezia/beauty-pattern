@@ -140,3 +140,31 @@ fuente publica verificada.
   conexa mas grande; rembg/SAM quedan detrás de la misma interfaz.
 - **ASUNCION:** la eval usa imagenes sinteticas hasta incorporar fotos reales
   con derechos claros.
+
+## D013 — API, persistencia y flujo web
+
+- **Decision:** la API usa SQLite para patrones e imagenes. Cada patron se
+  guarda serializado en JSON junto con el texto es/en; las imagenes tienen
+  vencimiento configurable (`IMAGE_TTL_HOURS`) y se guardan solo para trazabilidad
+  y posibles reprocesos, no se sirven publicamente.
+- **Decision:** `engine/serialization.py` es la unica conversion IR <-> JSON;
+  la API, la web y el almacenamiento consumen ese formato. Al deserializar se
+  reconstruyen los tipos del motor (`YarnWeight`, `Op`, `Step`, etc.), no se
+  trabaja con diccionarios sueltos.
+- **Decision:** `POST /pattern` vuelve a pasar el patron por el simulador antes
+  de guardarlo; si falla, responde 422 y no persiste nada. El texto se genera
+  deterministicamente en es/en desde la IR.
+- **Decision:** limite de tasa en memoria por IP (`RATE_LIMIT_PER_MINUTE`),
+  subida maxima configurable (`MAX_UPLOAD_MB`) y validacion de imagen con el
+  mismo preprocesado de vision. Para produccion con varias instancias habria
+  que mover el limite a un almacenamiento compartido.
+- **Decision:** la web es Next.js + TypeScript + Tailwind, mobile-first, con
+  confirmacion editable de atributos y confianza visible. La API se configura
+  con `NEXT_PUBLIC_API_URL` (default `http://localhost:8000`).
+- **Motivo:** cerrar el flujo foto -> confirmacion -> PDF sin agregar
+  infraestructura; SQLite y el limite en memoria son suficientes para el
+  desarrollo y se pueden reemplazar por Postgres/Redis sin cambiar el contrato
+  de la API.
+- **Limitacion:** el flujo se probo con `FAKE_AI=1`; no habia clave para la
+  vision real. La web se verifico con `npm run build`, no con automatizacion de
+  navegador.
