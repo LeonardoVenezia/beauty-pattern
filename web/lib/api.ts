@@ -165,3 +165,45 @@ export function patternPdfUrl(id: string): string {
 export function patternSvgUrl(id: string): string {
   return `${API_URL}/pattern/${id}/svg`;
 }
+
+export type RewriteResponse = {
+  text: string;
+  fallback_used: boolean;
+  attempts: number;
+  validation_errors: string[];
+  prompt_version: string;
+};
+
+export type CritiqueResponse = {
+  observations: string[];
+  risks: string[];
+  fallback_used: boolean;
+  prompt_version: string;
+};
+
+export async function rewritePattern(
+  id: string,
+  lang: "es" | "en" = "es",
+): Promise<RewriteResponse> {
+  const response = await fetch(`${API_URL}/pattern/${id}/rewrite`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ lang }),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  return (await response.json()) as RewriteResponse;
+}
+
+export async function critiquePattern(
+  id: string,
+  imageId: string,
+  lang: "es" | "en" = "es",
+): Promise<CritiqueResponse> {
+  const response = await fetch(`${API_URL}/pattern/${id}/critique`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ image_id: imageId, lang }),
+  });
+  if (!response.ok) throw new Error(await parseError(response));
+  return (await response.json()) as CritiqueResponse;
+}

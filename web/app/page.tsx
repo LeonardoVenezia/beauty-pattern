@@ -5,9 +5,12 @@ import { useState, type ChangeEvent } from "react";
 import {
   analyzeImage,
   createPattern,
+  critiquePattern,
   patternPdfUrl,
   patternSvgUrl,
+  rewritePattern,
   type AnalysisResponse,
+  type CritiqueResponse,
   type GarmentSpec,
   type PatternResponse,
 } from "@/lib/api";
@@ -151,6 +154,9 @@ export default function HomePage() {
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [spec, setSpec] = useState<GarmentSpec | null>(null);
   const [result, setResult] = useState<PatternResponse | null>(null);
+  const [imageId, setImageId] = useState<string | null>(null);
+  const [patternText, setPatternText] = useState("");
+  const [critique, setCritique] = useState<CritiqueResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -169,6 +175,9 @@ export default function HomePage() {
     setAnalysis(null);
     setSpec(null);
     setResult(null);
+    setImageId(null);
+    setPatternText("");
+    setCritique(null);
     setError(null);
     setStep("upload");
   }
@@ -181,6 +190,7 @@ export default function HomePage() {
       const data = await analyzeImage(file);
       setAnalysis(data);
       setSpec(data.spec);
+      setImageId(data.image_id);
       setStep("confirm");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No se pudo analizar la foto.");
@@ -207,9 +217,38 @@ export default function HomePage() {
         ease_cm: ease.trim() !== "" && Number.isFinite(easeValue) ? easeValue : null,
       });
       setResult(data);
+      setPatternText(data.text.es);
+      setCritique(null);
       setStep("pattern");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No se pudo generar el patrón.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onRewrite() {
+    if (!result) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const data = await rewritePattern(result.id, "es");
+      setPatternText(data.text);
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo reescribir.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function onCritique() {
+    if (!result || !imageId) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setCritique(await critiquePattern(result.id, imageId, "es"));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo revisar.");
     } finally {
       setBusy(false);
     }
@@ -579,6 +618,24 @@ export default function HomePage() {
                 Ver esquema SVG
               </a>
             </div>
+            <div className="mt-3 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={onRewrite}
+                disabled={busy}
+                className="min-h-12 rounded-xl border border-sage px-5 py-3 font-semibold text-sage disabled:opacity-40"
+              >
+                Mejorar redacción
+              </button>
+              <button
+                type="button"
+                onClick={onCritique}
+                disabled={busy || !imageId}
+                className="min-h-12 rounded-xl border border-ink/20 px-5 py-3 font-semibold disabled:opacity-40"
+              >
+                Revisar con IA
+              </button>
+            </div>
           </div>
 
           <div className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
@@ -654,9 +711,23 @@ export default function HomePage() {
               Texto generado desde los números ya verificados.
             </p>
             <pre className="mt-4 max-h-[32rem] overflow-auto whitespace-pre-wrap rounded-2xl bg-paper/80 p-4 font-mono text-sm leading-relaxed">
-              {result.text.es}
+              {patternText}
             </pre>
           </div>
+
+          {critique ? (
+            <div className="rounded-3xl border border-sage/30 bg-sage/5 p-5 shadow-sm sm:p-8">
+              <h3 className="text-xl font-semibold">Revisión de la IA</h3>
+              <p className="mt-1 text-sm text-ink/60">
+                Observaciones informativas: no cambian el patrón.
+              </p>
+              <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ink/75">
+                {[...critique.observations, ...critique.risks].map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
 
           <button
             type="button"
@@ -667,6 +738,9 @@ export default function HomePage() {
               setAnalysis(null);
               setSpec(null);
               setResult(null);
+              setImageId(null);
+              setPatternText("");
+              setCritique(null);
               setError(null);
             }}
             className="min-h-12 w-full rounded-xl border border-ink/20 px-5 py-3 font-semibold"

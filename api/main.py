@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from dataclasses import asdict
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,9 +13,11 @@ from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
 from ai.config import AIConfig
+from ai.critic import critique_pattern
 from ai.errors import AIConfigError, AIError
 from ai.extractor import extract_garment
 from ai.probe import CapabilityProbe
+from ai.writer import write_pattern_text
 from api.ratelimit import limiter_from_env
 from api.storage import database_from_env
 from engine import ENGINE_VERSION
@@ -45,6 +47,16 @@ limiter = limiter_from_env()
 class PatternRequest(BaseModel):
     spec: GarmentSpec
     params: PatternParams = Field(default_factory=PatternParams)
+
+
+class RewriteRequest(BaseModel):
+    lang: Literal["es", "en"] = "es"
+    level: Literal["principiante", "experta"] | None = None
+
+
+class CritiqueRequest(BaseModel):
+    image_id: str
+    lang: Literal["es", "en"] = "es"
 
 
 def _max_upload_bytes() -> int:
@@ -201,6 +213,67 @@ async def get_pattern_svg(pattern_id: str) -> Response:
     pattern = pattern_from_dict(record.pattern)
     svg = render_raglan_schematic_svg(pattern)
     return Response(content=svg, media_type="image/svg+xml")
+
+
+@app.post("/pattern/{pattern_id}/rewrite")
+async def rewrite_pattern(pattern_id: str, payload: RewriteRequest) -> dict[str, object]:
+    record = database_from_env().get_pattern(pattern_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="patron no encontrado")
+    try:
+        config = AIConfig.from_env()
+    except AIConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    pattern = pattern_from_dict(record.pattern)
+    result = await write_pattern_text(
+        pattern,
+        language=payload.lang,
+        level=payload.level,
+        config=config,
+    )
+    return {
+        "text": result.text,
+        "fallback_used": result.fallback_used,
+        "attempts": result.attempts,
+        "validation_errors": list(result.validation_errors),
+        "prompt_version": result.prompt_version,
+        "usage": asdict(result.usage),
+    }
+
+
+@app.post("/pattern/{pattern_id}/critique")
+async def critique_saved_pattern(
+    pattern_id: str, payload: CritiqueRequest
+) -> dict[str, object]:
+    record = database_from_env().get_pattern(pattern_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="patron no encontrado")
+    image = database_from_env().get_image(payload.image_id)
+    if image is None:
+        raise HTTPException(status_code=404, detail="imagen no encontrada o vencida")
+    try:
+        config = AIConfig.from_env()
+    except AIConfigError as exc:
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    try:
+        prepared = prepare_image(image[0])
+    except ImageValidationError as exc:
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    pattern = pattern_from_dict(record.pattern)
+    result = await critique_pattern(
+        prepared,
+        pattern.spec,
+        pattern,
+        language=payload.lang,
+        config=config,
+    )
+    return {
+        "observations": list(result.observations),
+        "risks": list(result.risks),
+        "fallback_used": result.fallback_used,
+        "prompt_version": result.prompt_version,
+        "usage": asdict(result.usage),
+    }
 
 
 @app.get("/stitches")

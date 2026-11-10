@@ -56,4 +56,8 @@ probar todo el flujo sin red ni costo.
   y resultado del simulador.
 - `GET /pattern/{id}` — patron guardado.
 - `GET /pattern/{id}/pdf` y `/svg` — descargas.
+- `POST /pattern/{id}/rewrite` — redaccion con IA validada contra los numeros;
+  si falla, devuelve la plantilla determinista.
+- `POST /pattern/{id}/critique` — critica informativa con la foto guardada;
+  nunca modifica el patron.
 - `GET /stitches` — catalogo de puntos.

@@ -168,3 +168,24 @@ fuente publica verificada.
 - **Limitacion:** el flujo se probo con `FAKE_AI=1`; no habia clave para la
   vision real. La web se verifico con `npm run build`, no con automatizacion de
   navegador.
+
+## D014 — Redactor y critico con validacion de numeros
+
+- **Decision:** el redactor recibe el texto canonico completo (ya calculado y
+  verificado) y solo puede reescribirlo. La validacion extrae todos los numeros
+  de la respuesta y rechaza cualquiera que no aparezca en el texto canonico o
+  en la IR (medidas, conteos, material, densidad, etc.).
+- **Decision:** si tras 3 intentos la respuesta sigue con numeros no permitidos,
+  se devuelve la plantilla determinista. El texto del patron siempre existe,
+  aunque la IA falle.
+- **Decision:** el critico recibe la foto, el `GarmentSpec` y un resumen del
+  patron; devuelve `observaciones` y `riesgos` en JSON validado. Sus salidas son
+  solo informativas y nunca se aplican automaticamente al patron.
+- **Decision:** ambos roles usan el mismo modelo configurable, pero llamadas y
+  prompts separados; `AI_MODEL_WRITER` y `AI_MODEL_CRITIC` permiten asignar
+  modelos distintos sin tocar codigo.
+- **Limitacion:** la validacion por conjunto no detecta un numero permitido
+  usado en el contexto equivocado. La red de seguridad fuerte es la plantilla
+  determinista y el simulador. Se documenta en `PROGRESS.md`.
+- **Motivo:** cumplir "la IA interpreta; el codigo calcula" incluso en la
+  redaccion, sin bloquear la entrega del patron si el modelo se porta mal.

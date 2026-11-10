@@ -97,6 +97,20 @@ def test_analyze_pattern_pdf_and_svg_flow(
         assert svg.status_code == 200
         assert "<svg" in svg.text
 
+        rewritten = client.post(
+            f"/pattern/{pattern_id}/rewrite", json={"lang": "es"}
+        )
+        assert rewritten.status_code == 200, rewritten.text
+        assert rewritten.json()["text"]
+        assert rewritten.json()["fallback_used"] is False
+
+        critique = client.post(
+            f"/pattern/{pattern_id}/critique",
+            json={"image_id": data["image_id"], "lang": "es"},
+        )
+        assert critique.status_code == 200, critique.text
+        assert critique.json()["observations"]
+
         stitches = client.get("/stitches")
         assert stitches.status_code == 200
         assert any(item["id"] == "stockinette" for item in stitches.json())

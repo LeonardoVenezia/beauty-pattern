@@ -6,15 +6,21 @@ patron se toma de estas respuestas.
 """
 
 from ai.config import AIConfig
+from ai.critic import CriticResult, critique_pattern
 from ai.errors import AICapabilityError, AIConfigError, AIError, ExtractionError
 from ai.extractor import ExtractionResult, extract_garment
+from ai.writer import WriterResult, write_pattern_text
 
 __all__ = [
     "AICapabilityError",
     "AIConfig",
     "AIConfigError",
     "AIError",
+    "CriticResult",
     "ExtractionError",
     "ExtractionResult",
+    "WriterResult",
+    "critique_pattern",
     "extract_garment",
+    "write_pattern_text",
 ]

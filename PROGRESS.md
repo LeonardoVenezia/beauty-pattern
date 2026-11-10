@@ -149,6 +149,31 @@ habia `AI_API_KEY` para probar la vision real. La web no se probo con
 automatizacion de navegador (restriccion del entorno); se verifico el build de
 produccion y la API por tests.
 
-## Hitos 7-11
+## Hito 7 — Redactor y crítico (IA #2)
+
+Completado y verificado con tests; la IA real no se probó por falta de clave.
+
+- [x] `ai/prompts/writer_v1.py`: prompt versionado que prohíbe cambiar o
+  agregar números y recibe el texto canónico ya calculado.
+- [x] `ai/writer.py`: reescritura con validación determinista de todos los
+  números contra el texto canónico + la IR; reparación acotada (máx. 3
+  intentos) y plantilla determinista como fallback garantizado.
+- [x] `ai/prompts/critic_v1.py` y `ai/critic.py`: crítica informativa con foto,
+  `GarmentSpec` y resumen del patrón; salida JSON validada con Pydantic,
+  reparación acotada y fallback vacío. Nunca modifica el patrón.
+- [x] Endpoints `POST /pattern/{id}/rewrite` y `POST /pattern/{id}/critique`;
+  el segundo usa la imagen guardada y respeta su vencimiento.
+- [x] Web: botones "Mejorar redacción" y "Revisar con IA"; las observaciones
+  del crítico se muestran como advertencias separadas del patrón.
+- [x] Tests de redactor (texto canónico, número inventado reparado, fallback,
+  coma decimal, idioma) y crítico (fake, reparación de JSON, fallback).
+- [x] `ruff`, `mypy`, suite completa (434 tests) y build de Next.js en verde.
+
+**Limitación honesta:** la validación de números es por conjunto de valores
+permitidos (texto canónico + IR); no detecta un número correcto usado en el
+contexto equivocado. La garantía fuerte sigue siendo la plantilla determinista
+y el simulador, no la IA. No había `AI_API_KEY` para probar el modelo real.
+
+## Hitos 8-11
 
 Pendientes.
