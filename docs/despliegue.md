@@ -36,7 +36,7 @@ nginx o un proxy del proveedor). No expongas el puerto de la base de datos.
 ```bash
 uv sync --all-groups
 cd web && npm ci --registry=https://registry.npmjs.org && cd ..
-uv run uvicorn api.main:app --host 0.0.0.0 --port 8000
+uv run uvicorn api.main:app --host 0.0.0.0 --port 8000 --env-file .env
 cd web && npm run build && npm run start
 ```
 

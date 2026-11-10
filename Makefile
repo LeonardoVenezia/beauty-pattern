@@ -1,5 +1,6 @@
 UV ?= $(HOME)/.local/bin/uv
 PY := $(UV) run python
+ENV_FILE := $(if $(wildcard .env),--env-file .env,)
 export PATH := $(HOME)/.local/bin:$(PATH)
 
 .PHONY: setup web-install test lint typecheck eval demo dev api web e2e pdf examples clean
@@ -32,12 +33,12 @@ examples:
 dev:
 	@echo "Levanta API (8000) y web (3000) en paralelo. Ctrl+C corta ambos."
 	@trap 'kill 0' INT TERM; \
-	$(PY) -m uvicorn api.main:app --reload --port 8000 & \
+	$(PY) -m uvicorn api.main:app --reload --port 8000 $(ENV_FILE) & \
 	cd web && npm run dev & \
 	wait
 
 api:
-	$(PY) -m uvicorn api.main:app --reload --port 8000
+	$(PY) -m uvicorn api.main:app --reload --port 8000 $(ENV_FILE)
 
 web:
 	cd web && npm run dev

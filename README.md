@@ -20,7 +20,7 @@ cp .env.example .env      # completa AI_API_KEY solo si vas a usar IA real
 make setup
 make test
 make demo                 # patron de ejemplo end to end con FAKE_AI=1
-make dev                  # API en :8000 y web en :3000
+make dev                  # API en :8000 y web en :3000 (carga .env)
 ```
 
 La web queda en <http://localhost:3000>. La API documenta sus endpoints en
