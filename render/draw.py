@@ -44,7 +44,7 @@ def svg_document(
             f'aria-labelledby="{title_id} {desc_id}">',
             f'<title id="{title_id}">{escape(title)}</title>',
             f'<desc id="{desc_id}">{escape(desc)}</desc>',
-            f'<rect width="100%" height="100%" fill="#ffffff"/>',
+            '<rect width="100%" height="100%" fill="#ffffff"/>',
             *parts,
             "</svg>",
         ]
