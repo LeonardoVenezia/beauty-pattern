@@ -285,7 +285,9 @@ fuente publica verificada.
 - **Decisión:** bolso y `otra prenda` se generan como paneles rectangulares
   (en dos agujas/circular y en crochet) con una advertencia que declara que no
   se modelan asas, forro, cierre ni unión de módulos. La pieza plana es el
-  fallback honesto para una foto no reconocida.
+  fallback honesto para una foto no reconocida. El esquema del bolso es un
+  dibujo técnico (cuerpo, textura, doblez y asas punteadas opcionales), no un
+  rectángulo vacío; las asas se marcan como no incluidas.
 - **Decisión:** los mitones se generan como dos secciones reutilizables (mano y
   pulgar), con una nota que indica hacer dos piezas de cada una y coserlas. El
   SVG/PDF dibuja una silueta de mitón con el pulgar, en lugar del rectángulo

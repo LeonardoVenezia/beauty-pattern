@@ -291,12 +291,178 @@ def _mitten_schematic_svg(pattern: Pattern, language: str) -> str:
     return "".join(parts)
 
 
+def _panel_texture_svg(
+    pattern: Pattern,
+    x: float,
+    y: float,
+    w: float,
+    h: float,
+    *,
+    columns: int = 9,
+    rows: int = 9,
+) -> list[str]:
+    crochet = pattern.meta.family.startswith("crochet")
+    cell_w = w / columns
+    cell_h = h / rows
+    size = min(cell_w, cell_h) * 0.24
+    parts = ['<g stroke="#cdb59d" stroke-width="0.8" fill="none">']
+    for row in range(rows):
+        for column in range(columns):
+            cx = x + (column + 0.5) * cell_w
+            cy = y + (row + 0.5) * cell_h
+            if crochet:
+                parts.append(
+                    f'<path d="M {cx - size:.1f} {cy - size:.1f} '
+                    f'L {cx + size:.1f} {cy + size:.1f} '
+                    f'M {cx + size:.1f} {cy - size:.1f} '
+                    f'L {cx - size:.1f} {cy + size:.1f}"/>'
+                )
+            else:
+                parts.append(
+                    f'<path d="M {cx - size:.1f} {cy - size:.1f} '
+                    f'L {cx:.1f} {cy + size:.1f} '
+                    f'L {cx + size:.1f} {cy - size:.1f}"/>'
+                )
+    parts.append("</g>")
+    return parts
+
+
+def _bag_schematic_svg(pattern: Pattern, language: str) -> str:
+    width_cm = _value(pattern, "width")
+    length_cm = _value(pattern, "length")
+    width, height = 640.0, 760.0
+    scale = min(360.0 / width_cm, 360.0 / length_cm)
+    body_w = width_cm * scale
+    body_h = length_cm * scale
+    x = (width - body_w) / 2
+    top = 190.0 + (360.0 - body_h) / 2
+    bottom = top + body_h
+    handle_top = top - 78.0
+    radius = 16.0
+    clip_id = f"bag-body-{pattern.meta.id}"
+    body_path = (
+        f"M {x:.1f} {top:.1f} "
+        f"L {x + body_w:.1f} {top:.1f} "
+        f"L {x + body_w:.1f} {bottom - radius:.1f} "
+        f"Q {x + body_w:.1f} {bottom:.1f} {x + body_w - radius:.1f} {bottom:.1f} "
+        f"L {x + radius:.1f} {bottom:.1f} "
+        f"Q {x:.1f} {bottom:.1f} {x:.1f} {bottom - radius:.1f} Z"
+    )
+    title = t(pattern.meta.title_key, language)
+    desc = t("pattern.schematic", language)
+    parts = [
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{width:.0f}" height="{height:.0f}" '
+        f'viewBox="0 0 {width:.0f} {height:.0f}" role="img" '
+        'aria-labelledby="schematic-title schematic-desc">',
+        f'<title id="schematic-title">{escape(title)}</title>',
+        f'<desc id="schematic-desc">{escape(desc)}</desc>',
+        '<rect width="100%" height="100%" fill="#ffffff"/>',
+        '<rect x="50" y="50" width="540" height="660" fill="none" '
+        'stroke="#e5d8ca" stroke-width="1"/>',
+        f'<defs><clipPath id="{escape(clip_id)}">'
+        f'<path d="{body_path}"/></clipPath></defs>',
+    ]
+    for index, stroke in ((0, "#cbb49f"), (1, "#8a6a50")):
+        inset = 0.04 * (1 - index)
+        hx1 = x + body_w * (0.20 + inset)
+        hx2 = x + body_w * (0.80 - inset)
+        hy = handle_top + index * 14.0
+        parts.append(
+            f'<path d="M {hx1:.1f} {top + 8:.1f} '
+            f'L {hx1:.1f} {hy + 24:.1f} '
+            f'Q {hx1:.1f} {hy:.1f} {hx1 + 18:.1f} {hy:.1f} '
+            f'L {hx2 - 18:.1f} {hy:.1f} '
+            f'Q {hx2:.1f} {hy:.1f} {hx2:.1f} {hy + 24:.1f} '
+            f'L {hx2:.1f} {top + 8:.1f}" '
+            f'fill="none" stroke="{stroke}" stroke-width="9" '
+            'stroke-linecap="round" stroke-dasharray="10 6"/>'
+        )
+    parts.extend(
+        [
+            f'<path d="{body_path}" fill="#f2e8dc" stroke="#6b4f3a" '
+            'stroke-width="1.5"/>',
+            f'<g clip-path="url(#{escape(clip_id)})">',
+        ]
+    )
+    parts.extend(
+        _panel_texture_svg(
+            pattern,
+            x + 14.0,
+            top + 14.0,
+            body_w - 28.0,
+            body_h - 28.0,
+        )
+    )
+    parts.append(
+        f'<line x1="{x + 8:.1f}" y1="{top + body_h * 0.14:.1f}" '
+        f'x2="{x + body_w - 8:.1f}" y2="{top + body_h * 0.14:.1f}" '
+        'stroke="#b08b6e" stroke-width="0.9" stroke-dasharray="5 4"/>'
+    )
+    parts.append("</g>")
+    for hx in (
+        x + body_w * 0.20,
+        x + body_w * 0.80,
+        x + body_w * 0.24,
+        x + body_w * 0.76,
+    ):
+        parts.append(
+            f'<rect x="{hx - 5:.1f}" y="{top - 4:.1f}" width="10" height="8" '
+            'rx="2" fill="#6b4f3a"/>'
+        )
+    parts.extend(
+        [
+            f'<line x1="{x + 8:.1f}" y1="{top + 18:.1f}" '
+            f'x2="{x + 8:.1f}" y2="{bottom - 8:.1f}" '
+            'stroke="#d8c3ac" stroke-width="0.8" stroke-dasharray="4 4"/>',
+            f'<line x1="{x + body_w - 8:.1f}" y1="{top + 18:.1f}" '
+            f'x2="{x + body_w - 8:.1f}" y2="{bottom - 8:.1f}" '
+            'stroke="#d8c3ac" stroke-width="0.8" stroke-dasharray="4 4"/>',
+            f'<line x1="{x + 8:.1f}" y1="{bottom - 8:.1f}" '
+            f'x2="{x + body_w - 8:.1f}" y2="{bottom - 8:.1f}" '
+            'stroke="#d8c3ac" stroke-width="0.8" stroke-dasharray="4 4"/>',
+            f'<text x="{x + 10:.1f}" y="{top + body_h * 0.14 - 7:.1f}" '
+            'font-family="Helvetica, sans-serif" font-size="9" '
+            f'fill="#8a6a50">{escape(t("schematic.fold", language))}</text>',
+            '<g font-family="Helvetica, sans-serif" font-size="12" fill="#3a2a1e">',
+            f'<text x="{width / 2:.1f}" y="{handle_top - 24:.1f}" '
+            'text-anchor="middle">'
+            f'{escape(t("schematic.optional_handles", language))}</text>',
+            f'<line x1="{x:.1f}" y1="{bottom + 22:.1f}" '
+            f'x2="{x + body_w:.1f}" y2="{bottom + 22:.1f}" '
+            'stroke="#6b4f3a" stroke-width="0.8"/>',
+            f'<line x1="{x:.1f}" y1="{bottom + 17:.1f}" '
+            f'x2="{x:.1f}" y2="{bottom + 27:.1f}" '
+            'stroke="#6b4f3a" stroke-width="0.8"/>',
+            f'<line x1="{x + body_w:.1f}" y1="{bottom + 17:.1f}" '
+            f'x2="{x + body_w:.1f}" y2="{bottom + 27:.1f}" '
+            'stroke="#6b4f3a" stroke-width="0.8"/>',
+            f'<text x="{width / 2:.1f}" y="{bottom + 42:.1f}" '
+            'text-anchor="middle">'
+            f"{escape(_label(pattern, 'width', language))}: "
+            f"{escape(_fmt(pattern, width_cm))}</text>",
+            f'<line x1="{x + body_w + 18:.1f}" y1="{top:.1f}" '
+            f'x2="{x + body_w + 18:.1f}" y2="{bottom:.1f}" '
+            'stroke="#6b4f3a" stroke-width="0.8"/>',
+            f'<text x="{x + body_w + 26:.1f}" '
+            f'y="{(top + bottom) / 2:.1f}">'
+            f"{escape(_label(pattern, 'length', language))}: "
+            f"{escape(_fmt(pattern, length_cm))}</text>",
+            "</g>",
+            "</svg>",
+        ]
+    )
+    return "".join(parts)
+
+
 def render_accessory_schematic_svg(
     pattern: Pattern, *, lang: str | None = None
 ) -> str:
     language = lang or pattern.params.idioma
     if pattern.meta.family == "mittens":
         return _mitten_schematic_svg(pattern, language)
+    if pattern.meta.family in {"bag", "crochet_bag"}:
+        return _bag_schematic_svg(pattern, language)
     width_measure = _first_measure(
         pattern, ("width", "diameter", "circumference", "palm", "head")
     )

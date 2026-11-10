@@ -301,6 +301,9 @@ navegador; no se ejecutó Playwright e2e en este entorno.
   mantiene el talle solo en prendas.
 - [x] Mensajes de error de la web traducidos para técnicas, categorías y
   proporciones no soportadas.
-- [x] Tests nuevos de bolso, pieza plana, mitones y crochet; 2133 tests en
+- [x] Tests nuevos de bolso, pieza plana, mitones y crochet; 2134 tests en
   verde, `ruff`/`mypy` limpios y build de la web en verde. El SVG/PDF del mitón
   se verificó visualmente con una silueta y el pulgar adjunto.
+- [x] Esquema del bolso reemplazado por un dibujo técnico con cuerpo, textura de
+  tejido, línea de doblez, costuras y asas punteadas marcadas como opcionales
+  (no incluidas). Verificado en SVG y PDF para dos agujas y crochet.

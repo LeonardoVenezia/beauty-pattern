@@ -273,6 +273,8 @@ EN: dict[str, str] = {
     "pattern.seam": "Sew the seam.",
     "pattern.duplicate_stitch": "Work the other sleeve the same way.",
     "pattern.schematic": "Schematic",
+    "schematic.fold": "Fold",
+    "schematic.optional_handles": "Optional handles (not included)",
     "pattern.chart": "Stitch chart",
     "pattern.legend": "Legend",
     "pattern.finished": "Finished",

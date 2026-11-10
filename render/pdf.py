@@ -27,6 +27,8 @@ def _measure(pattern: Pattern, key: str) -> float:
 def _schematic_drawing(pattern: Pattern, lang: str) -> Drawing:
     if pattern.meta.family == "mittens":
         return _mitten_drawing(pattern, lang)
+    if pattern.meta.family in {"bag", "crochet_bag"}:
+        return _bag_drawing(pattern, lang)
     if pattern.meta.family in ACCESSORY_FAMILIES:
         return _accessory_drawing(pattern, lang)
     if pattern.meta.family != "raglan_top_down":
@@ -148,6 +150,243 @@ def _maybe_measure(pattern: Pattern, key: str) -> float | None:
         if measurement.key == key:
             return measurement.value_cm
     return None
+
+
+def _bag_drawing(pattern: Pattern, lang: str) -> Drawing:
+    width_cm = _measure(pattern, "width")
+    length_cm = _measure(pattern, "length")
+    width, height = 360.0, 330.0
+    scale = min(220.0 / width_cm, 210.0 / length_cm)
+    body_w = width_cm * scale
+    body_h = length_cm * scale
+    x = (width - body_w) / 2
+    bottom = 38.0
+    top = bottom + body_h
+    handle_top = top + 62.0
+    radius = 10.0
+    crochet = pattern.meta.family.startswith("crochet")
+    drawing = Drawing(width, height)
+
+    for index, color in ((0, "#cbb49f"), (1, "#8a6a50")):
+        inset = 0.04 * (1 - index)
+        hx1 = x + body_w * (0.20 + inset)
+        hx2 = x + body_w * (0.80 - inset)
+        hy = handle_top - index * 10.0
+        handle = Path(
+            fillColor=None,
+            strokeColor=color,
+            strokeWidth=6.0 - index,
+            strokeDashArray=[7, 4],
+        )
+        handle.moveTo(hx1, top + 6)
+        handle.lineTo(hx1, hy - 16)
+        handle.curveTo(hx1, hy, hx1 + 10, hy, hx1 + 16, hy)
+        handle.lineTo(hx2 - 16, hy)
+        handle.curveTo(hx2, hy, hx2, hy - 16, hx2, hy - 16)
+        handle.lineTo(hx2, top + 6)
+        drawing.add(handle)
+
+    body = Path(fillColor="#f2e8dc", strokeColor="#6b4f3a", strokeWidth=1.2)
+    body.moveTo(x, bottom + radius)
+    body.lineTo(x, top)
+    body.lineTo(x + body_w, top)
+    body.lineTo(x + body_w, bottom + radius)
+    body.curveTo(
+        x + body_w,
+        bottom,
+        x + body_w - radius,
+        bottom,
+        x + body_w - radius,
+        bottom,
+    )
+    body.lineTo(x + radius, bottom)
+    body.curveTo(x, bottom, x, bottom + radius, x, bottom + radius)
+    body.closePath()
+    drawing.add(body)
+
+    texture_x = x + 14.0
+    texture_y = bottom + 14.0
+    texture_w = body_w - 28.0
+    texture_h = body_h - 28.0
+    columns, rows = 9, 9
+    cell_w = texture_w / columns
+    cell_h = texture_h / rows
+    size = min(cell_w, cell_h) * 0.24
+    for row in range(rows):
+        for column in range(columns):
+            cx = texture_x + (column + 0.5) * cell_w
+            cy = texture_y + (row + 0.5) * cell_h
+            if crochet:
+                drawing.add(
+                    Line(
+                        cx - size,
+                        cy - size,
+                        cx + size,
+                        cy + size,
+                        strokeColor="#cdb59d",
+                        strokeWidth=0.5,
+                    )
+                )
+                drawing.add(
+                    Line(
+                        cx + size,
+                        cy - size,
+                        cx - size,
+                        cy + size,
+                        strokeColor="#cdb59d",
+                        strokeWidth=0.5,
+                    )
+                )
+            else:
+                drawing.add(
+                    Line(
+                        cx - size,
+                        cy + size,
+                        cx,
+                        cy - size,
+                        strokeColor="#cdb59d",
+                        strokeWidth=0.5,
+                    )
+                )
+                drawing.add(
+                    Line(
+                        cx,
+                        cy - size,
+                        cx + size,
+                        cy + size,
+                        strokeColor="#cdb59d",
+                        strokeWidth=0.5,
+                    )
+                )
+
+    for hx in (
+        x + body_w * 0.20,
+        x + body_w * 0.80,
+        x + body_w * 0.24,
+        x + body_w * 0.76,
+    ):
+        drawing.add(
+            Rect(
+                hx - 4,
+                top - 3,
+                8,
+                6,
+                rx=2,
+                fillColor="#6b4f3a",
+                strokeColor=None,
+            )
+        )
+
+    hem_y = top - body_h * 0.14
+    drawing.add(
+        Line(
+            x + 8,
+            hem_y,
+            x + body_w - 8,
+            hem_y,
+            strokeColor="#b08b6e",
+            strokeWidth=0.8,
+            strokeDashArray=[4, 3],
+        )
+    )
+    for sx in (x + 8, x + body_w - 8):
+        drawing.add(
+            Line(
+                sx,
+                top - 16,
+                sx,
+                bottom + 8,
+                strokeColor="#d8c3ac",
+                strokeWidth=0.7,
+                strokeDashArray=[3, 3],
+            )
+        )
+    drawing.add(
+        Line(
+            x + 8,
+            bottom + 8,
+            x + body_w - 8,
+            bottom + 8,
+            strokeColor="#d8c3ac",
+            strokeWidth=0.7,
+            strokeDashArray=[3, 3],
+        )
+    )
+
+    drawing.add(
+        String(
+            x + 10,
+            hem_y - 7,
+            t("schematic.fold", lang),
+            fontName="Helvetica",
+            fontSize=6,
+            fillColor="#8a6a50",
+        )
+    )
+    drawing.add(
+        String(
+            width / 2,
+            handle_top + 10,
+            t("schematic.optional_handles", lang),
+            fontName="Helvetica",
+            fontSize=6,
+            fillColor="#3a2a1e",
+            textAnchor="middle",
+        )
+    )
+    drawing.add(
+        Line(
+            x,
+            bottom - 18,
+            x + body_w,
+            bottom - 18,
+            strokeColor="#6b4f3a",
+            strokeWidth=0.7,
+        )
+    )
+    for tx in (x, x + body_w):
+        drawing.add(
+            Line(
+                tx,
+                bottom - 22,
+                tx,
+                bottom - 14,
+                strokeColor="#6b4f3a",
+                strokeWidth=0.7,
+            )
+        )
+    drawing.add(
+        String(
+            width / 2,
+            bottom - 28,
+            f"{t('measure.width', lang)}: {width_cm:.1f} cm",
+            fontName="Helvetica",
+            fontSize=7,
+            fillColor="#3a2a1e",
+            textAnchor="middle",
+        )
+    )
+    drawing.add(
+        Line(
+            x + body_w + 16,
+            top,
+            x + body_w + 16,
+            bottom,
+            strokeColor="#6b4f3a",
+            strokeWidth=0.7,
+        )
+    )
+    drawing.add(
+        String(
+            x + body_w + 22,
+            (top + bottom) / 2,
+            f"{t('measure.length', lang)}: {length_cm:.1f} cm",
+            fontName="Helvetica",
+            fontSize=7,
+            fillColor="#3a2a1e",
+        )
+    )
+    return drawing
 
 
 def _mitten_drawing(pattern: Pattern, lang: str) -> Drawing:

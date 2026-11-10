@@ -273,6 +273,8 @@ ES: dict[str, str] = {
     "pattern.seam": "Coser la costura.",
     "pattern.duplicate_stitch": "Repetir la otra manga de la misma manera.",
     "pattern.schematic": "Esquema",
+    "schematic.fold": "Doblez",
+    "schematic.optional_handles": "Asas opcionales (no incluidas)",
     "pattern.chart": "Grafico de puntos",
     "pattern.legend": "Referencias",
     "pattern.finished": "Terminado",

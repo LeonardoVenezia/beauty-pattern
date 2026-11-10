@@ -141,6 +141,20 @@ def test_bag_and_flat_piece_are_supported() -> None:
         assert render_pattern_pdf(pattern).startswith(b"%PDF")
 
 
+def test_bag_schematic_is_a_technical_drawing() -> None:
+    bag = generate(
+        GarmentSpec(categoria=Category.BAG, tecnica=Technique.NEEDLES),
+        PatternParams(dimensiones_cm={"width": 30.0, "length": 30.0}),
+    )
+    svg = render_schematic_svg(bag)
+    assert "bag-body-" in svg
+    assert "Asas opcionales (no incluidas)" in svg
+    assert "Doblez" in svg
+    assert "Ancho: 30.0 cm" in svg
+    assert "Largo: 30.0 cm" in svg
+    assert svg.count("<path") > 10
+
+
 def test_unsupported_accessory_is_rejected_clearly() -> None:
     with pytest.raises(UnsupportedGarmentError):
         generate(
