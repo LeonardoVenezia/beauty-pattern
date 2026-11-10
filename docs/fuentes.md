@@ -60,10 +60,14 @@ publica verificada se marca **ASUNCION**.
   en las mismas vueltas; sin curva completa ni hileras cortas (ASUNCION).
 - Piezas planas: cuerpo, mangas, cuello y tapas de botones rectangulares; sin
   forma de sisa, escote ni ojales en esta version (ASUNCION).
-- Gorro: corona con disminuciones en 6 sectores, 10-12 % de holgura negativa
-  sobre el contorno de cabeza (ASUNCION).
-- Medias: talon con lengueta, gusset y puntera con disminuciones simetricas
-  (proporciones ASUNCION).
+- Gorro: 10 % de holgura negativa sobre el contorno de cabeza y corona con
+  4 disminuciones por vuelta hasta 4 puntos (ASUNCION). El contorno de cabeza
+  por talle es una ASUNCION.
+- Bufanda, chal y manta: dimensiones rectangulares por defecto (25x180,
+  60x180 y 100x120 cm) editables por `dimensiones_cm` (ASUNCION).
+- Mitones: piezas planas de mano y pulgar, sin dedos individuales (ASUNCION).
+- Medias: tubo con puno, pierna, pie y puntera; sin talon en esta version
+  (ASUNCION).
 - Amigurumi: anillo magico de 6 puntos bajos, esfera/ cilindro/ cono con
   aumentos y disminuciones uniformes (ASUNCION).
 

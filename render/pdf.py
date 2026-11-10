@@ -14,6 +14,7 @@ from reportlab.platypus import Flowable, Paragraph, SimpleDocTemplate, Spacer
 from engine.i18n import t
 from engine.ir import Pattern
 from engine.text import render_pattern_text
+from render.schematic import ACCESSORY_FAMILIES
 
 
 def _measure(pattern: Pattern, key: str) -> float:
@@ -24,6 +25,8 @@ def _measure(pattern: Pattern, key: str) -> float:
 
 
 def _schematic_drawing(pattern: Pattern, lang: str) -> Drawing:
+    if pattern.meta.family in ACCESSORY_FAMILIES:
+        return _accessory_drawing(pattern, lang)
     if pattern.meta.family != "raglan_top_down":
         return _flat_drawing(pattern, lang)
     bust = _measure(pattern, "bust")
@@ -143,6 +146,69 @@ def _maybe_measure(pattern: Pattern, key: str) -> float | None:
         if measurement.key == key:
             return measurement.value_cm
     return None
+
+
+def _accessory_drawing(pattern: Pattern, lang: str) -> Drawing:
+    width_measure = next(
+        (
+            (key, value)
+            for key in ("width", "circumference", "palm", "head")
+            if (value := _maybe_measure(pattern, key)) is not None
+        ),
+        None,
+    )
+    length_measure = next(
+        (
+            (key, value)
+            for key in ("length", "foot_length", "body_length")
+            if (value := _maybe_measure(pattern, key)) is not None
+        ),
+        None,
+    )
+    if width_measure is None or length_measure is None:
+        raise KeyError("el accesorio no tiene medidas de ancho y largo")
+    width_key, width_cm = width_measure
+    length_key, length_cm = length_measure
+    width, height = 360.0, 280.0
+    scale = min((width - 40.0) / width_cm, (height - 50.0) / length_cm)
+    rect_w = width_cm * scale
+    rect_h = length_cm * scale
+    x = (width - rect_w) / 2
+    y = 24.0
+    drawing = Drawing(width, height)
+    drawing.add(
+        Rect(
+            x,
+            height - y - rect_h,
+            rect_w,
+            rect_h,
+            fillColor="#f2e8dc",
+            strokeColor="#6b4f3a",
+        )
+    )
+    drawing.add(
+        String(
+            width / 2,
+            height - y + 10,
+            f"{t(f'measure.{width_key}', lang)}: {width_cm:.1f} cm",
+            fontName="Helvetica",
+            fontSize=7,
+            fillColor="#3a2a1e",
+            textAnchor="middle",
+        )
+    )
+    drawing.add(
+        String(
+            x + rect_w + 6,
+            height - y - rect_h / 2,
+            f"{t(f'measure.{length_key}', lang)}: {length_cm:.1f} cm",
+            fontName="Helvetica",
+            fontSize=7,
+            fillColor="#3a2a1e",
+            textAnchor="start",
+        )
+    )
+    return drawing
 
 
 def _flat_drawing(pattern: Pattern, lang: str) -> Drawing:

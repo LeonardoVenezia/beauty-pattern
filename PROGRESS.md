@@ -207,3 +207,28 @@ ojales ni forma de escote; el chaleco no lleva bandas ni forma de sisa. La
 manga encajada usa una copa simplificada (`warning.set_in_simplified`) y no
 modela hileras cortas. Las piezas planas se cosen y no son prendas sin
 costuras. Ver `DECISIONS.md` D015.
+
+## Hito 9 — Accesorios y piezas del hogar
+
+Completado parcialmente, con limitaciones declaradas; tests, `ruff`, `mypy` y
+suite completa (1982 tests) en verde.
+
+- [x] `engine/garments/accessories.py`: gorro, bufanda, cuello circular,
+  mitones, medias tubulares, chal rectangular y manta rectangular.
+- [x] `PatternParams.dimensiones_cm`: medidas propias para accesorios (por
+  ejemplo `head`, `width`, `length`, `palm`, `foot_length`), con defaults
+  documentados como ASUNCIÓN.
+- [x] Gorro: borde en elástico, cuerpo y corona con disminuciones repartidas
+  hasta 4 puntos; bufanda, chal y manta como paneles rectangulares; cuello en
+  tubo de elástico 2x2.
+- [x] Mitones: piezas planas de mano y pulgar que se cosen; medias: tubo con
+  puño, pierna, pie y puntera con disminuciones.
+- [x] Render genérico de accesorios en SVG y PDF; textos es/en con secciones y
+  advertencias propias.
+- [x] Tests de todas las combinaciones talle/hilo, medidas propias,
+  advertencias y texto/SVG/PDF.
+
+**Limitaciones honestas:** no hay guantes con dedos; las medias no incluyen
+talón (son tubulares); los mitones son piezas planas simplificadas; el chal y
+la manta son rectangulares, no triangulares ni modulares. La bufanda en jersey
+puede enrollarse. Ver `DECISIONS.md` D016.

@@ -204,7 +204,80 @@ def render_flat_schematic_svg(
     return "".join(parts)
 
 
+ACCESSORY_FAMILIES = {
+    "hat",
+    "scarf",
+    "cowl",
+    "mittens",
+    "socks",
+    "shawl",
+    "blanket",
+}
+
+
+def _first_measure(pattern: Pattern, keys: tuple[str, ...]) -> tuple[str, float] | None:
+    for key in keys:
+        value = _maybe(pattern, key)
+        if value is not None:
+            return key, value
+    return None
+
+
+def render_accessory_schematic_svg(
+    pattern: Pattern, *, lang: str | None = None
+) -> str:
+    language = lang or pattern.params.idioma
+    width_measure = _first_measure(
+        pattern, ("width", "circumference", "palm", "head")
+    )
+    length_measure = _first_measure(
+        pattern, ("length", "foot_length", "body_length")
+    )
+    if width_measure is None or length_measure is None:
+        raise KeyError("el accesorio no tiene medidas de ancho y largo")
+    width_key, width_cm = width_measure
+    length_key, length_cm = length_measure
+    width, height = 640.0, 760.0
+    margin, label_h = 50.0, 100.0
+    scale = min(
+        (width - 2 * margin) / width_cm,
+        (height - 2 * margin - label_h) / length_cm,
+    )
+    rect_w = width_cm * scale
+    rect_h = length_cm * scale
+    x = (width - rect_w) / 2
+    y = margin + 30
+    title = t(pattern.meta.title_key, language)
+    desc = t("pattern.schematic", language)
+    parts = [
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{width:.0f}" height="{height:.0f}" '
+        f'viewBox="0 0 {width:.0f} {height:.0f}" role="img" '
+        'aria-labelledby="schematic-title schematic-desc">',
+        f'<title id="schematic-title">{escape(title)}</title>',
+        f'<desc id="schematic-desc">{escape(desc)}</desc>',
+        '<rect width="100%" height="100%" fill="#ffffff"/>',
+        '<rect x="50" y="50" width="540" height="660" fill="none" '
+        'stroke="#e5d8ca" stroke-width="1"/>',
+        f'<rect x="{x:.1f}" y="{y:.1f}" width="{rect_w:.1f}" '
+        f'height="{rect_h:.1f}" fill="#f2e8dc" stroke="#6b4f3a" '
+        'stroke-width="1.5"/>',
+        '<g font-family="Helvetica, sans-serif" font-size="12" fill="#3a2a1e">',
+        f'<text x="{width / 2:.1f}" y="{y - 10:.1f}" text-anchor="middle">'
+        f"{escape(_label(pattern, width_key, language))}: "
+        f"{escape(_fmt(pattern, width_cm))}</text>",
+        f'<text x="{x + rect_w + 12:.1f}" y="{y + rect_h / 2:.1f}">'
+        f"{escape(_label(pattern, length_key, language))}: "
+        f"{escape(_fmt(pattern, length_cm))}</text>",
+        "</g>",
+        "</svg>",
+    ]
+    return "".join(parts)
+
+
 def render_schematic_svg(pattern: Pattern, *, lang: str | None = None) -> str:
     if pattern.meta.family == "raglan_top_down":
         return render_raglan_schematic_svg(pattern, lang=lang)
+    if pattern.meta.family in ACCESSORY_FAMILIES:
+        return render_accessory_schematic_svg(pattern, lang=lang)
     return render_flat_schematic_svg(pattern, lang=lang)

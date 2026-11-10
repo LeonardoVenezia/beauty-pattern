@@ -214,3 +214,23 @@ fuente publica verificada.
   que el motor todavía no verifica. El simulador valida conteos, consumos,
   largos y uniones de costura; las limitaciones quedan visibles para la
   persona tejedora.
+
+## D016 — Accesorios y dimensiones propias
+
+- **Decisión:** `PatternParams` incorpora `dimensiones_cm` para medidas que no
+  pertenecen a la tabla de talles corporal (`head`, `width`, `length`, `palm`,
+  `foot_length`, `thumb`, etc.). Si una clave no se informa, se usa un default
+  documentado como ASUNCIÓN.
+- **Decisión:** gorro, bufanda, cuello, mitones, medias, chal y manta viven en
+  `engine/garments/accessories.py`. Las piezas planas usan el mismo esquema
+  genérico de SVG/PDF que las familias planas.
+- **Decisión:** el gorro se genera en redondo con corona de 4 disminuciones por
+  vuelta hasta 4 puntos; las medias son tubulares, sin talón; los mitones son
+  cuatro piezas planas (mano y pulgar delantero/trasero) que se cosen; el chal
+  y la manta son rectangulares.
+- **Motivo:** cubrir accesorios con números deterministas y verificables sin
+  prometer construcciones que todavía no están modeladas. Las limitaciones se
+  declaran con advertencias visibles en el patrón.
+- **Limitación:** no se implementaron guantes con dedos, talón de media,
+  mitones tubulares ni chal triangular/modular. Quedan para una iteración
+  posterior.

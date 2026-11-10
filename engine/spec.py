@@ -221,6 +221,7 @@ class PatternParams(BaseModel):
 
     talla: str = "M"
     medidas_cm: dict[str, float] = Field(default_factory=dict)
+    dimensiones_cm: dict[str, float] = Field(default_factory=dict)
     densidad: Gauge | None = None
     ease_cm: float | None = Field(default=None, ge=-10, le=40)
     idioma: Literal["es", "en"] = "es"
@@ -231,7 +232,7 @@ class PatternParams(BaseModel):
     ganchillo_mm: float | None = Field(default=None, gt=0, le=25)
     tecnica: Technique | None = None
 
-    @field_validator("medidas_cm")
+    @field_validator("medidas_cm", "dimensiones_cm")
     @classmethod
     def _medidas_positivas(cls, value: dict[str, float]) -> dict[str, float]:
         for key, number in value.items():

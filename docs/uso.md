@@ -51,10 +51,15 @@ probar todo el flujo sin red ni costo.
 ## Familias disponibles
 
 El motor genera pullover raglán top-down, pullover hombro caído, pullover con
-canesú circular, pullover con manga encajada, cardigan y chaleco. Las familias
-planas se tejen en piezas y se cosen; el canesú no incluye gráfico de jacquard
-en esta versión y la manga encajada usa una copa simplificada. El patrón
-siempre se pasa por el simulador antes de mostrarse.
+canesú circular, pullover con manga encajada, cardigan y chaleco. También genera
+gorro, bufanda, cuello circular, mitones, medias tubulares, chal rectangular y
+manta rectangular. Las familias planas se tejen en piezas y se cosen; el canesú
+no incluye gráfico de jacquard en esta versión y la manga encajada usa una copa
+simplificada. El patrón siempre se pasa por el simulador antes de mostrarse.
+
+Para accesorios se pueden enviar medidas propias en
+`params.dimensiones_cm` (por ejemplo `{"width": 30, "length": 150}`,
+`{"head": 57}` o `{"foot_length": 26}`).
 
 ## Endpoints principales
 

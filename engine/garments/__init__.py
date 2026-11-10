@@ -2,6 +2,15 @@
 
 from __future__ import annotations
 
+from engine.garments.accessories import (
+    generate_blanket,
+    generate_cowl,
+    generate_hat,
+    generate_mittens,
+    generate_scarf,
+    generate_shawl,
+    generate_socks,
+)
 from engine.garments.base import (
     GarmentError,
     ImpossibleProportionsError,
@@ -21,6 +30,20 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
         raise UnsupportedGarmentError(
             "error.unsupported_technique", technique=spec.tecnica.value
         )
+    if spec.categoria is Category.HAT:
+        return generate_hat(spec, params)
+    if spec.categoria is Category.SCARF:
+        return generate_scarf(spec, params)
+    if spec.categoria is Category.COWL:
+        return generate_cowl(spec, params)
+    if spec.categoria is Category.MITTENS:
+        return generate_mittens(spec, params)
+    if spec.categoria is Category.SOCKS:
+        return generate_socks(spec, params)
+    if spec.categoria is Category.SHAWL:
+        return generate_shawl(spec, params)
+    if spec.categoria is Category.BLANKET:
+        return generate_blanket(spec, params)
     if spec.categoria is Category.CARDIGAN:
         return generate_flat(spec, params, "cardigan")
     if spec.categoria is Category.VEST:
@@ -47,8 +70,15 @@ __all__ = [
     "ImpossibleProportionsError",
     "UnsupportedGarmentError",
     "generate",
+    "generate_blanket",
+    "generate_cowl",
     "generate_flat",
+    "generate_hat",
+    "generate_mittens",
     "generate_raglan_top_down",
+    "generate_scarf",
     "generate_set_in",
+    "generate_shawl",
+    "generate_socks",
     "generate_yoke",
 ]

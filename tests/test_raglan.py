@@ -139,7 +139,7 @@ def test_sleeveless_is_rejected_clearly() -> None:
 def test_unsupported_garment_is_rejected_clearly() -> None:
     with pytest.raises(UnsupportedGarmentError) as error:
         generate(
-            GarmentSpec(categoria=Category.HAT, tecnica=Technique.NEEDLES),
+            GarmentSpec(categoria=Category.BAG, tecnica=Technique.NEEDLES),
             PatternParams(),
         )
     assert error.value.key == "error.unsupported_garment"
