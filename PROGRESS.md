@@ -177,3 +177,33 @@ y el simulador, no la IA. No había `AI_API_KEY` para probar el modelo real.
 ## Hitos 8-11
 
 Pendientes.
+
+## Hito 8 — Más familias de prenda
+
+Completado con limitaciones declaradas; tests, `ruff`, `mypy` y suite completa
+(1578 tests) en verde.
+
+- [x] `engine/garments/flat.py`: pullover hombro caído, cardigan y chaleco en
+  piezas planas rectangulares; piezas de cuerpo, mangas, puños, cuello y tapas
+  de botones; uniones de costura declaradas y verificadas por el simulador.
+- [x] `engine/garments/yoke.py`: pullover con canesú circular top-down,
+  aumentos uniformes sin líneas de raglán, separación de cuerpo/mangas,
+  disminuciones de manga y puños; el largo del canesú se acorta para mangas
+  cortas.
+- [x] `engine/garments/set_in.py`: pullover con manga encajada en piezas
+  planas, sisa y copa simplificadas con disminuciones parejas en los bordes.
+- [x] Despacho en `engine/garments/__init__.py` para las cinco familias y
+  errores claros para técnicas/construcciones no soportadas.
+- [x] `engine/text.py` detecta el montaje inicial de las piezas planas y no
+  imprime “0 puntos”; los textos de canesú, sisa y copa usan claves i18n es/en.
+- [x] `render/schematic.py` y `render/pdf.py` eligen esquema genérico para las
+  familias nuevas; la API usa el despachador SVG genérico.
+- [x] Tests nuevos: combinaciones de talle/hilo/ajuste, variantes de largo y
+  escote, patrones golden, advertencias, texto/SVG/PDF y casos imposibles.
+
+**Limitaciones honestas:** el canesú no genera el gráfico de jacquard; conserva
+la paleta y emite `warning.colorwork_not_charted`. El cardigan no incluye
+ojales ni forma de escote; el chaleco no lleva bandas ni forma de sisa. La
+manga encajada usa una copa simplificada (`warning.set_in_simplified`) y no
+modela hileras cortas. Las piezas planas se cosen y no son prendas sin
+costuras. Ver `DECISIONS.md` D015.

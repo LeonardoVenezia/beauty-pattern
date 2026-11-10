@@ -24,6 +24,8 @@ def _measure(pattern: Pattern, key: str) -> float:
 
 
 def _schematic_drawing(pattern: Pattern, lang: str) -> Drawing:
+    if pattern.meta.family != "raglan_top_down":
+        return _flat_drawing(pattern, lang)
     bust = _measure(pattern, "bust")
     body_length = _measure(pattern, "body_length")
     sleeve_length = _measure(pattern, "sleeve_length")
@@ -127,6 +129,88 @@ def _schematic_drawing(pattern: Pattern, lang: str) -> Drawing:
                 x,
                 y,
                 text,
+                fontName="Helvetica",
+                fontSize=7,
+                fillColor="#3a2a1e",
+                textAnchor=anchor,
+            )
+        )
+    return drawing
+
+
+def _maybe_measure(pattern: Pattern, key: str) -> float | None:
+    for measurement in pattern.measurements:
+        if measurement.key == key:
+            return measurement.value_cm
+    return None
+
+
+def _flat_drawing(pattern: Pattern, lang: str) -> Drawing:
+    bust = _measure(pattern, "bust")
+    body_length = _measure(pattern, "body_length")
+    sleeve_length = _maybe_measure(pattern, "sleeve_length")
+    upper_arm = _maybe_measure(pattern, "upper_arm")
+    body_w = bust / 2
+    sleeve_w = (upper_arm or 0.0) / 2
+    total_w = body_w + (2 * sleeve_w if sleeve_length is not None else 0.0)
+    max_h = max(body_length, sleeve_length or 0.0)
+    width, height = 360.0, 280.0
+    scale = min(width / total_w, (height - 30.0) / max_h)
+    cx = width / 2
+    top = 18.0
+    body_x = cx - body_w * scale / 2
+    body_bottom = top + body_length * scale
+    drawing = Drawing(width, height)
+    drawing.add(
+        Rect(
+            body_x,
+            height - body_bottom,
+            body_w * scale,
+            body_length * scale,
+            fillColor="#f2e8dc",
+            strokeColor="#6b4f3a",
+        )
+    )
+    if sleeve_length is not None:
+        sleeve_w_px = sleeve_w * scale
+        sleeve_h = sleeve_length * scale
+        for x in (body_x - sleeve_w_px, body_x + body_w * scale):
+            drawing.add(
+                Rect(
+                    x,
+                    height - top - sleeve_h,
+                    sleeve_w_px,
+                    sleeve_h,
+                    fillColor="#e6d6c4",
+                    strokeColor="#6b4f3a",
+                )
+            )
+    labels = [
+        ("bust", bust, cx, height - top + 10, "middle"),
+        (
+            "body_length",
+            body_length,
+            body_x + body_w * scale + 6,
+            height - (top + body_bottom) / 2,
+            "start",
+        ),
+    ]
+    if sleeve_length is not None:
+        labels.append(
+            (
+                "sleeve_length",
+                sleeve_length,
+                body_x - sleeve_w * scale - 6,
+                height - top - sleeve_length * scale / 2,
+                "end",
+            )
+        )
+    for key, value, x, y, anchor in labels:
+        drawing.add(
+            String(
+                x,
+                y,
+                f"{t(f'measure.{key}', lang)}: {value:.1f} cm",
                 fontName="Helvetica",
                 fontSize=7,
                 fillColor="#3a2a1e",

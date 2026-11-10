@@ -189,3 +189,28 @@ fuente publica verificada.
   determinista y el simulador. Se documenta en `PROGRESS.md`.
 - **Motivo:** cumplir "la IA interpreta; el codigo calcula" incluso en la
   redaccion, sin bloquear la entrega del patron si el modelo se porta mal.
+
+## D015 — Familias planas, canesú circular y manga encajada
+
+- **Decisión:** hombro caído, cardigan y chaleco se generan como piezas planas
+  rectangulares en `engine/garments/flat.py`. No se modelan sisas, escotes ni
+  ojales en esta versión; las limitaciones se declaran con advertencias
+  (`warning.flat_panels`, `warning.no_neck_shaping`, `warning.no_buttonholes`,
+  `warning.vest_armhole`). El cardigan usa espalda de medio contorno y dos
+  delanteros de un cuarto cada uno, para que la costura lateral cierre.
+- **Decisión:** el canesú circular se genera con aumentos uniformes repartidos
+  (`engine/distribution.py`), sin líneas de raglán; la profundidad objetivo es
+  la sisa de la tabla + 4 cm y se acorta para mangas cortas. El jacquard no se
+  convierte en gráfico en esta versión: se conserva la paleta y se advierte
+  (`warning.colorwork_not_charted`).
+- **Decisión:** la manga encajada se simplifica con disminuciones parejas en
+  los bordes de la sisa y de la copa, usando las mismas vueltas de sisa en
+  cuerpo y manga. Se declara `warning.set_in_simplified`; no se modela una
+  curva completa de copa ni hileras cortas.
+- **Decisión:** el texto detecta el montaje inicial de una sección plana y el
+  render tiene un despachador genérico (`render_schematic_svg`); el PDF elige
+  el dibujo según `meta.family`.
+- **Motivo:** ampliar familias sin inventar números ni prometer construcciones
+  que el motor todavía no verifica. El simulador valida conteos, consumos,
+  largos y uniones de costura; las limitaciones quedan visibles para la
+  persona tejedora.

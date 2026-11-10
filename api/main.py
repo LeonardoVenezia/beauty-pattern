@@ -28,7 +28,7 @@ from engine.spec import GarmentSpec, PatternParams
 from engine.stitches.catalog import STITCH_PATTERNS
 from engine.text import render_pattern_text
 from render.pdf import render_pattern_pdf
-from render.schematic import render_raglan_schematic_svg
+from render.schematic import render_schematic_svg
 from vision.preprocess import ImageValidationError, prepare_image
 
 app = FastAPI(title="Tejedora API", version=ENGINE_VERSION)
@@ -211,7 +211,7 @@ async def get_pattern_svg(pattern_id: str) -> Response:
     if record is None:
         raise HTTPException(status_code=404, detail="patron no encontrado")
     pattern = pattern_from_dict(record.pattern)
-    svg = render_raglan_schematic_svg(pattern)
+    svg = render_schematic_svg(pattern)
     return Response(content=svg, media_type="image/svg+xml")
 
 

@@ -8,6 +8,7 @@ from __future__ import annotations
 from engine.i18n import has_key, t
 from engine.ir import Item, Op, Pattern, Section, Step
 from engine.spec import resolve_gauge
+from engine.stitches.kinds import StitchKind
 
 
 def _length(value_cm: float, units: str, lang: str) -> tuple[str, str]:
@@ -46,6 +47,14 @@ def format_step(step: Step, mode: str, lang: str, level: str) -> str:
 
 
 def _section_intro(section: Section, lang: str) -> str:
+    if section.steps:
+        cast_on = sum(
+            op.times
+            for op in section.steps[0].expanded_ops()
+            if op.kind is StitchKind.CAST_ON
+        )
+        if cast_on:
+            return t("pattern.cast_on", lang, n=cast_on)
     if section.id == "neckband":
         return t("pattern.cast_on_round", lang, n=section.start_stitches)
     if section.id == "yoke":

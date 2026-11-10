@@ -48,6 +48,14 @@ ver el patron verificado -> descargar PDF o esquema SVG.
 Con `FAKE_AI=1` la extraccion es simulada; la web funciona igual y sirve para
 probar todo el flujo sin red ni costo.
 
+## Familias disponibles
+
+El motor genera pullover raglán top-down, pullover hombro caído, pullover con
+canesú circular, pullover con manga encajada, cardigan y chaleco. Las familias
+planas se tejen en piezas y se cosen; el canesú no incluye gráfico de jacquard
+en esta versión y la manga encajada usa una copa simplificada. El patrón
+siempre se pasa por el simulador antes de mostrarse.
+
 ## Endpoints principales
 
 - `POST /analyze` — multipart `file`; devuelve `GarmentSpec`, confianza,

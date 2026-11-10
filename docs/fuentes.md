@@ -54,10 +54,12 @@ publica verificada se marca **ASUNCION**.
   rechaza (familia chaleco). Ver `DECISIONS.md` D010.
 - Hombro caido: mangas rectangulares, sisa recta, sin copa (ASUNCION de
   proporcion: largo de sisa = 18-24 % del contorno de pecho).
-- Canesu circular: profundidad de canesu = 18-22 % del contorno de pecho
-  (ASUNCION).
-- Manga encajada: copa con disminuciones simetricas y sisa calculada
-  (ASUNCION basada en proporciones clasicas de sastreria de punto).
+- Canesu circular: profundidad objetivo = sisa de la tabla + 4 cm; para manga
+  corta se reduce para que entren copa y puno (ASUNCION).
+- Manga encajada: sisa y copa simplificadas con una disminucion en cada borde
+  en las mismas vueltas; sin curva completa ni hileras cortas (ASUNCION).
+- Piezas planas: cuerpo, mangas, cuello y tapas de botones rectangulares; sin
+  forma de sisa, escote ni ojales en esta version (ASUNCION).
 - Gorro: corona con disminuciones en 6 sectores, 10-12 % de holgura negativa
   sobre el contorno de cabeza (ASUNCION).
 - Medias: talon con lengueta, gusset y puntera con disminuciones simetricas
