@@ -1,0 +1,12 @@
+.git
+.venv
+.mypy_cache
+.pytest_cache
+.ruff_cache
+.hypothesis
+web
+data
+.ai-cache
+docs/ejemplos
+*.sqlite3
+.env

@@ -253,3 +253,21 @@ fuente publica verificada.
   cambios de color, módulos unidos ni el motivo clásico de granny square.
 - **Limitación:** no hay patrones de prendas en crochet, cambios de color,
   ensamblaje de módulos ni relleno/detalles de amigurumi.
+
+## D018 — Persistencia de proyectos, contador y despliegue
+
+- **Decisión:** el proyecto del usuario se guarda en `localStorage` del
+  navegador (patrón serializado, texto y posición del contador). El patrón
+  también queda en SQLite por id para PDF/SVG. No se agregan cuentas ni
+  autenticación en esta entrega.
+- **Decisión:** el contador de vueltas es una herramienta de lectura: recorre
+  los pasos ya verificados y no altera la IR ni los números. Wake Lock es
+  opcional y best-effort.
+- **Decisión:** la API expone CORS configurable, cabeceras de seguridad,
+  compresión y límite de tasa en `/pattern`; la web se construye en modo
+  standalone y se despliega con Docker Compose.
+- **Motivo:** cerrar el flujo de uso real sin introducir autenticación ni
+  sincronización que no estaban en el alcance.
+- **Limitación:** los proyectos no se comparten entre dispositivos; SQLite no
+  escala a varias réplicas; el e2e de Playwright no se ejecutó por falta de
+  navegadores instalados.

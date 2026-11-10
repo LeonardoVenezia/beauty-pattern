@@ -255,3 +255,30 @@ Completado con limitaciones declaradas; tests, `ruff`, `mypy` y suite completa
 no el motivo clásico de grupos; no hay cambios de color ni uniones de módulos;
 la densidad de crochet usa la tabla de referencia de dos agujas editable. El
 amigurumi no incluye relleno ni detalles de ensamblaje. Ver D017.
+
+## Hito 11 — Pulido
+
+Completado con las limitaciones de despliegue indicadas; tests, `ruff`, `mypy`
+y build de la web en verde.
+
+- [x] API: cabeceras de seguridad, compresión GZip, CORS configurable por
+  `CORS_ORIGINS`, límite de tasa también en `/pattern`, caché privada para
+  PDF/SVG.
+- [x] Web: contador de vueltas por sección en modo tejiendo, botones
+  anterior/siguiente/reiniciar y Wake Lock opcional.
+- [x] Web: guardar, cargar y borrar proyectos en localStorage, incluyendo el
+  patrón, el texto y la posición del contador.
+- [x] Web: medidas propias por categoría, incluyendo accesorios y crochet.
+- [x] Accesibilidad: enlace para saltar al contenido, `aria-current` en pasos,
+  región de estado `aria-live`, `aria-busy`, foco visible en todos los
+  controles, reducción de movimiento y mayor contraste.
+- [x] Rendimiento: build standalone de Next, compresión y memoización del
+  listado de vueltas.
+- [x] Despliegue: `Dockerfile` de API, `web/Dockerfile`, `docker-compose.yml`,
+  `.dockerignore` y `docs/despliegue.md`.
+- [x] `make examples` ahora funciona con `scripts/generate_examples.py`.
+- [x] Tests de cabeceras de seguridad y suite completa.
+
+**Limitaciones:** no hay autenticación ni proyectos compartidos entre
+dispositivos; SQLite es para una instancia pequeña; el Wake Lock depende del
+navegador; no se ejecutó Playwright e2e en este entorno.

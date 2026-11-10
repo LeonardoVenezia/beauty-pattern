@@ -67,6 +67,27 @@ sólido simplificado y una bufanda plana. Para amigurumi se usan
 `spec.forma` (`straight`, `boxy`, `a_line` o `curved`). El granny square usa
 `dimensiones_cm["size"]`.
 
+## Medidas propias
+
+En la pantalla de medidas podés completar las medidas de la categoría elegida
+(busto, largo, contorno de cabeza, palma, pie, diámetro, etc.). Si dejás un
+campo vacío, se usa el valor típico del talle o de la categoría. Las medidas se
+envían como `medidas_cm` para prendas y como `dimensiones_cm` para accesorios,
+crochet y piezas del hogar.
+
+## Modo tejiendo, contador y proyectos
+
+Después de generar el patrón, la sección **Modo tejiendo** muestra una vuelta a
+la vez con el conteo de puntos y la nota de esa vuelta. Podés avanzar, volver o
+reiniciar el contador; el contador no modifica el patrón. En navegadores
+compatibles, **Mantener pantalla encendida** usa el Wake Lock API.
+
+**Guardar proyecto** guarda el patrón, el texto y la posición del contador en
+el almacenamiento local de ese navegador (localStorage). La lista de proyectos
+guardados aparece en la pantalla de inicio. No se sincroniza entre dispositivos
+y no requiere cuenta. Los patrones también quedan guardados en la base SQLite
+de la API por id, para descargar PDF/SVG.
+
 ## Endpoints principales
 
 - `POST /analyze` — multipart `file`; devuelve `GarmentSpec`, confianza,

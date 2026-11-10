@@ -53,6 +53,17 @@ evals/    fotos de prueba y medicion de la IA
 docs/     fuentes, ejemplos y documentacion
 ```
 
+## Despliegue
+
+Hay `Dockerfile` para la API, `web/Dockerfile` para la web y
+`docker-compose.yml` para levantar ambos. Ver `docs/despliegue.md` para
+variables, HTTPS, respaldos y limitaciones.
+
+```bash
+cp .env.example .env
+docker compose up --build
+```
+
 ## Documentacion
 
 - `PROYECTO.md` — diseno completo.
@@ -61,6 +72,7 @@ docs/     fuentes, ejemplos y documentacion
 - `PROGRESS.md` — estado real por hito.
 - `docs/fuentes.md` — fuentes de convenciones de tejido.
 - `docs/uso.md` — guia de uso.
+- `docs/despliegue.md` — Docker, variables y operacion.
 
 ## Aviso
 

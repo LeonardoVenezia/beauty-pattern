@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ChangeEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 
 import {
   analyzeImage,
@@ -84,6 +84,18 @@ const fits = [
   ["fitted", "Entallado"],
 ] as const;
 
+const crochetStitches = [
+  ["crochet_sc", "Punto bajo"],
+  ["crochet_hdc", "Medio punto alto"],
+  ["crochet_dc", "Punto alto"],
+] as const;
+
+const amigurumiShapes = [
+  ["straight", "Esfera"],
+  ["boxy", "Cilindro"],
+  ["a_line", "Cono"],
+] as const;
+
 const baseStitches = [
   ["stockinette", "Jersey"],
   ["garter", "Musgo"],
@@ -111,6 +123,107 @@ const yarnWeights = [
 
 const sizes = ["XS", "S", "M", "L", "XL", "2XL", "3XL"] as const;
 
+type DimensionField = readonly [key: string, label: string, placeholder: string];
+
+const garmentCategories = new Set(["pullover", "cardigan", "vest"]);
+
+const dimensionFields: Record<string, readonly DimensionField[]> = {
+  pullover: [
+    ["bust", "Contorno de busto", "Ej. 100"],
+    ["body_length", "Largo del cuerpo", "Ej. 58"],
+    ["sleeve_length", "Largo de manga", "Ej. 58"],
+  ],
+  cardigan: [
+    ["bust", "Contorno de busto", "Ej. 100"],
+    ["body_length", "Largo del cuerpo", "Ej. 58"],
+    ["sleeve_length", "Largo de manga", "Ej. 58"],
+  ],
+  vest: [
+    ["bust", "Contorno de busto", "Ej. 100"],
+    ["body_length", "Largo del cuerpo", "Ej. 58"],
+  ],
+  hat: [
+    ["head", "Contorno de cabeza", "Ej. 56"],
+    ["length", "Alto del gorro", "Ej. 22"],
+  ],
+  scarf: [
+    ["width", "Ancho", "Ej. 25"],
+    ["length", "Largo", "Ej. 180"],
+  ],
+  cowl: [
+    ["circumference", "Contorno", "Ej. 60"],
+    ["length", "Largo", "Ej. 30"],
+  ],
+  mittens: [
+    ["palm", "Contorno de palma", "Ej. 20"],
+    ["length", "Largo de mano", "Ej. 18"],
+    ["thumb", "Largo de pulgar", "Ej. 6"],
+  ],
+  socks: [
+    ["circumference", "Contorno", "Ej. 22"],
+    ["foot_length", "Largo del pie", "Ej. 24"],
+    ["leg", "Largo de pierna", "Ej. 10"],
+  ],
+  shawl: [
+    ["width", "Ancho", "Ej. 60"],
+    ["length", "Largo", "Ej. 180"],
+  ],
+  blanket: [
+    ["width", "Ancho", "Ej. 100"],
+    ["length", "Largo", "Ej. 120"],
+  ],
+  amigurumi: [
+    ["diameter", "Diámetro", "Ej. 8"],
+    ["height", "Altura", "Ej. 8"],
+  ],
+};
+
+const sectionLabels: Record<string, string> = {
+  "section.body": "Cuerpo",
+  "section.yoke": "Canesú",
+  "section.sleeve": "Manga",
+  "section.sleeve_left": "Manga izquierda",
+  "section.sleeve_right": "Manga derecha",
+  "section.neckband": "Cuello",
+  "section.hem": "Borde inferior",
+  "section.cuff": "Puño",
+  "section.crown": "Corona",
+  "section.brim": "Borde",
+  "section.foot": "Pie",
+  "section.toe": "Puntera",
+  "section.thumb": "Pulgar",
+  "section.hand": "Mano",
+  "section.scarf": "Bufanda",
+  "section.cowl": "Cuello circular",
+  "section.shawl": "Chal",
+  "section.blanket": "Manta",
+  "section.front": "Delantero",
+  "section.back": "Espalda",
+  "section.left_front": "Delantero izquierdo",
+  "section.right_front": "Delantero derecho",
+  "section.button_band": "Tapa de botones",
+  "section.amigurumi": "Amigurumi",
+  "section.granny_square": "Granny square",
+  "section.leg": "Pierna",
+  "section.sphere": "Esfera",
+  "section.cylinder": "Cilindro",
+  "section.cone": "Cono",
+};
+
+const noteLabels: Record<string, string> = {
+  "pattern.note.cast_on_panel": "Montá los puntos y tejé en plano.",
+  "pattern.note.cuff": "Puño en elástico.",
+  "pattern.note.hat_crown": "Disminuí 4 puntos repartidos por vuelta.",
+  "pattern.note.toe": "Disminuí 4 puntos repartidos por vuelta.",
+  "pattern.note.flat_panel": "Tejé en jersey, de ida y vuelta.",
+  "pattern.note.crochet_foundation": "Hacé la cadena inicial.",
+  "pattern.note.crochet_flat": "Tejé en crochet, de ida y vuelta.",
+  "pattern.note.amigurumi_increase": "Aumentá 6 puntos repartidos.",
+  "pattern.note.amigurumi_decrease": "Disminuí 6 puntos repartidos.",
+  "pattern.note.plain": "Vuelta sin aumentos.",
+  "pattern.magic_ring": "Anillo mágico con 6 puntos bajos.",
+};
+
 const measurementLabels: Record<string, string> = {
   bust: "Contorno de busto",
   body_length: "Largo del cuerpo",
@@ -120,6 +233,15 @@ const measurementLabels: Record<string, string> = {
   wrist: "Contorno de puño",
   yoke_depth: "Profundidad del canesú",
   hem: "Contorno de ruedo",
+  diameter: "Diámetro",
+  height: "Altura",
+  width: "Ancho",
+  length: "Largo",
+  circumference: "Contorno",
+  palm: "Contorno de palma",
+  foot_length: "Largo del pie",
+  head: "Contorno de cabeza",
+  thumb: "Largo del pulgar",
 };
 
 const warningLabels: Record<string, string> = {
@@ -135,6 +257,23 @@ const warningLabels: Record<string, string> = {
 const numberFormat = new Intl.NumberFormat("es-AR", {
   maximumFractionDigits: 1,
 });
+
+type SavedProject = {
+  id: string;
+  savedAt: string;
+  label: string;
+  size: string;
+  yarnWeight: string;
+  patternText: string;
+  rowIndex: number;
+  result: PatternResponse;
+};
+
+type WakeLockSentinelLike = {
+  release: () => Promise<void>;
+};
+
+const STORAGE_KEY = "tejedora:projects:v1";
 
 function formatCm(value: number): string {
   return `${numberFormat.format(value)} cm`;
@@ -165,6 +304,68 @@ export default function HomePage() {
   const [gaugeStitches, setGaugeStitches] = useState("");
   const [gaugeRows, setGaugeRows] = useState("");
   const [ease, setEase] = useState("");
+  const [customDimensions, setCustomDimensions] = useState<Record<string, string>>({});
+  const [rowIndex, setRowIndex] = useState(0);
+  const [savedProjects, setSavedProjects] = useState<SavedProject[]>([]);
+  const [wakeLock, setWakeLock] = useState(false);
+  const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
+
+  const baseStitchOptions =
+    spec?.tecnica === "crochet" ? crochetStitches : baseStitches;
+
+  const activeDimensionFields = useMemo<readonly DimensionField[]>(() => {
+    if (!spec) return [];
+    if (spec.categoria === "blanket" && spec.tecnica === "crochet") {
+      return [["size", "Lado del módulo", "Ej. 15"]];
+    }
+    return dimensionFields[spec.categoria] ?? [];
+  }, [spec]);
+
+  const flatRows = useMemo(() => {
+    if (!result) return [];
+    return result.pattern.sections.flatMap((section) =>
+      section.steps.map((step) => ({
+        sectionId: section.id,
+        sectionLabel: sectionLabels[section.name_key] ?? section.name_key,
+        stepNumber: step.number,
+        stitchCount: step.stitch_count_end,
+        noteKey: step.note_key,
+        sectionStepCount: section.steps.length,
+      })),
+    );
+  }, [result]);
+
+  const currentRow =
+    flatRows.length > 0
+      ? flatRows[Math.min(rowIndex, flatRows.length - 1)]
+      : null;
+  const currentSectionRows = currentRow
+    ? flatRows.filter((row) => row.sectionId === currentRow.sectionId)
+    : [];
+  const currentSectionRowNumber = currentRow
+    ? currentSectionRows.findIndex(
+        (row) => row.stepNumber === currentRow.stepNumber,
+      ) + 1
+    : 0;
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if (!raw) return;
+      const parsed: unknown = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        setSavedProjects(parsed as SavedProject[]);
+      }
+    } catch {
+      setSavedProjects([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      void wakeLockRef.current?.release();
+    };
+  }, []);
 
   function onFile(event: ChangeEvent<HTMLInputElement>) {
     const selected = event.target.files?.[0];
@@ -179,6 +380,7 @@ export default function HomePage() {
     setPatternText("");
     setCritique(null);
     setError(null);
+    setRowIndex(0);
     setStep("upload");
   }
 
@@ -204,26 +406,112 @@ export default function HomePage() {
     const stitches = Number(gaugeStitches);
     const rows = Number(gaugeRows);
     const easeValue = Number(ease);
+    const custom: Record<string, number> = {};
+    for (const [key] of activeDimensionFields) {
+      const raw = customDimensions[key]?.trim() ?? "";
+      const value = Number(raw);
+      if (raw !== "" && Number.isFinite(value) && value > 0) {
+        custom[key] = value;
+      }
+    }
+    const params = {
+      talla: size,
+      peso_hilo: yarnWeight,
+      densidad:
+        stitches > 0 && rows > 0
+          ? { stitches_per_10cm: stitches, rows_per_10cm: rows }
+          : null,
+      ease_cm: ease.trim() !== "" && Number.isFinite(easeValue) ? easeValue : null,
+      ...(Object.keys(custom).length > 0
+        ? garmentCategories.has(spec.categoria)
+          ? { medidas_cm: custom }
+          : { dimensiones_cm: custom }
+        : {}),
+    };
     setBusy(true);
     setError(null);
     try {
-      const data = await createPattern(spec, {
-        talla: size,
-        peso_hilo: yarnWeight,
-        densidad:
-          stitches > 0 && rows > 0
-            ? { stitches_per_10cm: stitches, rows_per_10cm: rows }
-            : null,
-        ease_cm: ease.trim() !== "" && Number.isFinite(easeValue) ? easeValue : null,
-      });
+      const data = await createPattern(spec, params);
       setResult(data);
       setPatternText(data.text.es);
       setCritique(null);
+      setRowIndex(0);
       setStep("pattern");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No se pudo generar el patrón.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  function saveProject() {
+    if (!result) return;
+    const project: SavedProject = {
+      id: result.id,
+      savedAt: new Date().toISOString(),
+      label: optionLabel(categories, spec?.categoria ?? null),
+      size,
+      yarnWeight,
+      patternText,
+      rowIndex,
+      result,
+    };
+    const next = [
+      project,
+      ...savedProjects.filter((item) => item.id !== project.id),
+    ].slice(0, 12);
+    setSavedProjects(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      setError("No se pudo guardar el proyecto en este dispositivo.");
+    }
+  }
+
+  function loadProject(project: SavedProject) {
+    setResult(project.result);
+    setSpec(project.result.pattern.spec ?? null);
+    setPatternText(project.patternText);
+    setSize(project.size);
+    setYarnWeight(project.yarnWeight);
+    setRowIndex(project.rowIndex);
+    setCritique(null);
+    setImageId(null);
+    setError(null);
+    setStep("pattern");
+  }
+
+  function deleteProject(projectId: string) {
+    const next = savedProjects.filter((item) => item.id !== projectId);
+    setSavedProjects(next);
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+    } catch {
+      setError("No se pudo actualizar la lista de proyectos.");
+    }
+  }
+
+  async function toggleWakeLock() {
+    if (wakeLockRef.current) {
+      await wakeLockRef.current.release();
+      wakeLockRef.current = null;
+      setWakeLock(false);
+      return;
+    }
+    const nav = navigator as Navigator & {
+      wakeLock?: {
+        request: (type: "screen") => Promise<WakeLockSentinelLike>;
+      };
+    };
+    if (!nav.wakeLock) {
+      setError("Este navegador no permite mantener la pantalla encendida.");
+      return;
+    }
+    try {
+      wakeLockRef.current = await nav.wakeLock.request("screen");
+      setWakeLock(true);
+    } catch {
+      setError("No se pudo mantener la pantalla encendida.");
     }
   }
 
@@ -270,7 +558,18 @@ export default function HomePage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen w-full max-w-3xl px-5 pb-16 pt-8 sm:px-8">
+    <>
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-white"
+      >
+        Saltar al contenido
+      </a>
+      <main
+        id="main"
+        aria-busy={busy}
+        className="mx-auto min-h-screen w-full max-w-3xl px-5 pb-16 pt-8 sm:px-8"
+      >
       <header className="mb-8">
         <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sage">
           Tejedora
@@ -293,6 +592,7 @@ export default function HomePage() {
         ].map(([key, label]) => (
           <span
             key={key}
+            aria-current={step === key ? "step" : undefined}
             className={`rounded-full border px-3 py-1 ${
               step === key
                 ? "border-sage bg-sage text-white"
@@ -313,6 +613,9 @@ export default function HomePage() {
           <span className="mt-1 block break-words">{error}</span>
         </div>
       ) : null}
+      <p role="status" aria-live="polite" className="sr-only">
+        {busy ? "Procesando, esperá un momento." : ""}
+      </p>
 
       {step === "upload" ? (
         <section className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
@@ -356,6 +659,42 @@ export default function HomePage() {
           >
             {busy ? "Analizando la foto…" : "Analizar foto"}
           </button>
+
+          {savedProjects.length > 0 ? (
+            <div className="mt-8 border-t border-ink/10 pt-6">
+              <h3 className="text-lg font-semibold">Proyectos guardados</h3>
+              <p className="mt-1 text-sm text-ink/60">
+                Se guardan en este dispositivo. Podés retomar el contador donde
+                lo dejaste.
+              </p>
+              <ul className="mt-3 space-y-2">
+                {savedProjects.map((project) => (
+                  <li
+                    key={project.id}
+                    className="flex flex-col gap-2 rounded-xl bg-paper/70 p-3 sm:flex-row sm:items-center sm:justify-between"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => loadProject(project)}
+                      className="text-left font-semibold text-sage underline-offset-4 hover:underline"
+                    >
+                      {project.label} · {project.size}
+                      <span className="ml-2 text-xs font-normal text-ink/50">
+                        {new Date(project.savedAt).toLocaleDateString("es-AR")}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteProject(project.id)}
+                      className="self-start rounded-lg border border-ink/15 px-3 py-1 text-sm sm:self-auto"
+                    >
+                      Borrar
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
       ) : null}
 
@@ -422,9 +761,18 @@ export default function HomePage() {
                 label="Punto base"
                 confidence={confidenceFor("punto_base")}
                 value={spec.punto_base ?? ""}
-                options={baseStitches}
+                options={baseStitchOptions}
                 onChange={(value) => updateNullable("punto_base", value)}
               />
+              {spec.categoria === "amigurumi" ? (
+                <Field
+                  label="Forma"
+                  confidence={confidenceFor("forma")}
+                  value={spec.forma ?? "straight"}
+                  options={amigurumiShapes}
+                  onChange={(value) => updateNullable("forma", value)}
+                />
+              ) : null}
             </div>
 
             {spec.incertidumbres.length > 0 || spec.no_visible.length > 0 ? (
@@ -548,6 +896,40 @@ export default function HomePage() {
             </p>
           </fieldset>
 
+          {activeDimensionFields.length > 0 ? (
+            <fieldset className="mt-6 rounded-2xl border border-ink/10 bg-paper/60 p-4">
+              <legend className="px-1 text-sm font-semibold">
+                Medidas propias (opcional)
+              </legend>
+              <p className="mt-1 text-xs text-ink/55">
+                Si no las completás, usamos las medidas típicas del talle y de la
+                categoría.
+              </p>
+              <div className="mt-3 grid gap-4 sm:grid-cols-2">
+                {activeDimensionFields.map(([key, label, placeholder]) => (
+                  <label key={key} className="block">
+                    <span className="text-sm text-ink/70">{label}</span>
+                    <input
+                      type="number"
+                      min="0.5"
+                      max="400"
+                      step="0.5"
+                      value={customDimensions[key] ?? ""}
+                      onChange={(event) =>
+                        setCustomDimensions((current) => ({
+                          ...current,
+                          [key]: event.target.value,
+                        }))
+                      }
+                      placeholder={placeholder}
+                      className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
+                    />
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+          ) : null}
+
           <label className="mt-5 block">
             <span className="text-sm font-semibold">Holgura extra (opcional)</span>
             <input
@@ -617,6 +999,13 @@ export default function HomePage() {
               >
                 Ver esquema SVG
               </a>
+              <button
+                type="button"
+                onClick={saveProject}
+                className="min-h-12 rounded-xl border border-sage px-5 py-3 font-semibold text-sage"
+              >
+                Guardar proyecto
+              </button>
             </div>
             <div className="mt-3 flex flex-col gap-3 sm:flex-row">
               <button
@@ -634,6 +1023,75 @@ export default function HomePage() {
                 className="min-h-12 rounded-xl border border-ink/20 px-5 py-3 font-semibold disabled:opacity-40"
               >
                 Revisar con IA
+              </button>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-sage/30 bg-sage/5 p-5 shadow-sm sm:p-8">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h3 className="text-xl font-semibold">Modo tejiendo</h3>
+                <p className="mt-1 text-sm text-ink/60">
+                  Una vuelta a la vez. El contador no cambia los números del patrón.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={toggleWakeLock}
+                aria-pressed={wakeLock}
+                className="rounded-xl border border-sage px-4 py-2 text-sm font-semibold text-sage"
+              >
+                {wakeLock ? "Pantalla encendida" : "Mantener pantalla encendida"}
+              </button>
+            </div>
+            {currentRow ? (
+              <div
+                className="mt-5 rounded-2xl bg-white/80 p-4"
+                role="status"
+                aria-live="polite"
+              >
+                <p className="text-sm font-semibold text-sage">
+                  {currentRow.sectionLabel} · vuelta {currentSectionRowNumber} de{" "}
+                  {currentRow.sectionStepCount}
+                </p>
+                <p className="mt-2 text-3xl font-bold">
+                  {currentRow.stitchCount} puntos
+                </p>
+                <p className="mt-1 text-sm text-ink/60">
+                  Vuelta {currentRow.stepNumber} del patrón
+                  {currentRow.noteKey
+                    ? ` · ${noteLabels[currentRow.noteKey] ?? currentRow.noteKey}`
+                    : ""}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-4 text-sm text-ink/60">Sin vueltas para mostrar.</p>
+            )}
+            <div className="mt-4 flex flex-wrap gap-3">
+              <button
+                type="button"
+                onClick={() => setRowIndex((index) => Math.max(0, index - 1))}
+                disabled={rowIndex <= 0}
+                className="min-h-12 rounded-xl border border-ink/20 px-4 py-2 font-semibold disabled:opacity-40"
+              >
+                Vuelta anterior
+              </button>
+              <button
+                type="button"
+                onClick={() =>
+                  setRowIndex((index) => Math.min(flatRows.length - 1, index + 1))
+                }
+                disabled={rowIndex >= flatRows.length - 1}
+                className="min-h-12 rounded-xl bg-sage px-4 py-2 font-semibold text-white disabled:opacity-40"
+              >
+                Siguiente vuelta
+              </button>
+              <button
+                type="button"
+                onClick={() => setRowIndex(0)}
+                className="min-h-12 rounded-xl border border-ink/20 px-4 py-2 font-semibold"
+              >
+                Reiniciar contador
               </button>
             </div>
           </div>
@@ -742,6 +1200,7 @@ export default function HomePage() {
               setPatternText("");
               setCritique(null);
               setError(null);
+              setRowIndex(0);
             }}
             className="min-h-12 w-full rounded-xl border border-ink/20 px-5 py-3 font-semibold"
           >
@@ -749,7 +1208,8 @@ export default function HomePage() {
           </button>
         </section>
       ) : null}
-    </main>
+      </main>
+    </>
   );
 }
 

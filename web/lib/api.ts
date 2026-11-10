@@ -36,6 +36,8 @@ export type GarmentSpec = {
 export type PatternParams = {
   talla: string;
   peso_hilo: string;
+  medidas_cm?: Record<string, number>;
+  dimensiones_cm?: Record<string, number>;
   densidad?: {
     stitches_per_10cm: number;
     rows_per_10cm: number;
@@ -76,13 +78,21 @@ export type PatternWarning = {
   severity: "info" | "warning" | "error";
 };
 
+export type PatternStep = {
+  number: number;
+  items: unknown[];
+  stitch_count_end: number;
+  note_key: string | null;
+};
+
 export type PatternSection = {
   id: string;
   name_key: string;
   mode: "flat" | "round";
   start_stitches: number;
   end_stitches: number;
-  steps: unknown[];
+  steps: PatternStep[];
+  bind_off?: boolean;
 };
 
 export type Pattern = {
@@ -94,6 +104,8 @@ export type Pattern = {
     created_at: string;
     engine_version: string;
   };
+  spec?: GarmentSpec;
+  params?: PatternParams;
   sections: PatternSection[];
   measurements: Measurement[];
   materials: {

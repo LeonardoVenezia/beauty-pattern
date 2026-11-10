@@ -9,6 +9,7 @@ from typing import Annotated, Literal
 
 from fastapi import FastAPI, File, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import Response
 from pydantic import BaseModel, Field
 
@@ -31,17 +32,35 @@ from render.pdf import render_pattern_pdf
 from render.schematic import render_schematic_svg
 from vision.preprocess import ImageValidationError, prepare_image
 
+
+def _cors_origins() -> list[str]:
+    raw = os.environ.get(
+        "CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    )
+    return [origin.strip() for origin in raw.split(",") if origin.strip()]
+
+
 app = FastAPI(title="Tejedora API", version=ENGINE_VERSION)
+app.add_middleware(GZipMiddleware, minimum_size=500)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-    ],
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=_cors_origins(),
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 limiter = limiter_from_env()
+
+
+@app.middleware("http")
+async def security_headers(request: Request, call_next):  # type: ignore[no-untyped-def]
+    response = await call_next(request)
+    response.headers.setdefault("X-Content-Type-Options", "nosniff")
+    response.headers.setdefault("X-Frame-Options", "DENY")
+    response.headers.setdefault("Referrer-Policy", "no-referrer")
+    response.headers.setdefault(
+        "Permissions-Policy", "camera=(), microphone=(), geolocation=()"
+    )
+    return response
 
 
 class PatternRequest(BaseModel):
@@ -140,7 +159,11 @@ async def analyze(
 
 
 @app.post("/pattern")
-async def create_pattern(payload: PatternRequest) -> dict[str, object]:
+async def create_pattern(
+    request: Request, payload: PatternRequest
+) -> dict[str, object]:
+    if not limiter.allow(_client_key(request)):
+        raise HTTPException(status_code=429, detail="demasiadas solicitudes")
     try:
         pattern = generate(payload.spec, payload.params)
     except GarmentError as exc:
@@ -200,7 +223,8 @@ async def get_pattern_pdf(pattern_id: str) -> Response:
         content=pdf,
         media_type="application/pdf",
         headers={
-            "Content-Disposition": f'attachment; filename="patron-{pattern_id}.pdf"'
+            "Content-Disposition": f'attachment; filename="patron-{pattern_id}.pdf"',
+            "Cache-Control": "private, max-age=300",
         },
     )
 
@@ -212,7 +236,11 @@ async def get_pattern_svg(pattern_id: str) -> Response:
         raise HTTPException(status_code=404, detail="patron no encontrado")
     pattern = pattern_from_dict(record.pattern)
     svg = render_schematic_svg(pattern)
-    return Response(content=svg, media_type="image/svg+xml")
+    return Response(
+        content=svg,
+        media_type="image/svg+xml",
+        headers={"Cache-Control": "private, max-age=300"},
+    )
 
 
 @app.post("/pattern/{pattern_id}/rewrite")

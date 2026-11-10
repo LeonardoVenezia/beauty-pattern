@@ -170,3 +170,11 @@ def test_analyze_rate_limit(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -
     assert first.status_code == 200
     assert second.status_code == 429
     limiter.reset()
+
+
+def test_security_headers() -> None:
+    with TestClient(app) as client:
+        response = client.get("/health")
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "no-referrer"
