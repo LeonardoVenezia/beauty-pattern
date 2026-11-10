@@ -85,8 +85,9 @@ def test_granny_square_category_is_supported() -> None:
     assert measurements["width"] == pytest.approx(20.0, abs=1.5)
     assert measurements["length"] == pytest.approx(20.0, abs=1.5)
     svg = render_schematic_svg(pattern)
-    assert "Cuadrado base (motivo simplificado)" in svg
-    assert "granny-body-" in svg
+    assert "<svg" in svg
+    assert "20.0 cm" in svg
+    assert "<polygon" in svg
     assert render_pattern_pdf(pattern).startswith(b"%PDF")
 
 

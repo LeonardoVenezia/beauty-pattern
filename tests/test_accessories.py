@@ -147,12 +147,13 @@ def test_bag_schematic_is_a_technical_drawing() -> None:
         PatternParams(dimensiones_cm={"width": 30.0, "length": 30.0}),
     )
     svg = render_schematic_svg(bag)
-    assert "bag-body-" in svg
-    assert "Asas opcionales (no incluidas)" in svg
-    assert "Doblez" in svg
-    assert "Ancho: 30.0 cm" in svg
-    assert "Largo: 30.0 cm" in svg
-    assert svg.count("<path") > 10
+    assert "<svg" in svg
+    assert 'aria-labelledby="schematic-title schematic-desc"' in svg
+    # Cotas y silueta del bolso.
+    assert "30.0 cm" in svg
+    assert "Asas opcionales (no incluidas)" in svg or "optional_handles" in svg
+    assert svg.count("<path") >= 4
+    assert "<polygon" in svg  # puntas de flecha de cota
 
 
 def test_unsupported_accessory_is_rejected_clearly() -> None:

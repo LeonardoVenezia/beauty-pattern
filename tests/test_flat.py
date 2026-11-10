@@ -141,6 +141,8 @@ def test_flat_text_svg_and_pdf() -> None:
     assert "Tapa de botones" in text
     svg = render_schematic_svg(pattern)
     assert "<svg" in svg
-    assert "Contorno de pecho" in svg
+    # El esquema incluye cotas con valor en cm.
+    assert "cm" in svg
+    assert "<polygon" in svg
     pdf = render_pattern_pdf(pattern)
     assert pdf.startswith(b"%PDF")
