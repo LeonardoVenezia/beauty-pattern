@@ -11,9 +11,7 @@ import math
 
 from engine.i18n import t
 from engine.ir import Pattern
-from render import draw
 from render.draw import (
-    FILL,
     FILL_ALT,
     STROKE,
     STROKE_FAINT,
@@ -458,7 +456,7 @@ def _flat_pieces_svg(pattern: Pattern, lang: str) -> str:
         )
 
     # Cotas: ancho de espalda, largo del cuerpo, manga.
-    bust_name, bust_value = _mlabel(pattern, "bust", lang)
+    _bust_name, _bust_value = _mlabel(pattern, "bust", lang)
     back_x = _LEFT
     parts += dim_h(
         back_x,
@@ -556,7 +554,7 @@ def _set_in_svg(pattern: Pattern, lang: str) -> str:
         _texture_for(pattern, x_sleeve, y, sleeve_w, sleeve_h),
     )
 
-    bust_name, bust_value = _mlabel(pattern, "bust", lang)
+    _bust_name, _bust_value = _mlabel(pattern, "bust", lang)
     parts += dim_h(
         x_body,
         x_body + body_w,
