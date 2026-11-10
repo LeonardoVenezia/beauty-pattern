@@ -29,9 +29,10 @@ const categories = [
   ["socks", "Medias"],
   ["shawl", "Chal"],
   ["blanket", "Manta"],
+  ["granny_square", "Cuadrado / granny square"],
   ["bag", "Bolso"],
   ["amigurumi", "Amigurumi"],
-  ["other", "Otra prenda"],
+  ["other", "Pieza plana / otra"],
 ] as const;
 
 const techniques = [
@@ -51,6 +52,7 @@ const supportedTechniques: Record<string, readonly string[]> = {
   socks: ["needles", "circular"],
   shawl: ["needles", "circular"],
   blanket: ["needles", "circular", "crochet"],
+  granny_square: ["crochet"],
   bag: ["needles", "circular", "crochet"],
   amigurumi: ["crochet"],
   other: ["needles", "circular", "crochet"],
@@ -195,6 +197,7 @@ const dimensionFields: Record<string, readonly DimensionField[]> = {
     ["width", "Ancho", "Ej. 100"],
     ["length", "Largo", "Ej. 120"],
   ],
+  granny_square: [["size", "Lado del cuadrado", "Ej. 20"]],
   bag: [
     ["width", "Ancho", "Ej. 30"],
     ["length", "Alto", "Ej. 30"],
@@ -290,6 +293,7 @@ const warningLabels: Record<string, string> = {
   "warning.bag_flat": "El bolso es un panel rectangular simplificado; no incluye asas, forro ni cierre.",
   "warning.flat_piece": "No se reconoció la prenda; se genera una pieza plana rectangular. Revisá si corresponde a una categoría más específica.",
   "warning.mittens_flat": "Los mitones son piezas planas simplificadas; el pulgar se cose aparte y el calce debe probarse.",
+  "warning.granny_simplified": "El granny square es un cuadrado sólido simplificado; no reproduce el motivo floral de la foto.",
 };
 
 const numberFormat = new Intl.NumberFormat("es-AR", {

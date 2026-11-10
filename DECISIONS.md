@@ -297,3 +297,24 @@ fuente publica verificada.
 - **Limitación:** el bolso no tiene asas/forro/cierre; la pieza plana no infiere
   una prenda; los mitones siguen siendo piezas planas cosidas, no tejidos en
   redondo con pulgar integrado.
+
+
+## D020 — Cuadrado de crochet vs bolso y prompt extractor v2
+
+- **Problema:** una foto de un cuadrado de crochet con motivo radial se
+  clasificaba como `bag` con confianza 1.0. El modelo justificaba la elección
+  por la forma cuadrada, aunque no había asas, abertura ni volumen.
+- **Decisión:** agregar la categoría `granny_square` para cuadrados/módulos de
+  crochet y hacer explícita la diferencia en el prompt `extractor-v2`: un
+  bolso requiere abertura, volumen y asas/correas; un panel cuadrado plano es
+  `granny_square` (crochet), `other` (panel plano) o `blanket` (manta), nunca
+  `bag` solo por su forma.
+- **Decisión:** la UI ofrece `Cuadrado / granny square`, limitado a crochet, con
+  la medida del lado; el motor lo despacha a la familia `granny_square`.
+- **Decisión:** el SVG/PDF del granny square muestra un cuadrado técnico con
+  textura, rondas, borde y medidas, rotulado como motivo simplificado.
+- **Motivo:** evitar que un cuadrado se convierta en un bolso con asas y que el
+  PDF muestre una pieza que la foto no respalda.
+- **Limitación:** el generador produce un cuadrado sólido simplificado; no
+  reproduce el motivo floral de la foto. La advertencia se muestra en el texto
+  y el esquema se rotula como simplificado.

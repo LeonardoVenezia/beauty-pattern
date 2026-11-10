@@ -40,7 +40,7 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
             return generate_amigurumi(spec, params)
         if spec.categoria is Category.SCARF:
             return generate_crochet_scarf(spec, params)
-        if spec.categoria is Category.BLANKET:
+        if spec.categoria in {Category.BLANKET, Category.GRANNY_SQUARE}:
             return generate_granny_square(spec, params)
         if spec.categoria is Category.BAG:
             return generate_crochet_bag(spec, params)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai.prompts.extractor_v1 import EXTRACTOR_PROMPT_VERSION, extractor_response_format
+from ai.prompts.extractor_v2 import EXTRACTOR_PROMPT_VERSION, extractor_response_format
 from evals.run_eval import run
 
 
@@ -20,3 +20,4 @@ def test_extractor_response_format_contains_garment_schema() -> None:
     schema = response_format["json_schema"]["schema"]
     assert "categoria" in schema["properties"]
     assert "confianza" in schema["properties"]
+    assert "granny_square" in schema["$defs"]["Category"]["enum"]

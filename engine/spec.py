@@ -26,6 +26,7 @@ class Category(StrEnum):
     SOCKS = "socks"
     SHAWL = "shawl"
     BLANKET = "blanket"
+    GRANNY_SQUARE = "granny_square"
     BAG = "bag"
     AMIGURUMI = "amigurumi"
     OTHER = "other"

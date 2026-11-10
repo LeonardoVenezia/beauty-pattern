@@ -65,7 +65,9 @@ Para accesorios se pueden enviar medidas propias en
 
 En crochet se generan amigurumis (esfera, cilindro y cono), un granny square
 sólido simplificado, una bufanda plana, un bolso rectangular y una pieza plana
-genérica. Para amigurumi se usan `dimensiones_cm` con `diameter` y `height`; la
+genérica. Si la foto muestra un cuadrado o módulo de crochet, la categoría es
+**Cuadrado / granny square** y la medida que se pide es el lado; no es un bolso
+salvo que se vean asas, abertura o volumen. Para amigurumi se usan `dimensiones_cm` con `diameter` y `height`; la
 forma se elige con `spec.forma` (`straight`, `boxy`, `a_line` o `curved`). El
 granny square usa `dimensiones_cm["size"]`; el bolso y la pieza plana usan
 `width` y `length`.

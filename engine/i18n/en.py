@@ -275,6 +275,7 @@ EN: dict[str, str] = {
     "pattern.schematic": "Schematic",
     "schematic.fold": "Fold",
     "schematic.optional_handles": "Optional handles (not included)",
+    "schematic.granny_base": "Basic square (simplified motif)",
     "pattern.chart": "Stitch chart",
     "pattern.legend": "Legend",
     "pattern.finished": "Finished",

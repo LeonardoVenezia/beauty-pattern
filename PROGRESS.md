@@ -301,9 +301,22 @@ navegador; no se ejecutó Playwright e2e en este entorno.
   mantiene el talle solo en prendas.
 - [x] Mensajes de error de la web traducidos para técnicas, categorías y
   proporciones no soportadas.
-- [x] Tests nuevos de bolso, pieza plana, mitones y crochet; 2134 tests en
+- [x] Tests nuevos de bolso, pieza plana, mitones y crochet; 2136 tests en
   verde, `ruff`/`mypy` limpios y build de la web en verde. El SVG/PDF del mitón
   se verificó visualmente con una silueta y el pulgar adjunto.
 - [x] Esquema del bolso reemplazado por un dibujo técnico con cuerpo, textura de
   tejido, línea de doblez, costuras y asas punteadas marcadas como opcionales
   (no incluidas). Verificado en SVG y PDF para dos agujas y crochet.
+
+
+## Corrección de clasificación: cuadrado de crochet
+
+- [x] La foto de un cuadrado de crochet se clasificaba como bolso. Se agregó
+  `granny_square` al esquema y la UI, y el prompt `extractor-v2` prohíbe
+  clasificar un panel cuadrado plano como bolso si no hay asas, abertura o
+  volumen.
+- [x] Verificado con la API real: la misma foto ahora devuelve
+  `categoria=granny_square`, `tecnica=crochet`, `construccion=modules`.
+- [x] El granny square tiene esquema SVG/PDF propio (cuadrado, textura, rondas,
+  borde y medidas) y la UI pide el lado del cuadrado.
+- [x] Tests de categoría, prompt, esquema y PDF; suite completa en verde.

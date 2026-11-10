@@ -74,6 +74,22 @@ def test_granny_square_is_flat_and_declared_simplified() -> None:
     assert pattern.sections[0].steps[0].expanded_ops()[0].kind.value == "ch"
 
 
+def test_granny_square_category_is_supported() -> None:
+    pattern = generate(
+        GarmentSpec(categoria=Category.GRANNY_SQUARE, tecnica=Technique.CROCHET),
+        PatternParams(dimensiones_cm={"size": 20.0}),
+    )
+    assert simulate(pattern).ok
+    assert pattern.meta.family == "granny_square"
+    measurements = {m.key: m.value_cm for m in pattern.measurements}
+    assert measurements["width"] == pytest.approx(20.0, abs=1.5)
+    assert measurements["length"] == pytest.approx(20.0, abs=1.5)
+    svg = render_schematic_svg(pattern)
+    assert "Cuadrado base (motivo simplificado)" in svg
+    assert "granny-body-" in svg
+    assert render_pattern_pdf(pattern).startswith(b"%PDF")
+
+
 @pytest.mark.parametrize(
     ("category", "family"),
     [(Category.BAG, "crochet_bag"), (Category.OTHER, "crochet_flat_piece")],

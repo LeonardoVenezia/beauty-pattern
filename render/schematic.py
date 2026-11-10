@@ -455,6 +455,96 @@ def _bag_schematic_svg(pattern: Pattern, language: str) -> str:
     return "".join(parts)
 
 
+def _granny_schematic_svg(pattern: Pattern, language: str) -> str:
+    width_cm = _value(pattern, "width")
+    length_cm = _value(pattern, "length")
+    width, height = 640.0, 760.0
+    scale = min(360.0 / width_cm, 360.0 / length_cm)
+    side_w = width_cm * scale
+    side_h = length_cm * scale
+    x = (width - side_w) / 2
+    y = 190.0 + (360.0 - side_h) / 2
+    clip_id = f"granny-body-{pattern.meta.id}"
+    title = t(pattern.meta.title_key, language)
+    desc = t("pattern.schematic", language)
+    parts = [
+        '<svg xmlns="http://www.w3.org/2000/svg" '
+        f'width="{width:.0f}" height="{height:.0f}" '
+        f'viewBox="0 0 {width:.0f} {height:.0f}" role="img" '
+        'aria-labelledby="schematic-title schematic-desc">',
+        f'<title id="schematic-title">{escape(title)}</title>',
+        f'<desc id="schematic-desc">{escape(desc)}</desc>',
+        '<rect width="100%" height="100%" fill="#ffffff"/>',
+        '<rect x="50" y="50" width="540" height="660" fill="none" '
+        'stroke="#e5d8ca" stroke-width="1"/>',
+        f'<defs><clipPath id="{escape(clip_id)}">'
+        f'<rect x="{x:.1f}" y="{y:.1f}" width="{side_w:.1f}" '
+        f'height="{side_h:.1f}" rx="6"/></clipPath></defs>',
+        f'<rect x="{x:.1f}" y="{y:.1f}" width="{side_w:.1f}" '
+        f'height="{side_h:.1f}" rx="6" fill="#f2e8dc" '
+        'stroke="#6b4f3a" stroke-width="1.5"/>',
+        f'<rect x="{x + 10:.1f}" y="{y + 10:.1f}" width="{side_w - 20:.1f}" '
+        f'height="{side_h - 20:.1f}" rx="4" fill="#e6d6c4" '
+        'stroke="#8a6a50" stroke-width="0.8" stroke-dasharray="6 4"/>',
+        f'<g clip-path="url(#{escape(clip_id)})">',
+    ]
+    parts.extend(
+        _panel_texture_svg(
+            pattern,
+            x + 22.0,
+            y + 22.0,
+            side_w - 44.0,
+            side_h - 44.0,
+            columns=8,
+            rows=8,
+        )
+    )
+    for inset in (0.16, 0.28, 0.40):
+        parts.append(
+            f'<rect x="{x + side_w * inset:.1f}" y="{y + side_h * inset:.1f}" '
+            f'width="{side_w * (1 - 2 * inset):.1f}" '
+            f'height="{side_h * (1 - 2 * inset):.1f}" fill="none" '
+            'stroke="#c9ad91" stroke-width="0.9" stroke-dasharray="5 4"/>'
+        )
+    parts.append("</g>")
+    for corner_x in (x + 10, x + side_w - 10):
+        for corner_y in (y + 10, y + side_h - 10):
+            parts.append(
+                f'<circle cx="{corner_x:.1f}" cy="{corner_y:.1f}" r="4" '
+                'fill="#8a6a50"/>'
+            )
+    parts.extend(
+        [
+            '<g font-family="Helvetica, sans-serif" font-size="12" fill="#3a2a1e">',
+            f'<text x="{width / 2:.1f}" y="{y - 16:.1f}" text-anchor="middle">'
+            f'{escape(t("schematic.granny_base", language))}</text>',
+            f'<line x1="{x:.1f}" y1="{y + side_h + 22:.1f}" '
+            f'x2="{x + side_w:.1f}" y2="{y + side_h + 22:.1f}" '
+            'stroke="#6b4f3a" stroke-width="0.8"/>',
+            f'<line x1="{x:.1f}" y1="{y + side_h + 17:.1f}" '
+            f'x2="{x:.1f}" y2="{y + side_h + 27:.1f}" '
+            'stroke="#6b4f3a" stroke-width="0.8"/>',
+            f'<line x1="{x + side_w:.1f}" y1="{y + side_h + 17:.1f}" '
+            f'x2="{x + side_w:.1f}" y2="{y + side_h + 27:.1f}" '
+            'stroke="#6b4f3a" stroke-width="0.8"/>',
+            f'<text x="{width / 2:.1f}" y="{y + side_h + 42:.1f}" '
+            'text-anchor="middle">'
+            f"{escape(_label(pattern, 'width', language))}: "
+            f"{escape(_fmt(pattern, width_cm))}</text>",
+            f'<line x1="{x + side_w + 18:.1f}" y1="{y:.1f}" '
+            f'x2="{x + side_w + 18:.1f}" y2="{y + side_h:.1f}" '
+            'stroke="#6b4f3a" stroke-width="0.8"/>',
+            f'<text x="{x + side_w + 26:.1f}" '
+            f'y="{y + side_h / 2:.1f}">'
+            f"{escape(_label(pattern, 'length', language))}: "
+            f"{escape(_fmt(pattern, length_cm))}</text>",
+            "</g>",
+            "</svg>",
+        ]
+    )
+    return "".join(parts)
+
+
 def render_accessory_schematic_svg(
     pattern: Pattern, *, lang: str | None = None
 ) -> str:
@@ -463,6 +553,8 @@ def render_accessory_schematic_svg(
         return _mitten_schematic_svg(pattern, language)
     if pattern.meta.family in {"bag", "crochet_bag"}:
         return _bag_schematic_svg(pattern, language)
+    if pattern.meta.family == "granny_square":
+        return _granny_schematic_svg(pattern, language)
     width_measure = _first_measure(
         pattern, ("width", "diameter", "circumference", "palm", "head")
     )

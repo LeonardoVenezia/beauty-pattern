@@ -29,6 +29,8 @@ def _schematic_drawing(pattern: Pattern, lang: str) -> Drawing:
         return _mitten_drawing(pattern, lang)
     if pattern.meta.family in {"bag", "crochet_bag"}:
         return _bag_drawing(pattern, lang)
+    if pattern.meta.family == "granny_square":
+        return _granny_drawing(pattern, lang)
     if pattern.meta.family in ACCESSORY_FAMILIES:
         return _accessory_drawing(pattern, lang)
     if pattern.meta.family != "raglan_top_down":
@@ -380,6 +382,153 @@ def _bag_drawing(pattern: Pattern, lang: str) -> Drawing:
         String(
             x + body_w + 22,
             (top + bottom) / 2,
+            f"{t('measure.length', lang)}: {length_cm:.1f} cm",
+            fontName="Helvetica",
+            fontSize=7,
+            fillColor="#3a2a1e",
+        )
+    )
+    return drawing
+
+
+def _granny_drawing(pattern: Pattern, lang: str) -> Drawing:
+    width_cm = _measure(pattern, "width")
+    length_cm = _measure(pattern, "length")
+    width, height = 360.0, 300.0
+    scale = min(220.0 / width_cm, 220.0 / length_cm)
+    side_w = width_cm * scale
+    side_h = length_cm * scale
+    x = (width - side_w) / 2
+    y = 40.0
+    top = y + side_h
+    drawing = Drawing(width, height)
+    drawing.add(
+        Rect(
+            x,
+            y,
+            side_w,
+            side_h,
+            rx=4,
+            fillColor="#f2e8dc",
+            strokeColor="#6b4f3a",
+            strokeWidth=1.2,
+        )
+    )
+    drawing.add(
+        Rect(
+            x + 7,
+            y + 7,
+            side_w - 14,
+            side_h - 14,
+            rx=3,
+            fillColor=None,
+            strokeColor="#8a6a50",
+            strokeWidth=0.7,
+            strokeDashArray=[4, 3],
+        )
+    )
+    texture_x = x + 16.0
+    texture_y = y + 16.0
+    texture_w = side_w - 32.0
+    texture_h = side_h - 32.0
+    columns, rows = 8, 8
+    cell_w = texture_w / columns
+    cell_h = texture_h / rows
+    size = min(cell_w, cell_h) * 0.24
+    for row in range(rows):
+        for column in range(columns):
+            cx = texture_x + (column + 0.5) * cell_w
+            cy = texture_y + (row + 0.5) * cell_h
+            drawing.add(
+                Line(
+                    cx - size,
+                    cy - size,
+                    cx + size,
+                    cy + size,
+                    strokeColor="#cdb59d",
+                    strokeWidth=0.5,
+                )
+            )
+            drawing.add(
+                Line(
+                    cx + size,
+                    cy - size,
+                    cx - size,
+                    cy + size,
+                    strokeColor="#cdb59d",
+                    strokeWidth=0.5,
+                )
+            )
+    for inset in (0.16, 0.28, 0.40):
+        drawing.add(
+            Rect(
+                x + side_w * inset,
+                y + side_h * inset,
+                side_w * (1 - 2 * inset),
+                side_h * (1 - 2 * inset),
+                fillColor=None,
+                strokeColor="#c9ad91",
+                strokeWidth=0.6,
+                strokeDashArray=[3, 3],
+            )
+        )
+    drawing.add(
+        String(
+            width / 2,
+            top + 12,
+            t("schematic.granny_base", lang),
+            fontName="Helvetica",
+            fontSize=7,
+            fillColor="#3a2a1e",
+            textAnchor="middle",
+        )
+    )
+    drawing.add(
+        Line(
+            x,
+            y - 18,
+            x + side_w,
+            y - 18,
+            strokeColor="#6b4f3a",
+            strokeWidth=0.7,
+        )
+    )
+    for tx in (x, x + side_w):
+        drawing.add(
+            Line(
+                tx,
+                y - 22,
+                tx,
+                y - 14,
+                strokeColor="#6b4f3a",
+                strokeWidth=0.7,
+            )
+        )
+    drawing.add(
+        String(
+            width / 2,
+            y - 28,
+            f"{t('measure.width', lang)}: {width_cm:.1f} cm",
+            fontName="Helvetica",
+            fontSize=7,
+            fillColor="#3a2a1e",
+            textAnchor="middle",
+        )
+    )
+    drawing.add(
+        Line(
+            x + side_w + 16,
+            top,
+            x + side_w + 16,
+            y,
+            strokeColor="#6b4f3a",
+            strokeWidth=0.7,
+        )
+    )
+    drawing.add(
+        String(
+            x + side_w + 22,
+            (top + y) / 2,
             f"{t('measure.length', lang)}: {length_cm:.1f} cm",
             fontName="Helvetica",
             fontSize=7,
