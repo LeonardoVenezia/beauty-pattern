@@ -59,3 +59,38 @@ DEFAULT_GAUGES: dict[str, Gauge] = {
     "bulky": Gauge(stitches_per_10cm=14.0, rows_per_10cm=18.0),
     "super_bulky": Gauge(stitches_per_10cm=9.0, rows_per_10cm=12.0),
 }
+
+
+# Crochet: puntos bajos por 10 cm (4 in) segun Craft Yarn Council, Standard
+# Yarn Weight System, punto medio del rango "crochet gauge ranges in single
+# crochet to 4 inch" (verificado en craftyarncouncil.com el 2026-11-11):
+# 1 super fine 21-32, 2 fine 16-20, 3 light 12-17, 4 medium 11-14,
+# 5 bulky 8-11, 6 super bulky 7-9. Lace (0) se publica en punto alto (32-42);
+# ASUNCION: 32 pb.
+CROCHET_SC_PER_10CM: dict[str, float] = {
+    "lace": 32.0,
+    "fingering": 26.5,
+    "sport": 18.0,
+    "dk": 14.5,
+    "worsted": 12.5,
+    "bulky": 9.5,
+    "super_bulky": 8.0,
+}
+
+# ASUNCION (CYC no publica vueltas): ancho y alto relativos al punto bajo.
+# Un pb es casi cuadrado; el pma ~1,5 veces mas alto y el pa ~2 veces.
+# Valores habituales de muestras publicadas, no una tabla oficial.
+_CROCHET_SHAPE: dict[str, tuple[float, float]] = {
+    "crochet_sc": (1.0, 1.1),
+    "crochet_hdc": (0.95, 0.75),
+    "crochet_dc": (0.9, 0.55),
+}
+
+
+def crochet_gauge(weight: str, stitch_id: str) -> Gauge:
+    """Densidad de referencia de crochet para un grosor y un punto base."""
+    sc = CROCHET_SC_PER_10CM.get(weight, CROCHET_SC_PER_10CM["dk"])
+    width, height = _CROCHET_SHAPE.get(stitch_id, _CROCHET_SHAPE["crochet_sc"])
+    return Gauge(
+        stitches_per_10cm=round(sc * width, 1), rows_per_10cm=round(sc * height, 1)
+    )

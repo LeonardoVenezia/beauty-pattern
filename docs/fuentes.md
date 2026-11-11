@@ -13,6 +13,20 @@ publica verificada se marca **ASUNCION**.
 - **Valores:** lace 36/48, fingering 30/40, sport 24/32, dk 22/30,
   worsted 18/24, bulky 14/18, super bulky 9/12.
 
+## Densidad de crochet, agujas y ganchillos
+
+- **Fuente:** Craft Yarn Council, *Standard Yarn Weight System*
+  (<https://www.craftyarncouncil.com/standards/yarn-weight-system>,
+  verificado el 2026-11-11). Rangos de punto bajo por 4 in y tamanos de aguja
+  y ganchillo por categoria.
+- **Uso:** `engine/gauge.py` (`CROCHET_SC_PER_10CM`, punto medio del rango) y
+  `engine/materials.py` (aguja/ganchillo cerca del punto medio del rango).
+  Los patrones de crochet sin muestra medida usan esta referencia y no la de
+  dos agujas.
+- **ASUNCION:** CYC no publica vueltas. Alto y ancho relativos al punto bajo:
+  pb 1,0 x 1,1; pma 0,95 x 0,75; pa 0,9 x 0,55. Lace (publicado en pa) se
+  toma como 32 pb.
+
 ## Tabla de talles
 
 - **Fuente de los rangos:** Craft Yarn Council, *Standard Body Measurements*

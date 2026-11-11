@@ -355,6 +355,7 @@ EN: dict[str, str] = {
     "error.ai_not_configured": "AI is not configured. Set AI_BASE_URL and AI_API_KEY.",
     "error.ai_no_images": "The AI endpoint does not accept images. Change provider or model.",
     "error.pattern_failed_verification": "The pattern failed the simulator and is not delivered.",
+    "error.too_small_for_yarn": "The piece is too small for this yarn: with {weight} yarn it cannot reach {target} cm accurately. Use a finer yarn or a larger size.",
     "error.impossible_proportions": "The requested proportions do not work for a top-down raglan: the yoke is {yoke} cm and does not fit the body ({body} cm) or sleeve ({sleeve} cm) length.",
     "error.unsupported_garment": "Garment {category} with construction {construction} is not supported by this family.",
     "error.unsupported_technique": "Technique {technique} is not supported by this family.",

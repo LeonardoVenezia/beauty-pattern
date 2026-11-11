@@ -10,26 +10,33 @@ from __future__ import annotations
 
 from engine.spec import YarnWeight
 
+# Agujas y ganchillos: tamano dentro del rango recomendado por el Craft Yarn
+# Council (Standard Yarn Weight System, verificado 2026-11-11), cerca del
+# punto medio y redondeado a un tamano comercial.
+# Agujas CYC: lace 1.5-2.25, super fine 2.25-3.25, fine 3.25-3.75,
+# light 3.75-4.5, medium 4.5-5.5, bulky 5.5-8, super bulky 8-12.75 mm.
 NEEDLE_MM_BY_WEIGHT: dict[YarnWeight, float] = {
-    YarnWeight.LACE: 2.5,
-    YarnWeight.FINGERING: 3.0,
+    YarnWeight.LACE: 2.0,
+    YarnWeight.FINGERING: 2.75,
     YarnWeight.SPORT: 3.5,
     YarnWeight.DK: 4.0,
     YarnWeight.WORSTED: 5.0,
     YarnWeight.BULKY: 6.5,
-    YarnWeight.SUPER_BULKY: 9.0,
+    YarnWeight.SUPER_BULKY: 10.0,
     YarnWeight.UNKNOWN: 4.0,
 }
 
+# Ganchillos CYC: lace 2.25 (regular), super fine 2.25-3.5, fine 3.5-4.5,
+# light 4.5-5.5, medium 5.5-6.5, bulky 6.5-9, super bulky 9-15 mm.
 HOOK_MM_BY_WEIGHT: dict[YarnWeight, float] = {
-    YarnWeight.LACE: 2.0,
-    YarnWeight.FINGERING: 2.5,
-    YarnWeight.SPORT: 3.0,
-    YarnWeight.DK: 3.5,
-    YarnWeight.WORSTED: 4.5,
-    YarnWeight.BULKY: 6.0,
-    YarnWeight.SUPER_BULKY: 8.0,
-    YarnWeight.UNKNOWN: 3.5,
+    YarnWeight.LACE: 2.25,
+    YarnWeight.FINGERING: 3.0,
+    YarnWeight.SPORT: 4.0,
+    YarnWeight.DK: 5.0,
+    YarnWeight.WORSTED: 6.0,
+    YarnWeight.BULKY: 8.0,
+    YarnWeight.SUPER_BULKY: 12.0,
+    YarnWeight.UNKNOWN: 5.0,
 }
 
 # Metros de hilo por cm2 de tejido, con margen incluido aparte.

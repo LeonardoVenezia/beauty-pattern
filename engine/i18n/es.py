@@ -355,6 +355,7 @@ ES: dict[str, str] = {
     "error.ai_not_configured": "La IA no esta configurada. Define AI_BASE_URL y AI_API_KEY.",
     "error.ai_no_images": "El endpoint de IA no acepta imagenes. Cambia de proveedor o de modelo.",
     "error.pattern_failed_verification": "El patron no paso el simulador y no se entrega.",
+    "error.too_small_for_yarn": "La pieza es demasiado chica para este hilo: con hilo {weight} no se llega a {target} cm con precision. Usa un hilo mas fino o una medida mayor.",
     "error.impossible_proportions": "Las proporciones pedidas no permiten un raglan top-down: el canesu mide {yoke} cm y no entra en el cuerpo ({body} cm) o la manga ({sleeve} cm).",
     "error.unsupported_garment": "La prenda {category} con construccion {construction} no esta soportada por esta familia.",
     "error.unsupported_technique": "La tecnica {technique} no esta soportada por esta familia.",

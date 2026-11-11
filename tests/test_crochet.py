@@ -4,13 +4,14 @@ from itertools import product
 
 import pytest
 
-from engine.garments import generate
+from engine.garments import ImpossibleProportionsError, generate
 from engine.simulator import simulate
 from engine.spec import (
     Category,
     GarmentSpec,
     PatternParams,
     Shape,
+    StitchPatternName,
     Technique,
     YarnWeight,
 )
@@ -37,10 +38,35 @@ def amigurumi(shape: Shape | None = None) -> GarmentSpec:
     ),
 )
 def test_amigurumi_shapes_simulate(shape: Shape | None, weight: YarnWeight) -> None:
-    pattern = generate(amigurumi(shape), PatternParams(peso_hilo=weight))
+    try:
+        pattern = generate(amigurumi(shape), PatternParams(peso_hilo=weight))
+    except ImpossibleProportionsError:
+        # Hilo muy grueso para 8 cm: debe fallar claro, nunca entregar mal.
+        assert weight is YarnWeight.SUPER_BULKY
+        return
     report = simulate(pattern)
     assert report.ok, [issue.message for issue in report.errors]
     assert pattern.sections[0].steps[0].expanded_ops()[0].kind.value == "magic_ring"
+
+
+def test_super_bulky_small_amigurumi_is_rejected() -> None:
+    with pytest.raises(ImpossibleProportionsError):
+        generate(amigurumi(), PatternParams(peso_hilo=YarnWeight.SUPER_BULKY))
+
+
+def test_crochet_uses_crochet_gauge_not_knitting() -> None:
+    """Regresion: el pa de DK no puede usar 30 vueltas/10 cm de dos agujas."""
+    spec = GarmentSpec(
+        categoria=Category.OTHER,
+        tecnica=Technique.CROCHET,
+        punto_base=StitchPatternName.CROCHET_DC,
+    )
+    pattern = generate(spec, PatternParams(dimensiones_cm={"width": 20, "length": 20}))
+    assert simulate(pattern).ok
+    assert pattern.params.densidad is not None
+    assert pattern.params.densidad.rows_per_10cm < 10
+    rows = len(pattern.sections[0].steps)
+    assert rows < 20
 
 
 def test_sphere_closes_and_has_measurements() -> None:

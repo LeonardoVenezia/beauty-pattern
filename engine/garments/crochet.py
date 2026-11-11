@@ -15,6 +15,7 @@ from math import pi
 from engine import ENGINE_VERSION
 from engine.distribution import split_even
 from engine.garments.base import ImpossibleProportionsError
+from engine.gauge import crochet_gauge
 from engine.ir import (
     Materials,
     Measurement,
@@ -51,6 +52,18 @@ _KIND_BY_ID = {
 def _pattern_id(spec: GarmentSpec) -> str:
     pattern_id = catalog_id_for_name(spec.punto_base or StitchPatternName.CROCHET_SC)
     return pattern_id if pattern_id in _CROCHET_IDS else "crochet_sc"
+
+
+def _with_crochet_gauge(spec: GarmentSpec, params: PatternParams) -> PatternParams:
+    """Si no hay muestra medida, fija la referencia de crochet del punto base.
+
+    Sin esto el motor usaba la densidad de dos agujas (22 x 30 en DK): 46
+    hileras de pa daban "15 cm" cuando en realidad miden ~40 cm.
+    """
+    if params.densidad is not None:
+        return params
+    gauge = crochet_gauge(params.peso_hilo.value, _pattern_id(spec))
+    return params.model_copy(update={"densidad": gauge})
 
 
 def _kind(pattern_id: str) -> StitchKind:
@@ -157,6 +170,7 @@ def _amigurumi_shape(spec: GarmentSpec) -> str:
 
 
 def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    params = _with_crochet_gauge(spec, params)
     if spec.tecnica is not Technique.CROCHET:
         raise ImpossibleProportionsError(
             "error.unsupported_technique", technique=spec.tecnica.value
@@ -171,6 +185,12 @@ def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
         6,
         mode="nearest",
     )
+    if abs(gauge.cm_for_stitches(target) - base_circumference) > 0.1 * base_circumference:
+        raise ImpossibleProportionsError(
+            "error.too_small_for_yarn",
+            weight=params.peso_hilo.value,
+            target=round(diameter, 1),
+        )
     increase_rounds = (target - 6) // 6
     height_rows = max(1, gauge.rows_for_cm(height))
     if shape == "sphere":
@@ -215,7 +235,9 @@ def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
     actual_height = gauge.cm_for_rows(total_rows)
     if abs(actual_height - height) > 1.5:
         raise ImpossibleProportionsError(
-            "error.impossible_proportions", yoke=0, body=height, sleeve=actual_height
+            "error.too_small_for_yarn",
+            weight=params.peso_hilo.value,
+            target=round(height, 1),
         )
     target_circumference = gauge.cm_for_stitches(target)
     actual_diameter = target_circumference / pi
@@ -337,6 +359,7 @@ def _flat_pattern(
     length: float,
     warning: Warning | None = None,
 ) -> Pattern:
+    params = _with_crochet_gauge(spec, params)
     gauge = resolve_gauge(params)
     pattern_id = _pattern_id(spec)
     multiple = get_stitch(pattern_id).multiple
