@@ -57,6 +57,7 @@ US_HOOK: dict[float, str] = {
 }
 
 _GARMENTS = {"raglan_top_down", "yoke", "set_in", "drop_shoulder", "cardigan", "vest"}
+_SIZED = _GARMENTS | {"crochet_pullover", "crochet_cardigan", "crochet_vest"}
 _LACE_CABLE = {StitchKind.YO, StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK}
 _SHAPING = {
     StitchKind.M1L, StitchKind.M1R, StitchKind.KFB, StitchKind.K2TOG, StitchKind.SSK,
@@ -198,7 +199,7 @@ def build_document(
         (t("doc.level", language), f"{level} \u2013 {t(f'level.{level}', language)}"),
         (t("doc.technique", language), t(f"technique_name.{base.spec.tecnica.value}", language)),
     ]
-    if base.meta.family in _GARMENTS:
+    if base.meta.family in _SIZED:
         rows.append((t("doc.sizes", language), ", ".join(sizes)))
         bust = next((m for m in base.measurements if m.key == "bust"), None)
         if bust is not None:
@@ -358,7 +359,7 @@ def build_document(
     line(t("doc.version", language, version=ENGINE_VERSION, date=when))
 
     subtitle_parts = [t(f"technique_name.{base.spec.tecnica.value}", language)]
-    if base.meta.family in _GARMENTS:
+    if base.meta.family in _SIZED:
         subtitle_parts.append(t("doc.sizes_line", language, sizes=", ".join(sizes)))
     subtitle_parts.append(t("doc.level_short", language, n=level))
     return PatternDocument(

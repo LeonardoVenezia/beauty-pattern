@@ -28,6 +28,9 @@ _GARMENT_FAMILIES = {
     "set_in_sleeve",
     "cardigan",
     "vest",
+    "crochet_pullover",
+    "crochet_cardigan",
+    "crochet_vest",
 }
 
 # Puntos de relleno: sus repeticiones crecen o decrecen dentro de una progresion
@@ -288,7 +291,9 @@ def _item_shape(item: Item) -> tuple[object, ...]:
         if item.kind in _FILLER_KINDS:
             times = None
         return (item.kind.value, times, item.width)
-    return ("repeat", item.times, tuple(_item_shape(op) for op in item.ops))
+    # Dentro de una repeticion los conteos se escriben ("*2 mpa, aum*"): no
+    # son relleno relativo, asi que no se enmascaran.
+    return ("repeat", item.times, tuple((op.kind.value, op.times, op.width) for op in item.ops))
 
 
 def _step_shape(step: Step) -> tuple[object, ...]:
@@ -305,9 +310,6 @@ def _masked_values(step: Step) -> tuple[int, ...]:
             if item.kind in _FILLER_KINDS:
                 values.append(item.times)
             return
-        for op in item.ops:
-            if op.kind in _FILLER_KINDS:
-                values.append(op.times)
 
     for item in step.items:
         collect(item)
@@ -675,6 +677,8 @@ def _section_intro(section: Section, lang: str) -> str:
             return t("pattern.cast_on", lang, n=cast_on)
         if any(op.kind is StitchKind.MAGIC_RING for op in first_ops):
             return t("pattern.magic_ring", lang)
+        if any(op.kind is StitchKind.RING for op in first_ops):
+            return t("pattern.ring", lang)
         chains = sum(op.times for op in first_ops if op.kind is StitchKind.CH)
         if chains:
             return t("pattern.cast_on_crochet", lang, n=chains)

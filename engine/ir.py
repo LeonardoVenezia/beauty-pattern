@@ -33,7 +33,7 @@ class Op:
     def __post_init__(self) -> None:
         if self.times < 1:
             raise ValueError(f"times debe ser >= 1, no {self.times}")
-        if self.kind in _CABLES and self.width is None:
+        if (self.kind in _CABLES or self.kind is StitchKind.RING) and self.width is None:
             raise ValueError(f"{self.kind.value} requiere width")
         stitch_effect(self.kind, self.width)
 

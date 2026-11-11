@@ -9,7 +9,6 @@ from hypothesis import strategies as st
 
 from engine.garments import (
     ImpossibleProportionsError,
-    UnsupportedGarmentError,
     generate,
 )
 from engine.gauge import Gauge
@@ -136,22 +135,23 @@ def test_sleeveless_is_rejected_clearly() -> None:
     assert error.value.key == "error.unsupported_sleeve"
 
 
-def test_unsupported_garment_is_rejected_clearly() -> None:
-    with pytest.raises(UnsupportedGarmentError) as error:
-        generate(
-            GarmentSpec(categoria=Category.GLOVES, tecnica=Technique.NEEDLES),
-            PatternParams(),
-        )
-    assert error.value.key == "error.unsupported_garment"
+def test_gloves_are_approximated_as_mittens_and_say_so() -> None:
+    pattern = generate(
+        GarmentSpec(categoria=Category.GLOVES, tecnica=Technique.NEEDLES),
+        PatternParams(),
+    )
+    assert pattern.meta.family == "mittens"
+    assert "approx_gloves" in {w.code for w in pattern.warnings}
+    assert simulate(pattern).ok
 
 
-def test_unsupported_technique_is_rejected_clearly() -> None:
-    with pytest.raises(UnsupportedGarmentError) as error:
-        generate(
-            GarmentSpec(categoria=Category.PULLOVER, tecnica=Technique.CROCHET),
-            PatternParams(),
-        )
-    assert error.value.key == "error.unsupported_technique"
+def test_crochet_pullover_has_its_own_family() -> None:
+    pattern = generate(
+        GarmentSpec(categoria=Category.PULLOVER, tecnica=Technique.CROCHET),
+        PatternParams(),
+    )
+    assert pattern.meta.family == "crochet_pullover"
+    assert simulate(pattern).ok
 
 
 def test_custom_measurements_are_used() -> None:

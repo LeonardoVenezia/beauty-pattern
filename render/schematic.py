@@ -530,7 +530,10 @@ def render_raglan_schematic_svg(pattern: Pattern, *, lang: str | None = None) ->
     return render_schematic_svg(pattern, lang=lang)
 
 
-_SWEATERS = {"raglan_top_down", "yoke", "set_in", "set_in_sleeve", "drop_shoulder"}
+_SWEATERS = {
+    "raglan_top_down", "yoke", "set_in", "set_in_sleeve", "drop_shoulder",
+    "crochet_pullover", "crochet_cardigan",
+}
 
 
 def render_schematic_svg(

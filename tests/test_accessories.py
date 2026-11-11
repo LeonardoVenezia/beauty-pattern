@@ -4,7 +4,7 @@ from itertools import product
 
 import pytest
 
-from engine.garments import UnsupportedGarmentError, generate
+from engine.garments import generate
 from engine.simulator import simulate
 from engine.sizes import BODY_SIZES
 from engine.spec import (
@@ -156,9 +156,10 @@ def test_bag_schematic_is_a_technical_drawing() -> None:
     assert "<polygon" in svg  # puntas de flecha de cota
 
 
-def test_unsupported_accessory_is_rejected_clearly() -> None:
-    with pytest.raises(UnsupportedGarmentError):
-        generate(
-            GarmentSpec(categoria=Category.GLOVES, tecnica=Technique.NEEDLES),
-            PatternParams(),
-        )
+def test_machine_knit_is_translated_to_hand_knitting() -> None:
+    pattern = generate(
+        GarmentSpec(categoria=Category.SCARF, tecnica=Technique.MACHINE),
+        PatternParams(),
+    )
+    assert pattern.spec.tecnica is Technique.NEEDLES
+    assert "approx_machine" in {w.code for w in pattern.warnings}

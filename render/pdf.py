@@ -11,6 +11,7 @@ verificada; este modulo solo maqueta.
 from __future__ import annotations
 
 import re
+from dataclasses import replace
 from io import BytesIO
 from typing import Any, Literal
 
@@ -361,5 +362,12 @@ def render_pattern_pdf(
             patterns = [pattern]
         if pattern.meta.size not in {p.meta.size for p in patterns}:
             patterns = [pattern]
+        # Lo que se aproximo al rutear la foto (ver engine/garments/routing.py)
+        # no sale de pattern.spec: se conserva al regenerar los talles.
+        carried = [w for w in pattern.warnings if w.code.startswith("approx_")]
+        patterns = [
+            replace(p, warnings=(*p.warnings, *(w for w in carried if w not in p.warnings)))
+            for p in patterns
+        ]
     document = build_document(patterns, highlight=pattern.meta.size, lang=lang)
     return render_document_pdf(document, paper=paper, print_mode=print_mode)

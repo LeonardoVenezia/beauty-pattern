@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 from engine.garments.accessories import (
     generate_bag,
     generate_blanket,
@@ -21,20 +23,60 @@ from engine.garments.base import (
 from engine.garments.crochet import (
     generate_amigurumi,
     generate_crochet_bag,
+    generate_crochet_cowl,
     generate_crochet_flat_piece,
+    generate_crochet_garment,
+    generate_crochet_hat,
     generate_crochet_scarf,
+    generate_crochet_shawl,
     generate_granny_square,
 )
 from engine.garments.flat import generate_flat
 from engine.garments.raglan import generate_raglan_top_down
+from engine.garments.routing import route
 from engine.garments.set_in import generate_set_in
 from engine.garments.yoke import generate_yoke
-from engine.ir import Pattern
-from engine.spec import Category, Construction, GarmentSpec, PatternParams, Technique
+from engine.ir import Pattern, Warning
+from engine.spec import (
+    Category,
+    ColorworkType,
+    Construction,
+    GarmentSpec,
+    PatternParams,
+    StitchPatternName,
+    Technique,
+    Texture,
+)
 
 
 def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
-    """Despacha la familia soportada. Falla claro si no hay familia."""
+    """Patron de la familia soportada mas cercana a lo que se vio.
+
+    `route` lleva cualquier combinacion de categoria y tecnica a una familia
+    verificada; lo que se aproximo o no se pudo reproducir queda en las
+    advertencias del patron (nunca se pierde en silencio).
+    """
+    routed, notes = route(spec)
+    pattern = _generate(routed, params)
+    extra = [Warning(f"approx_{note}", f"warning.approx.{note}") for note in notes]
+    codes = {w.code for w in pattern.warnings}
+    seen_other = spec.punto_base is StitchPatternName.OTHER or any(
+        obs.textura is Texture.OTHER for obs in spec.texturas
+    )
+    if seen_other and "texture_panel" not in codes:
+        extra.append(Warning("texture_unidentified", "warning.texture_unidentified"))
+    if (
+        spec.colorwork is not None
+        and spec.colorwork.tipo not in {ColorworkType.NONE, ColorworkType.STRIPES}
+        and "colorwork_not_charted" not in codes
+    ):
+        extra.append(Warning("colorwork_not_charted", "warning.colorwork_generic"))
+    if not extra:
+        return pattern
+    return replace(pattern, warnings=(*pattern.warnings, *extra))
+
+
+def _generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
     if spec.tecnica is Technique.CROCHET:
         if spec.categoria is Category.AMIGURUMI:
             return generate_amigurumi(spec, params)
@@ -44,6 +86,14 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
             return generate_granny_square(spec, params)
         if spec.categoria is Category.BAG:
             return generate_crochet_bag(spec, params)
+        if spec.categoria is Category.HAT:
+            return generate_crochet_hat(spec, params)
+        if spec.categoria is Category.COWL:
+            return generate_crochet_cowl(spec, params)
+        if spec.categoria is Category.SHAWL:
+            return generate_crochet_shawl(spec, params)
+        if spec.categoria in {Category.PULLOVER, Category.CARDIGAN, Category.VEST}:
+            return generate_crochet_garment(spec, params, spec.categoria.value)
         if spec.categoria is Category.OTHER:
             return generate_crochet_flat_piece(spec, params)
         raise UnsupportedGarmentError(

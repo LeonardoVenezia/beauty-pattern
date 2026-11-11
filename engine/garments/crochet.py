@@ -9,6 +9,7 @@ declara en una advertencia.
 from __future__ import annotations
 
 import hashlib
+from dataclasses import replace
 from datetime import UTC, datetime
 from math import pi
 
@@ -17,6 +18,9 @@ from engine.distribution import split_even
 from engine.garments.base import ImpossibleProportionsError
 from engine.gauge import crochet_gauge
 from engine.ir import (
+    CountRef,
+    Item,
+    JoinCheck,
     Materials,
     Measurement,
     Op,
@@ -119,7 +123,7 @@ def _warnings(params: PatternParams) -> list[Warning]:
 
 def _increase_round(
     stitches: int, increases: int, kind: StitchKind
-) -> tuple[list[Op], int]:
+) -> tuple[list[Item], int]:
     if increases < 0:
         raise ValueError("increases no puede ser negativo")
     if increases == 0:
@@ -132,7 +136,10 @@ def _increase_round(
             f"no se pueden hacer {increases} aumentos en {stitches} puntos"
         )
     groups = split_even(remaining, increases)
-    ops: list[Op] = []
+    ops: list[Item] = []
+    if len(set(groups)) == 1:  # reparto exacto: "(n pts, 1 aum) x veces"
+        unit = ((Op(kind, times=groups[0]),) if groups[0] else ()) + (Op(StitchKind.CROCHET_INC),)
+        return [Repeat(increases, unit)], stitches + increases
     for group in groups:
         if group:
             ops.append(Op(kind, times=group))
@@ -223,9 +230,9 @@ def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
         )
         number += 1
     for _ in range(decrease_rounds):
-        items, current = _decrease_round(current, 6, kind)
+        dec_items, current = _decrease_round(current, 6, kind)
         steps.append(
-            build_step(number, current + 6, items, note_key="pattern.note.amigurumi_decrease")
+            build_step(number, current + 6, dec_items, note_key="pattern.note.amigurumi_decrease")
         )
         number += 1
     if shape == "sphere" and current != 6:
@@ -545,4 +552,164 @@ def generate_granny_square(spec: GarmentSpec, params: PatternParams) -> Pattern:
             ("notion.crochet_hook", "notion.tapestry_needle", "notion.tape_measure"),
         ),
         warnings=tuple(warnings),
+    )
+
+
+# ---------------------------------------------------------------------------
+# Gorro, cuello y chal de crochet; prendas de crochet en rectangulos.
+# ---------------------------------------------------------------------------
+
+
+def _garment_stitch(spec: GarmentSpec) -> str:
+    """Punto base de prendas: el de la foto, o medio punto alto (el mas usado
+    en prendas de crochet; ASUNCION)."""
+    if spec.punto_base is None:
+        return "crochet_hdc"
+    return _pattern_id(spec)
+
+
+def _circle_increase(gauge_spc: float, gauge_rpc: float) -> int:
+    """Aumentos por vuelta de un circulo plano: 2 pi x alto de vuelta x pts/cm.
+
+    Da los valores clasicos (6 en pb, 8 en mpa, 12 en pa)."""
+    return max(6, min(12, round(2 * pi * gauge_spc / gauge_rpc)))
+
+
+def generate_crochet_hat(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    """Gorro de crochet de arriba hacia abajo: circulo plano y tubo recto."""
+    from engine.garments.accessories import HEAD_BY_SIZE
+
+    stitch_id = _garment_stitch(spec)
+    spec_hat = spec.model_copy(update={"punto_base": StitchPatternName(stitch_id)})
+    params = _with_crochet_gauge(spec_hat, params)
+    gauge = resolve_gauge(params)
+    kind = _kind(stitch_id)
+    head = params.dimensiones_cm.get("head", params.medidas_cm.get("head", HEAD_BY_SIZE.get(params.talla.upper(), 56.0)))
+    height = params.dimensiones_cm.get("length", params.medidas_cm.get("length", 21.0))
+    circumference = head * 0.92  # ASUNCION: el crochet cede menos que el tejido
+    inc = _circle_increase(gauge.stitches_per_cm, gauge.rows_per_cm)
+    target = adjust_stitches(max(inc, round_half_up(circumference * gauge.stitches_per_cm)), inc, mode="nearest")
+    crown = target // inc
+    rows = max(crown + 1, gauge.rows_for_cm(height))
+    steps: list[Step] = [build_step(1, 0, (Op(StitchKind.RING, width=inc),))]
+    current = inc
+    for number in range(2, rows + 1):
+        if current < target:
+            items, current = _increase_round(current, inc, kind)
+            note = "pattern.note.crochet_crown" if number == 2 else "pattern.note.circle_increase"
+            steps.append(build_step(number, current - inc, items, note_key=note))
+        else:
+            steps.append(build_step(number, current, (Op(kind, times=current),), note_key="pattern.note.plain" if steps[-1].note_key != "pattern.note.plain" else None))
+    section = Section(
+        id="hat",
+        name_key="section.hat_crochet",
+        mode="round",
+        steps=tuple(steps),
+        start_stitches=0,
+        end_stitches=current,
+        target=SectionTarget(measurement_key="length", target_cm=height, tolerance_cm=1.5, dimension="length"),
+        meta={"row_count": rows},
+        bind_off=True,
+    )
+    return Pattern(
+        meta=_meta(spec_hat, params, "crochet_hat", "title.hat_crochet"),
+        spec=spec_hat,
+        params=params,
+        sections=(section,),
+        measurements=(
+            Measurement(key="circumference", value_cm=gauge.cm_for_stitches(current), target_cm=circumference, tolerance_cm=2.5, kind="circumference"),
+            Measurement(key="length", value_cm=gauge.cm_for_rows(rows), target_cm=height, tolerance_cm=1.5, kind="length"),
+        ),
+        materials=_materials(spec_hat, params, circumference * height, ("notion.crochet_hook", "notion.stitch_markers", "notion.tapestry_needle")),
+        warnings=tuple(_warnings(params)),
+    )
+
+
+def generate_crochet_cowl(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    circumference = params.dimensiones_cm.get("circumference", params.medidas_cm.get("circumference", 60.0))
+    length = params.dimensiones_cm.get("length", params.medidas_cm.get("length", 25.0))
+    return _flat_pattern(
+        spec, params, family="crochet_cowl", title_key="title.cowl_crochet", section_id="cowl",
+        section_key="section.cowl", width=circumference, length=length,
+        warning=Warning("cowl_seam", "warning.cowl_seam", severity="info"),
+    )
+
+
+def generate_crochet_shawl(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    width = params.dimensiones_cm.get("width", params.medidas_cm.get("width", 50.0))
+    length = params.dimensiones_cm.get("length", params.medidas_cm.get("length", 170.0))
+    return _flat_pattern(
+        spec, params, family="crochet_shawl", title_key="title.shawl_crochet", section_id="shawl",
+        section_key="section.shawl", width=width, length=length,
+        warning=Warning("shawl_rectangular", "warning.shawl_rectangular"),
+    )
+
+
+CROCHET_SLEEVE_EASE_CM = 6.0
+
+
+def generate_crochet_garment(spec: GarmentSpec, params: PatternParams, kind: str) -> Pattern:
+    """Pullover, cardigan o chaleco de crochet en rectangulos que se cosen.
+
+    Es la construccion de crochet mas comun para principiantes (hombro caido,
+    mangas rectas, cuello barco al coser los hombros). ASUNCION: abertura del
+    cuello = 65 % del contorno de cuello, minimo 24 cm. Ver docs/fuentes.md.
+    """
+    from engine.garments.flat import _body_length_cm, _sleeve_length_cm
+    from engine.sizes import ease_for_fit, resolve_body_size
+
+    stitch_id = _garment_stitch(spec)
+    spec_g = spec.model_copy(update={"punto_base": StitchPatternName(stitch_id)})
+    params = _with_crochet_gauge(spec_g, params)
+    gauge = resolve_gauge(params)
+    size = resolve_body_size(params.talla, params.medidas_cm)
+    ease = params.ease_cm if params.ease_cm is not None else ease_for_fit(spec.ajuste)
+    multiple = get_stitch(stitch_id).multiple
+    body_cm = _body_length_cm(spec, size)
+    half = adjust_stitches(max(8, gauge.stitches_for_cm((size.bust_cm + ease) / 2)), 2 * multiple, mode="nearest")
+    rows = max(2, gauge.rows_for_cm(body_cm))
+    neck_open = min(half - 4, adjust_stitches(gauge.stitches_for_cm(max(24.0, size.neck_cm * 0.65)), 2, mode="nearest"))
+    shoulder = (half - neck_open) // 2
+    sections = [_flat_section("back", "section.back", half, rows, stitch_id, body_cm, note_key="pattern.note.crochet_flat")]
+    sections[0] = replace(sections[0], meta={**sections[0].meta, "shoulder": shoulder})
+    if kind == "cardigan":
+        for side in ("left", "right"):
+            sections.append(_flat_section(f"{side}_front", f"section.{side}_front", half // 2, rows, stitch_id, body_cm, note_key="pattern.note.crochet_flat"))
+    else:
+        sections.append(_flat_section("front", "section.front", half, rows, stitch_id, body_cm, note_key="pattern.note.crochet_flat"))
+    measurements = [
+        Measurement(key="bust", value_cm=gauge.cm_for_stitches(2 * half), target_cm=size.bust_cm + ease, tolerance_cm=3.0, kind="circumference"),
+        Measurement(key="body_length", value_cm=gauge.cm_for_rows(rows), target_cm=body_cm, tolerance_cm=1.5, kind="length"),
+        Measurement(key="neck", value_cm=2 * gauge.cm_for_stitches(neck_open), target_cm=2 * max(24.0, size.neck_cm * 0.65), tolerance_cm=3.0, kind="circumference"),
+    ]
+    joins = [
+        JoinCheck(
+            label_key="join.side_seam",
+            left=(CountRef("back", "end"),),
+            right=tuple(CountRef(s.id, "end") for s in sections[1:]),
+        )
+    ]
+    area = gauge.cm_for_stitches(2 * half) * body_cm
+    if kind != "vest":
+        sleeve_cm = _sleeve_length_cm(spec, size)
+        sleeve = adjust_stitches(max(8, gauge.stitches_for_cm(size.upper_arm_cm + CROCHET_SLEEVE_EASE_CM)), multiple, mode="nearest")
+        sleeve_rows = max(2, gauge.rows_for_cm(sleeve_cm))
+        for side in ("left", "right"):
+            sections.append(_flat_section(f"sleeve_{side}", f"section.sleeve_{side}", sleeve, sleeve_rows, stitch_id, sleeve_cm, note_key="pattern.note.crochet_flat"))
+        measurements += [
+            Measurement(key="sleeve_length", value_cm=gauge.cm_for_rows(sleeve_rows), target_cm=sleeve_cm, tolerance_cm=1.5, kind="length"),
+            Measurement(key="upper_arm", value_cm=gauge.cm_for_stitches(sleeve), target_cm=size.upper_arm_cm + CROCHET_SLEEVE_EASE_CM, tolerance_cm=3.0, kind="circumference"),
+        ]
+        area += 2 * gauge.cm_for_stitches(sleeve) * sleeve_cm
+    warnings = _warnings(params)
+    warnings.append(Warning("crochet_garment", "warning.crochet_garment"))
+    return Pattern(
+        meta=_meta(spec_g, params, f"crochet_{kind}", f"title.{kind}_crochet"),
+        spec=spec_g,
+        params=params,
+        sections=tuple(sections),
+        measurements=tuple(measurements),
+        materials=_materials(spec_g, params, area, ("notion.crochet_hook", "notion.tapestry_needle", "notion.tape_measure")),
+        warnings=tuple(warnings),
+        joins=tuple(joins),
     )

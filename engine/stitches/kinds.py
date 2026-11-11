@@ -44,6 +44,7 @@ class StitchKind(StrEnum):
     CROCHET_INC = "crochet_inc"
     CROCHET_DEC = "crochet_dec"
     MAGIC_RING = "magic_ring"
+    RING = "ring"  # anillo magico con `width` pts del punto de la pieza
     # Granny square clasico, trabajado en los espacios de la vuelta anterior.
     GRANNY_START = "granny_start"
     GRANNY_CORNER = "granny_corner"
@@ -104,6 +105,10 @@ _CABLES = {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK}
 
 def stitch_effect(kind: StitchKind, width: int | None = None) -> Effect:
     """Efecto de un punto. Los cables consumen y producen `width` puntos."""
+    if kind is StitchKind.RING:
+        if width is None or width < 3:
+            raise ValueError(f"anillo: al menos 3 pts, no {width!r}")
+        return Effect(0, width)
     if kind in _CABLES:
         if width is None or width < 2 or width % 2 != 0:
             raise ValueError(f"cable {kind.value}: ancho par >= 2 requerido, no {width!r}")
