@@ -282,6 +282,16 @@ const measurementLabels: Record<string, string> = {
   thumb: "Largo del pulgar",
 };
 
+const textureLabels: Record<string, string> = {
+  cables: "Trenzas",
+  lace: "Calados",
+  bobbles: "Bodoques",
+  honeycomb: "Nido de abeja",
+  ribbing: "Elástico",
+  cabled_ribbing: "Elástico con trenzas",
+  other: "Otra textura",
+};
+
 const warningLabels: Record<string, string> = {
   "warning.gauge_sample": "Tejé una muestra antes de empezar.",
   "warning.estimated_yardage": "El metraje es una estimación con margen.",
@@ -886,14 +896,33 @@ export default function HomePage() {
             ) : null}
 
             {spec.texturas.length > 0 ? (
-              <div className="mt-4 flex flex-wrap gap-2">
-                {spec.texturas.map((texture) => (
+              <p className="mt-4 text-sm text-ink/70">
+                Texturas detectadas. En pulóveres se tejen como un panel en el cuerpo; quitá
+                las que no estén en la prenda.
+              </p>
+            ) : null}
+            {spec.texturas.length > 0 ? (
+              <div className="mt-2 flex flex-wrap gap-2">
+                {spec.texturas.map((texture, index) => (
                   <span
-                    key={`${texture.textura}-${texture.ubicacion ?? ""}`}
-                    className="rounded-full bg-sage/10 px-3 py-1 text-sm text-sage"
+                    key={`${texture.textura}-${texture.ubicacion ?? ""}-${index}`}
+                    className="inline-flex items-center gap-2 rounded-full bg-sage/10 px-3 py-1 text-sm text-sage"
                   >
-                    {texture.textura}
+                    {textureLabels[texture.textura] ?? texture.textura}
                     {texture.ubicacion ? ` · ${texture.ubicacion}` : ""}
+                    <button
+                      type="button"
+                      aria-label={`Quitar ${textureLabels[texture.textura] ?? texture.textura}`}
+                      onClick={() =>
+                        setSpec({
+                          ...spec,
+                          texturas: spec.texturas.filter((_, i) => i !== index),
+                        })
+                      }
+                      className="rounded-full px-1 font-bold leading-none hover:bg-sage/20"
+                    >
+                      ×
+                    </button>
                   </span>
                 ))}
               </div>
