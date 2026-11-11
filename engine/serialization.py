@@ -67,6 +67,7 @@ def _section_to_dict(section: Section) -> dict[str, Any]:
         "meta": dict(section.meta),
         "bind_off": section.bind_off,
         "note_keys": list(section.note_keys),
+        "division": [list(part) for part in section.division],
     }
 
 
@@ -176,6 +177,7 @@ def _section_from_dict(data: dict[str, Any]) -> Section:
         meta={key: int(value) for key, value in data.get("meta", {}).items()},
         bind_off=bool(data.get("bind_off", False)),
         note_keys=tuple(data.get("note_keys", ())),
+        division=tuple((str(part), int(n)) for part, n in data.get("division", ())),
     )
 
 

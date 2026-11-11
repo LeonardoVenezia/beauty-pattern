@@ -445,6 +445,14 @@ def glossary_blocks(pattern: Pattern, lang: str) -> tuple[Block, ...]:
 
 
 def _section_intro(section: Section, lang: str) -> str:
+    if section.division:
+        parts = ", ".join(t(f"pattern.div.{part}", lang, n=n) for part, n in section.division)
+        return t(
+            "pattern.separation_round",
+            lang,
+            parts=parts,
+            body=section.meta.get("body", section.end_stitches),
+        )
     if section.steps:
         first_ops = section.steps[0].expanded_ops()
         cast_on = sum(op.times for op in first_ops if op.kind is StitchKind.CAST_ON)

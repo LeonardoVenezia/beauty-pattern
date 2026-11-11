@@ -38,6 +38,7 @@ from engine.ir import (
     Step,
     Warning,
     build_step,
+    division_ops,
 )
 from engine.materials import default_needle_mm, estimate_yarn
 from engine.rounding import round_half_up
@@ -476,16 +477,31 @@ def _yoke_section(plan: RaglanPlan) -> Section:
     )
 
 
+def _division(plan: RaglanPlan) -> tuple[tuple[str, int], ...]:
+    """Vuelta de separacion en orden fisico.
+
+    Al final del canesu la vuelta es: espalda, raglan, manga, raglan,
+    delantero, raglan, manga, raglan. Los puntos de raglan quedan en el cuerpo.
+    """
+    line = RAGLAN_STS // 4
+    back = plan.back_neck + 2 * plan.r_body
+    front = plan.front_neck + 2 * plan.r_body
+    sleeve = plan.sleeve_neck + 2 * plan.r_sleeve
+    return (
+        ("knit", back + line),
+        ("hold", sleeve),
+        ("cast_on", plan.underarm_sts),
+        ("knit", line + front + line),
+        ("hold", sleeve),
+        ("cast_on", plan.underarm_sts),
+        ("knit", line),
+    )
+
+
 def _body_section(plan: RaglanPlan, gauge: Gauge) -> Section:
+    division = _division(plan)
     first = build_step(
-        1,
-        plan.body_before,
-        (
-            Op(StitchKind.KNIT, times=plan.body_before),
-            Op(StitchKind.CAST_ON, times=plan.underarm_sts),
-            Op(StitchKind.CAST_ON, times=plan.underarm_sts),
-        ),
-        note_key="pattern.note.separation",
+        1, plan.body_before, division_ops(division), note_key="pattern.note.separation"
     )
     steps: list[Step] = [first]
     for number in range(2, plan.body_rows + 1):
@@ -497,6 +513,7 @@ def _body_section(plan: RaglanPlan, gauge: Gauge) -> Section:
             )
         )
     return Section(
+        division=division,
         id="body",
         name_key="section.body",
         mode="round",

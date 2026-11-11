@@ -31,6 +31,7 @@ from engine.ir import (
     Step,
     Warning,
     build_step,
+    division_ops,
 )
 from engine.materials import default_needle_mm, estimate_yarn
 from engine.rounding import round_half_up
@@ -334,15 +335,18 @@ def _yoke_section(plan: YokePlan) -> Section:
 
 
 def _body_section(plan: YokePlan) -> Section:
+    # Orden fisico: espalda, manga, delantero, manga.
+    half = plan.body_before // 2
+    division = (
+        ("knit", half),
+        ("hold", plan.sleeve_before),
+        ("cast_on", plan.underarm_sts),
+        ("knit", plan.body_before - half),
+        ("hold", plan.sleeve_before),
+        ("cast_on", plan.underarm_sts),
+    )
     first = build_step(
-        1,
-        plan.body_before,
-        (
-            Op(StitchKind.KNIT, times=plan.body_before),
-            Op(StitchKind.CAST_ON, times=plan.underarm_sts),
-            Op(StitchKind.CAST_ON, times=plan.underarm_sts),
-        ),
-        note_key="pattern.note.separation",
+        1, plan.body_before, division_ops(division), note_key="pattern.note.separation"
     )
     steps: list[Step] = [first]
     for number in range(2, plan.body_rows + 1):
@@ -354,6 +358,7 @@ def _body_section(plan: YokePlan) -> Section:
             )
         )
     return Section(
+        division=division,
         id="body",
         name_key="section.body",
         mode="round",

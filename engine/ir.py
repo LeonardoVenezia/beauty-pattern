@@ -113,6 +113,12 @@ class Step:
         return tuple(result)
 
 
+def division_ops(division: Sequence[tuple[str, int]]) -> tuple[Op, ...]:
+    """Ops de una vuelta de separacion. "hold" no se teje en esta seccion."""
+    kinds = {"knit": StitchKind.KNIT, "cast_on": StitchKind.CAST_ON}
+    return tuple(Op(kinds[part], times=n) for part, n in division if part != "hold" and n)
+
+
 def build_step(
     number: int,
     start_stitches: int,
@@ -176,6 +182,8 @@ class Section:
     meta: dict[str, int] = field(default_factory=dict)
     bind_off: bool = False
     note_keys: tuple[str, ...] = ()
+    # Vuelta de separacion en orden fisico: ("knit"|"hold"|"cast_on", n).
+    division: tuple[tuple[str, int], ...] = ()
 
     def __post_init__(self) -> None:
         if self.start_stitches < 0 or self.end_stitches < 0:
