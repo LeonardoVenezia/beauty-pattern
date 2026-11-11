@@ -548,7 +548,9 @@ def render_schematic_svg(
         if fam in {"bag", "crochet_bag"}:
             return _bag_svg(pattern, language)
         if fam == "granny_square":
-            return _granny_svg(pattern, language)
+            from render.granny import render_granny_svg
+
+            return render_granny_svg(pattern, language)
         if fam == "hat":
             return _hat_svg(pattern, language)
         if fam == "cowl":

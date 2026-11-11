@@ -114,7 +114,7 @@ def _common_warnings(params: PatternParams) -> list[Warning]:
         Warning("estimated_yardage", "warning.estimated_yardage", severity="info"),
         Warning("assumption", "warning.assumption", severity="info"),
     ]
-    if params.dimensiones_cm or params.medidas_cm:
+    if params.medidas_cm:
         warnings.append(
             Warning("custom_measurements", "warning.custom_measurements", severity="info")
         )

@@ -213,12 +213,14 @@ async def get_pattern(pattern_id: str) -> dict[str, object]:
 
 
 @app.get("/pattern/{pattern_id}/pdf")
-async def get_pattern_pdf(pattern_id: str) -> Response:
+async def get_pattern_pdf(
+    pattern_id: str, papel: Literal["A4", "Letter"] = "A4", imprimir: bool = False
+) -> Response:
     record = database_from_env().get_pattern(pattern_id)
     if record is None:
         raise HTTPException(status_code=404, detail="patron no encontrado")
     pattern = pattern_from_dict(record.pattern)
-    pdf = render_pattern_pdf(pattern)
+    pdf = render_pattern_pdf(pattern, paper=papel, print_mode=imprimir)
     return Response(
         content=pdf,
         media_type="application/pdf",

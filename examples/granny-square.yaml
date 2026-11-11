@@ -1,0 +1,8 @@
+# Granny square clasico en crochet, un color por vuelta.
+spec:
+  categoria: granny_square
+  tecnica: crochet
+  colorwork: {tipo: stripes, colores: 5, paleta: [crema, verde, rosa, gris, beige]}
+params:
+  peso_hilo: dk
+  dimensiones_cm: {size: 20}

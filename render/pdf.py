@@ -299,7 +299,8 @@ def render_document_pdf(
             flush()
             drawing = _drawing(document.schematic, lang, width, doc.height * 0.7, letters_only=multi)
             if drawing is not None:
-                story.append(KeepTogether([drawing]))
+                heading = story.pop() if story and isinstance(story[-1], Paragraph) and story[-1].style.name == "H1" else None
+                story.append(KeepTogether([heading, drawing] if heading is not None else [drawing]))
         elif kind in {BlockKind.STEP, BlockKind.REPEAT}:
             add(Paragraph("• " + _highlight(block.text, highlight, document.sizes, lang), styles["step"]))
         elif kind is BlockKind.WARNING:

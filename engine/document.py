@@ -258,7 +258,10 @@ def build_document(
             tool=t("doc.hook" if is_crochet else "doc.needle", language, mm=f"{tool or 0:g}"),
         )
     )
-    line(t("doc.gauge_why", language))
+    if base.meta.family == "granny_square":
+        rounds_cm = 2 * 3 / gauge.rows_per_cm
+        line(t("doc.gauge_granny", language, cm=_half(rounds_cm)))
+    line(t("doc.gauge_why_crochet" if is_crochet else "doc.gauge_why", language))
 
     # 7. Abreviaturas (union de todos los talles, en orden alfabetico).
     glossary: list[Block] = []

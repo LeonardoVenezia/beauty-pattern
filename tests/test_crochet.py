@@ -112,8 +112,8 @@ def test_granny_square_category_is_supported() -> None:
     assert measurements["length"] == pytest.approx(20.0, abs=1.5)
     svg = render_schematic_svg(pattern)
     assert "<svg" in svg
-    assert "20.0 cm" in svg
-    assert "<polygon" in svg
+    assert "20 cm" in svg
+    assert svg.count("<rect") >= 8  # una franja por vuelta
     assert render_pattern_pdf(pattern).startswith(b"%PDF")
 
 

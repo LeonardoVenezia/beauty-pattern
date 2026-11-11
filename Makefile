@@ -3,7 +3,7 @@ PY := $(UV) run python
 ENV_FILE := $(if $(wildcard .env),--env-file .env,)
 export PATH := $(HOME)/.local/bin:$(PATH)
 
-.PHONY: setup web-install test lint typecheck eval demo dev api web e2e pdf examples clean
+.PHONY: patron setup web-install test lint typecheck eval demo dev api web e2e pdf examples clean
 
 setup:
 	$(UV) sync --all-groups
@@ -49,3 +49,7 @@ e2e:
 clean:
 	rm -rf .pytest_cache .ruff_cache .mypy_cache data .ai-cache
 	find . -name '__pycache__' -type d -prune -exec rm -rf {} +
+
+# Uso: make patron ARCHIVO=examples/sueter-raglan.yaml TALLE=M
+patron:
+	$(PY) -m scripts.generar_patron $(ARCHIVO) $(if $(TALLE),--talle $(TALLE),) $(if $(SALIDA),--salida $(SALIDA),)

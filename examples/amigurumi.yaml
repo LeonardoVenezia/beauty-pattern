@@ -1,0 +1,7 @@
+# Amigurumi en crochet: esfera de 8 cm.
+spec:
+  categoria: amigurumi
+  tecnica: crochet
+params:
+  peso_hilo: dk
+  dimensiones_cm: {diameter: 8}

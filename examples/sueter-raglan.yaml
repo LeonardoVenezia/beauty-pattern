@@ -1,0 +1,11 @@
+# Sueter con talles, dos agujas en redondo.
+spec:
+  categoria: pullover
+  tecnica: circular
+  construccion: raglan_top_down
+  escote: crew
+  largo_manga: long
+  ajuste: regular
+params:
+  peso_hilo: dk
+  idioma: es

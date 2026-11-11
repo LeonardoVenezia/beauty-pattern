@@ -1,0 +1,8 @@
+# Chal rectangular, dos agujas.
+spec:
+  categoria: shawl
+  tecnica: needles
+  punto_base: garter
+params:
+  peso_hilo: fingering
+  dimensiones_cm: {width: 50, length: 170}

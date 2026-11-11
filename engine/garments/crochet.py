@@ -106,12 +106,11 @@ def _materials(
 
 def _warnings(params: PatternParams) -> list[Warning]:
     warnings = [
-        Warning("gauge_sample", "warning.gauge_sample", severity="info"),
         Warning("estimated_yardage", "warning.estimated_yardage", severity="info"),
         Warning("assumption", "warning.assumption", severity="info"),
         Warning("crochet_gauge", "warning.crochet_gauge", severity="info"),
     ]
-    if params.dimensiones_cm or params.medidas_cm:
+    if params.medidas_cm:
         warnings.append(
             Warning("custom_measurements", "warning.custom_measurements", severity="info")
         )
