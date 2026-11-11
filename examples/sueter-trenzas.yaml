@@ -1,0 +1,9 @@
+# Sueter raglan con panel de trenzas en el cuerpo (textura vista en la foto).
+spec:
+  categoria: pullover
+  tecnica: circular
+  construccion: raglan_top_down
+  texturas:
+    - {textura: cables, ubicacion: "delantero y espalda"}
+params:
+  peso_hilo: worsted

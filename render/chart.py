@@ -234,8 +234,8 @@ def render_stitch_chart_svg(
             f'font-size="10" fill="#555555">{row_number}</text>'
         )
         cells = pattern.chart_cells(row_number, in_the_round=in_the_round)
-        for _repeat in range(repeats):
-            x = MARGIN_LEFT
+        for repeat_index in range(repeats):
+            x = MARGIN_LEFT + repeat_index * pattern.multiple * CELL
             for cell in cells:
                 cell_width = cell.span * CELL
                 parts.append(
@@ -252,7 +252,23 @@ def render_stitch_chart_svg(
                         parts.append(symbol_svg)
                 x += cell_width
 
-    legend_y = MARGIN_TOP + rows * CELL + 34
+    # Recuadro de la repeticion (estandar: la repeticion se marca en color) y
+    # numeracion de puntos abajo, de derecha a izquierda.
+    box_w = pattern.multiple * CELL
+    parts.append(
+        f'<rect x="{_f(MARGIN_LEFT)}" y="{_f(MARGIN_TOP)}" width="{_f(box_w)}" '
+        f'height="{_f(rows * CELL)}" fill="none" stroke="#c0392b" stroke-width="2"/>'
+    )
+    total_cols = pattern.multiple * repeats
+    for col in range(total_cols):
+        number = total_cols - col
+        parts.append(
+            f'<text x="{_f(MARGIN_LEFT + col * CELL + CELL / 2)}" '
+            f'y="{_f(MARGIN_TOP + rows * CELL + 12)}" text-anchor="middle" '
+            f'font-family="system-ui, sans-serif" font-size="8.5" fill="#555555">{number}</text>'
+        )
+
+    legend_y = MARGIN_TOP + rows * CELL + 46
     parts.append(
         f'<text x="{MARGIN_LEFT}" y="{_f(legend_y - 10)}" '
         f'font-family="system-ui, sans-serif" font-size="12" '

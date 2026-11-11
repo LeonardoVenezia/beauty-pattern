@@ -25,6 +25,12 @@ GARMENTS = [
 ] + [
     GarmentSpec(categoria=Category.CARDIGAN, tecnica=Technique.NEEDLES),
     GarmentSpec(categoria=Category.VEST, tecnica=Technique.NEEDLES),
+    GarmentSpec(
+        categoria=Category.PULLOVER,
+        tecnica=Technique.CIRCULAR,
+        construccion=Construction.RAGLAN_TOP_DOWN,
+        texturas=[{"textura": "cables"}],
+    ),
 ]
 
 

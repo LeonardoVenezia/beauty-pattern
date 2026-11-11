@@ -35,7 +35,7 @@ _GARMENT_FAMILIES = {
 # al comparar la "forma" de dos vueltas.
 _FILLER_KINDS = {StitchKind.KNIT, StitchKind.PURL, StitchKind.SC, StitchKind.HDC, StitchKind.DC}
 
-_MAX_CYCLE = 6
+_MAX_CYCLE = 8  # el motivo mas largo del catalogo (nido de abeja) tiene 8 vueltas
 _MIN_SAVINGS = 3
 
 
@@ -54,6 +54,7 @@ class BlockKind(Enum):
     WARNING = auto()
     TABLE = auto()  # rows[0] es el encabezado
     SCHEMATIC = auto()  # lugar del esquema; el render inserta el dibujo
+    CHART = auto()  # grafico de puntos; text = indice en PatternDocument.charts
     PAGE_BREAK = auto()
 
 
@@ -570,7 +571,10 @@ def glossary_blocks(pattern: Pattern, lang: str) -> tuple[Block, ...]:
         blocks.append(
             Block(BlockKind.GLOSSARY, entry, label=abbreviation, value=meaning)
         )
-    if pattern.meta.family == "raglan_top_down":
+    uses_markers = pattern.meta.family == "raglan_top_down" or any(
+        "panel_rows" in section.meta for section in pattern.sections
+    )
+    if uses_markers:
         for key in ("glossary.marker", "glossary.slip_marker"):
             abbreviation, meaning = t(key, lang).split("::", 1)
             blocks.append(Block(BlockKind.GLOSSARY, t(key, lang), label=abbreviation, value=meaning))
@@ -657,6 +661,41 @@ def _length(value_cm: float, units: str, lang: str) -> str:
     return f"{_half(value_cm)} {t('unit.cm', lang)}"
 
 
+def _panel_lines(section: Section, lang: str) -> tuple[Block, ...] | None:
+    """Cuerpo con paneles de textura: marcadores + referencia al grafico.
+
+    Las vueltas de la IR siguen explicitas (y simuladas); el texto las resume
+    como en un patron impreso. Devuelve None si la forma no es la esperada.
+    """
+    rows = section.meta.get("panel_rows")
+    if not rows or len(section.steps) < 2:
+        return None
+    first = section.steps[1]
+    plain = [item.times for item in first.items if isinstance(item, Op) and item.kind is StitchKind.KNIT]
+    if len(plain) != 3 or not any(isinstance(item, Repeat) for item in first.items):
+        return None
+    width = section.meta["panel_width"]
+    repeats = section.meta["panel_repeats"]
+    count = len(section.steps) - 1
+    last = count % rows or rows
+    cable = not isinstance(first.items[-2], Op) or first.items[-2].kind is not StitchKind.PURL
+    return (
+        Block(
+            BlockKind.LINE,
+            t("pattern.panel_markers", lang, a=plain[0], w=width, b=plain[1], c=plain[2]),
+        ),
+        Block(
+            BlockKind.LINE,
+            t("pattern.panel_cable" if cable else "pattern.panel_contiguous", lang, w=width, r=repeats),
+        ),
+        Block(
+            BlockKind.STEP,
+            t("pattern.panel_rounds", lang, n=count, rows=rows, sts=section.end_stitches),
+        ),
+        Block(BlockKind.LINE, t("pattern.panel_end", lang, k=last)),
+    )
+
+
 def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
     """Instrucciones por seccion (sin encabezado de documento)."""
     blocks: list[Block] = []
@@ -668,15 +707,19 @@ def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
         for note_key in section.note_keys:
             blocks.append(Block(BlockKind.LINE, t(note_key, language)))
         steps = section.steps[1:] if section.division else section.steps
-        blocks.extend(
-            render_step_lines(
-                compress_steps(steps),
-                section.mode,
-                language,
-                relative=pattern.spec.tecnica.value != "crochet",
-                markers=section.id == "yoke" and pattern.meta.family == "raglan_top_down",
+        panel = _panel_lines(section, language)
+        if panel is not None:
+            blocks.extend(panel)
+        else:
+            blocks.extend(
+                render_step_lines(
+                    compress_steps(steps),
+                    section.mode,
+                    language,
+                    relative=pattern.spec.tecnica.value != "crochet",
+                    markers=section.id == "yoke" and pattern.meta.family == "raglan_top_down",
+                )
             )
-        )
         if section.target is not None and section.target.dimension == "length" and section.steps:
             blocks.append(
                 Block(

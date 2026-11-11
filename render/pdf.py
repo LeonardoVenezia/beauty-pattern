@@ -43,6 +43,7 @@ from engine.document import PatternDocument, build_document
 from engine.i18n import t
 from engine.ir import Pattern
 from engine.multisize import NOT_APPLICABLE
+from render.chart import render_stitch_chart_svg
 from render.schematic import render_schematic_svg
 
 Paper = Literal["A4", "Letter"]
@@ -106,6 +107,20 @@ def _highlight(text: str, index: int | None, sizes: tuple[str, ...], lang: str) 
         return f"{values[0]} ({', '.join(values[1:])})"
 
     return _MULTI.sub(mark, escaped)
+
+
+def _svg_drawing(svg: str, max_w: float, max_h: float) -> Flowable | None:
+    if svg2rlg is None:
+        return None
+    drawing = svg2rlg(BytesIO(svg.encode("utf-8")))
+    if drawing is None:
+        return None
+    scale = min(max_w / drawing.width, max_h / drawing.height, 1.6)
+    drawing.width *= scale
+    drawing.height *= scale
+    drawing.scale(scale, scale)
+    drawing.hAlign = "CENTER"
+    return drawing
 
 
 def _drawing(
@@ -298,6 +313,14 @@ def render_document_pdf(
         elif kind is BlockKind.SCHEMATIC:
             flush()
             drawing = _drawing(document.schematic, lang, width, doc.height * 0.7, letters_only=multi)
+            if drawing is not None:
+                heading = story.pop() if story and isinstance(story[-1], Paragraph) and story[-1].style.name == "H1" else None
+                story.append(KeepTogether([heading, drawing] if heading is not None else [drawing]))
+        elif kind is BlockKind.CHART:
+            flush()
+            chart = document.charts[int(block.text)]
+            svg = render_stitch_chart_svg(chart, repeats=2, lang=lang, in_the_round=True)
+            drawing = _svg_drawing(svg, width * 0.8, doc.height * 0.5)
             if drawing is not None:
                 heading = story.pop() if story and isinstance(story[-1], Paragraph) and story[-1].style.name == "H1" else None
                 story.append(KeepTogether([heading, drawing] if heading is not None else [drawing]))

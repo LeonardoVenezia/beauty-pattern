@@ -99,3 +99,16 @@ Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.
 - **ASUNCION:** cada vuelta agrega el alto de una vuelta de pa a cada lado del
   cuadrado (lado = 2 x vueltas x alto de pa). El anillo se considera absorbido
   en la primera vuelta.
+
+## Paneles de textura en el cuerpo
+
+- **Uso:** `engine/garments/panels.py`. Trenzas, calados, bodoques y nido de
+  abeja vistos en la foto se tejen como un panel centrado en la espalda y el
+  delantero del cuerpo (raglán y canesú circular), con 2 pts rev de borde y,
+  en trenzas, 2 rev entre columnas. El panel ocupa cerca del 40 % del ancho
+  de cada parte.
+- **Redondo:** las hileras del revés de la versión plana se tejen con el
+  punto contrario y en orden inverso (convención estándar).
+- **ASUNCION:** el panel no agrega puntos para compensar que las trenzas
+  cierran el tejido o que el calado lo abre; el patrón pide tejer la muestra
+  sobre el panel. El canesú y las mangas quedan en jersey.

@@ -23,6 +23,7 @@ from datetime import UTC, datetime
 from engine import ENGINE_VERSION
 from engine.distribution import paired_decreases, regular_rows
 from engine.garments.base import ImpossibleProportionsError
+from engine.garments.panels import body_round_with_panels, panel_for, texture_motif
 from engine.gauge import Gauge
 from engine.i18n import t
 from engine.ir import (
@@ -500,18 +501,21 @@ def _division(plan: RaglanPlan) -> tuple[tuple[str, int], ...]:
     )
 
 
-def _body_section(plan: RaglanPlan, gauge: Gauge) -> Section:
+def _body_section(plan: RaglanPlan, gauge: Gauge, spec: GarmentSpec) -> Section:
     division = _division(plan)
     first = build_step(
         1, plan.body_before, division_ops(division), note_key="pattern.note.separation"
     )
+    panel = panel_for(spec, division)
     steps: list[Step] = [first]
     for number in range(2, plan.body_rows + 1):
         steps.append(
             build_step(
                 number,
                 plan.body_sts,
-                (Op(StitchKind.KNIT, times=plan.body_sts),),
+                body_round_with_panels(division, panel, number - 1)
+                if panel is not None
+                else (Op(StitchKind.KNIT, times=plan.body_sts),),
             )
         )
     return Section(
@@ -529,6 +533,11 @@ def _body_section(plan: RaglanPlan, gauge: Gauge) -> Section:
             dimension="length",
         ),
         meta={
+            **(
+                {"panel_rows": panel.rows, "panel_repeats": panel.repeats, "panel_width": panel.width}
+                if panel is not None
+                else {}
+            ),
             "row_count": plan.body_rows,
             "underarm_cast_on": 2 * plan.underarm_sts,
             "underarm": plan.underarm_sts,
@@ -664,7 +673,16 @@ def _warnings(
         warnings.append(
             Warning("custom_measurements", "warning.custom_measurements", severity="info")
         )
-    if base_id != "stockinette":
+    motif = texture_motif(spec)
+    if motif is not None:
+        warnings.append(
+            Warning(
+                "texture_panel",
+                "warning.texture_panel",
+                params={"stitch": t(get_stitch(motif).name_key, params.idioma)},
+            )
+        )
+    elif base_id != "stockinette":
         stitch_name = t(get_stitch(base_id).name_key, params.idioma)
         warnings.append(
             Warning(
@@ -709,7 +727,7 @@ def generate_raglan_top_down(
     sections = (
         _neckband_section(plan, gauge),
         _yoke_section(plan),
-        _body_section(plan, gauge),
+        _body_section(plan, gauge, spec),
         _hem_section(plan, gauge),
         _sleeve_section("left", plan),
         _cuff_section("left", plan),

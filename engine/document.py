@@ -22,12 +22,14 @@ from engine.blocks import (
     glossary_blocks,
     instruction_blocks,
 )
+from engine.garments.panels import panel_for
 from engine.i18n import has_key, t
 from engine.ir import Pattern
 from engine.multisize import format_values, merge_size_blocks, size_note
 from engine.rounding import round_half_up
 from engine.sizes import BODY_SIZES
 from engine.spec import Technique, YarnWeight, resolve_gauge
+from engine.stitches.catalog import StitchPattern
 from engine.stitches.kinds import StitchKind
 
 # Craft Yarn Council, Standard Yarn Weight System (verificado 2026-11-11).
@@ -74,6 +76,7 @@ class PatternDocument:
     version: str
     date: str
     language: str
+    charts: tuple[StitchPattern, ...] = ()
 
 
 def _kinds(patterns: list[Pattern]) -> set[StitchKind]:
@@ -123,6 +126,12 @@ def _techniques(patterns: list[Pattern], lang: str) -> list[str]:
         found.append("technique.magic_ring")
     if kinds & {StitchKind.GRANNY_CORNER, StitchKind.GRANNY_SIDE}:
         found.append("technique.work_into_spaces")
+    if kinds & {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK}:
+        found.append("technique.cables")
+    if StitchKind.YO in kinds:
+        found.append("technique.lace")
+    if StitchKind.BOBBLE in kinds:
+        found.append("technique.bobbles")
     if base.materials.colors and len(base.materials.colors) > 1:
         found.append("technique.color_changes")
     return [t(key, lang) for key in found]
@@ -302,6 +311,25 @@ def build_document(
     per_size = [instruction_blocks(p, language) for p in patterns]
     blocks.extend(merge_size_blocks(per_size, sizes, language) if multi else per_size[0])
 
+    # 11. Graficos (paneles de textura).
+    charts: list[StitchPattern] = []
+    body = next((s for s in base.sections if "panel_rows" in s.meta and s.division), None)
+    if body is not None:
+        panel = panel_for(base.spec, body.division)
+        if panel is not None:
+            charts.append(panel.chart())
+            heading("doc.charts")
+            blocks.append(Block(BlockKind.CHART, "0"))
+            line(
+                t(
+                    "doc.chart_note",
+                    language,
+                    n=1,
+                    name=t(charts[0].name_key, language),
+                    rows=panel.rows,
+                )
+            )
+
     # 12. Esquema.
     heading("pattern.schematic")
     chosen = sizes.index(highlight) if highlight in sizes else (len(sizes) // 2 if multi else 0)
@@ -336,6 +364,7 @@ def build_document(
         highlight=sizes.index(highlight) if multi and highlight in sizes else None,
         blocks=tuple(blocks),
         schematic=patterns[chosen],
+        charts=tuple(charts),
         version=ENGINE_VERSION,
         date=when,
         language=language,
