@@ -8,6 +8,7 @@ comerciales; el nivel ya no cambia el vocabulario.
 from __future__ import annotations
 
 from engine.blocks import Block, BlockKind, build_pattern_blocks
+from engine.document import PatternDocument
 from engine.ir import Pattern
 
 
@@ -36,3 +37,16 @@ def render_pattern_text(
     level: str | None = None,
 ) -> str:
     return render_blocks_text(build_pattern_blocks(pattern, lang=lang))
+
+
+def render_document_text(document: PatternDocument) -> str:
+    """Documento completo (todas las secciones y talles) en texto plano."""
+    lines = [document.title, document.subtitle, ""]
+    for block in document.blocks:
+        if block.kind is BlockKind.TABLE:
+            lines.extend(" | ".join(row) for row in block.rows)
+        elif block.kind is BlockKind.SCHEMATIC or block.kind is BlockKind.PAGE_BREAK:
+            continue
+        else:
+            lines.append(render_blocks_text((block,)))
+    return "\n".join(lines)

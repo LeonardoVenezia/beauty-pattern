@@ -157,7 +157,7 @@ def test_crochet_scarf_simulates() -> None:
 def test_crochet_text_svg_and_pdf(spec: GarmentSpec) -> None:
     pattern = generate(spec, PatternParams())
     text = render_pattern_text(pattern, lang="es")
-    assert "anillo magico" in text or "cadenas" in text
+    assert "anillo mágico" in text or "cadenas" in text
     assert "Rematar" in text
     assert "<svg" in render_schematic_svg(pattern)
     assert render_pattern_pdf(pattern).startswith(b"%PDF")
@@ -182,6 +182,6 @@ def test_granny_square_closes_in_rounds(weight: YarnWeight, size: float) -> None
 def test_granny_square_text_is_standard() -> None:
     spec = GarmentSpec(categoria=Category.GRANNY_SQUARE, tecnica=Technique.CROCHET)
     text = render_pattern_text(generate(spec, PatternParams(dimensiones_cm={"size": 15})))
-    assert "Vuelta 1: *(3 pa, 2 cad) en el anillo; rep desde * 3 veces mas [4 grupos" in text
+    assert "Vuelta 1: *(3 pa, 2 cad) en el anillo; rep desde * 3 veces más [4 grupos" in text
     assert "esp de esquina" in text
     assert "Hileras" not in text

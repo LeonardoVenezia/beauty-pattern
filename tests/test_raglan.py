@@ -171,7 +171,7 @@ def test_text_svg_and_pdf_are_generated() -> None:
     assert "M" in text_es
     assert "220" in text_es
     assert "Sleeve" in text_en or "sleeve" in text_en
-    assert "Canesu" in text_es
+    assert "Canesú" in text_es
 
     svg = render_raglan_schematic_svg(pattern)
     root = ET.fromstring(svg)

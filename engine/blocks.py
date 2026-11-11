@@ -52,6 +52,9 @@ class BlockKind(Enum):
     STEP = auto()
     REPEAT = auto()
     WARNING = auto()
+    TABLE = auto()  # rows[0] es el encabezado
+    SCHEMATIC = auto()  # lugar del esquema; el render inserta el dibujo
+    PAGE_BREAK = auto()
 
 
 @dataclass(frozen=True)
@@ -60,6 +63,7 @@ class Block:
     text: str
     label: str | None = None
     value: str | None = None
+    rows: tuple[tuple[str, ...], ...] = ()
 
 
 # ---------------------------------------------------------------------------
@@ -550,6 +554,10 @@ def glossary_blocks(pattern: Pattern, lang: str) -> tuple[Block, ...]:
         blocks.append(
             Block(BlockKind.GLOSSARY, entry, label=abbreviation, value=meaning)
         )
+    if pattern.meta.family == "raglan_top_down":
+        for key in ("glossary.marker", "glossary.slip_marker"):
+            abbreviation, meaning = t(key, lang).split("::", 1)
+            blocks.append(Block(BlockKind.GLOSSARY, t(key, lang), label=abbreviation, value=meaning))
     blocks.sort(key=lambda block: (block.label or "").casefold())
     if blocks:
         sts_entry = t("glossary.sts", lang)
@@ -631,6 +639,52 @@ def _length(value_cm: float, units: str, lang: str) -> str:
     if units == "in":
         return f"{_half(value_cm / 2.54)} {t('unit.in', lang)}"
     return f"{_half(value_cm)} {t('unit.cm', lang)}"
+
+
+def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
+    """Instrucciones por seccion (sin encabezado de documento)."""
+    blocks: list[Block] = []
+    for section in pattern.sections:
+        blocks.append(Block(BlockKind.SECTION_HEADING, t(section.name_key, language)))
+        intro = _section_intro(section, language)
+        if intro:
+            blocks.append(Block(BlockKind.LINE, intro))
+        for note_key in section.note_keys:
+            blocks.append(Block(BlockKind.LINE, t(note_key, language)))
+        steps = section.steps[1:] if section.division else section.steps
+        blocks.extend(
+            render_step_lines(
+                compress_steps(steps),
+                section.mode,
+                language,
+                relative=pattern.spec.tecnica.value != "crochet",
+                markers=section.id == "yoke" and pattern.meta.family == "raglan_top_down",
+            )
+        )
+        if section.target is not None and section.target.dimension == "length" and section.steps:
+            blocks.append(
+                Block(
+                    BlockKind.LINE,
+                    t(
+                        "pattern.checkpoint_length",
+                        language,
+                        length=_length(section.target.target_cm, pattern.params.unidades, language),
+                    ),
+                )
+            )
+        if section.bind_off:
+            bind_key = (
+                "pattern.bind_off_crochet"
+                if pattern.spec.tecnica.value == "crochet"
+                else "pattern.bind_off"
+            )
+            if bind_key == "pattern.bind_off_crochet":
+                blocks.append(Block(BlockKind.LINE, t(bind_key, language)))
+            else:
+                blocks.append(
+                    Block(BlockKind.LINE, t(bind_key, language, n=section.end_stitches))
+                )
+    return tuple(blocks)
 
 
 def build_pattern_blocks(
@@ -723,46 +777,7 @@ def build_pattern_blocks(
             )
 
     blocks.append(Block(BlockKind.DOC_HEADING, t("pattern.instructions", language)))
-    for section in pattern.sections:
-        blocks.append(Block(BlockKind.SECTION_HEADING, t(section.name_key, language)))
-        intro = _section_intro(section, language)
-        if intro:
-            blocks.append(Block(BlockKind.LINE, intro))
-        for note_key in section.note_keys:
-            blocks.append(Block(BlockKind.LINE, t(note_key, language)))
-        steps = section.steps[1:] if section.division else section.steps
-        blocks.extend(
-            render_step_lines(
-                compress_steps(steps),
-                section.mode,
-                language,
-                relative=pattern.spec.tecnica.value != "crochet",
-                markers=section.id == "yoke" and pattern.meta.family == "raglan_top_down",
-            )
-        )
-        if section.target is not None and section.target.dimension == "length" and section.steps:
-            blocks.append(
-                Block(
-                    BlockKind.LINE,
-                    t(
-                        "pattern.checkpoint_length",
-                        language,
-                        length=_length(section.target.target_cm, pattern.params.unidades, language),
-                    ),
-                )
-            )
-        if section.bind_off:
-            bind_key = (
-                "pattern.bind_off_crochet"
-                if pattern.spec.tecnica.value == "crochet"
-                else "pattern.bind_off"
-            )
-            if bind_key == "pattern.bind_off_crochet":
-                blocks.append(Block(BlockKind.LINE, t(bind_key, language)))
-            else:
-                blocks.append(
-                    Block(BlockKind.LINE, t(bind_key, language, n=section.end_stitches))
-                )
+    blocks.extend(instruction_blocks(pattern, language))
 
     blocks.append(Block(BlockKind.DOC_HEADING, t("pattern.finished", language)))
     blocks.append(Block(BlockKind.LINE, t("pattern.block", language)))

@@ -124,9 +124,9 @@ def test_yoke_colorwork_is_declared_not_charted() -> None:
 def test_yoke_text_svg_and_pdf() -> None:
     pattern = generate(yoke_spec(), PatternParams(talla="M"))
     text = render_pattern_text(pattern, lang="es")
-    assert "Canesu" in text
+    assert "Canesú" in text
     svg = render_schematic_svg(pattern)
     assert "<svg" in svg
-    assert "Pullover con canesu circular" in svg
+    assert "Pullover con canesú circular" in svg
     pdf = render_pattern_pdf(pattern)
     assert pdf.startswith(b"%PDF")

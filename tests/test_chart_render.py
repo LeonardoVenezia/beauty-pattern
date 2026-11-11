@@ -33,7 +33,7 @@ def test_stockinette_chart_has_two_rows_and_purl_legend() -> None:
     # Fondo + 2 filas x 2 repeticiones + leyenda.
     assert len(rects) >= 1 + 4
     labels = " ".join(element.text or "" for element in root.iter(f"{NS}text"))
-    assert "reves" in labels
+    assert "revés" in labels
 
 
 def test_repeats_change_width() -> None:
@@ -63,7 +63,7 @@ def test_round_chart_uses_round_rows() -> None:
     root = parse(svg)
     labels = " ".join(element.text or "" for element in root.iter(f"{NS}text"))
     # En redondo, jersey no tiene reves.
-    assert "reves" not in labels
+    assert "revés" not in labels
 
 
 def test_invalid_repeats() -> None:

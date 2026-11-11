@@ -116,3 +116,36 @@ __all__ = [
     "generate_socks",
     "generate_yoke",
 ]
+
+
+_SIZED = {Category.PULLOVER, Category.CARDIGAN, Category.VEST}
+
+
+def generate_size_set(spec: GarmentSpec, params: PatternParams) -> list[Pattern]:
+    """Un patron verificado por talle de la tabla (o uno solo si no aplica).
+
+    Prendas con talle y sin medidas propias: todos los talles de la tabla,
+    cada uno pasado por el simulador. Un talle que no cierra se omite (nunca
+    se entrega sin verificar); si ninguno cierra, falla como `generate`.
+    Accesorios, crochet y medidas propias: un solo patron.
+    """
+    from engine.simulator import simulate
+    from engine.sizes import BODY_SIZES
+
+    if spec.categoria not in _SIZED or params.medidas_cm:
+        return [generate(spec, params)]
+    patterns: list[Pattern] = []
+    error: GarmentError | None = None
+    for size in BODY_SIZES:
+        try:
+            pattern = generate(spec, params.model_copy(update={"talla": size}))
+        except GarmentError as exc:
+            error = exc
+            continue
+        if simulate(pattern).ok:
+            patterns.append(pattern)
+    if not patterns:
+        if error is not None:
+            raise error
+        raise UnsupportedGarmentError("error.pattern_failed_verification")
+    return patterns
