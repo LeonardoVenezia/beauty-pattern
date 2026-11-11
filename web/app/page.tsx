@@ -293,7 +293,6 @@ const warningLabels: Record<string, string> = {
   "warning.bag_flat": "El bolso es un panel rectangular simplificado; no incluye asas, forro ni cierre.",
   "warning.flat_piece": "No se reconoció la prenda; se genera una pieza plana rectangular. Revisá si corresponde a una categoría más específica.",
   "warning.mittens_flat": "Los mitones son piezas planas simplificadas; el pulgar se cose aparte y el calce debe probarse.",
-  "warning.granny_simplified": "El granny square es un cuadrado sólido simplificado; no reproduce el motivo floral de la foto.",
 };
 
 const numberFormat = new Intl.NumberFormat("es-AR", {
@@ -1264,7 +1263,7 @@ export default function HomePage() {
                     <li key={warning.code} className="flex gap-2">
                       <span aria-hidden="true">•</span>
                       <span>
-                        {warningLabels[warning.message_key] ?? warning.message_key}
+                        {warning.message ?? warningLabels[warning.message_key] ?? warning.message_key}
                       </span>
                     </li>
                   ))}

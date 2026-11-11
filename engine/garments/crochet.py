@@ -1,9 +1,9 @@
 """Crochet: amigurumi y piezas planas.
 
 Las formas de amigurumi se generan con anillo magico y aumentos/disminuciones
-de 6 puntos por vuelta. El granny square de esta version es un cuadrado solido
-simplificado, no el motivo clasico de grupos; la limitacion se declara en una
-advertencia.
+de 6 puntos por vuelta. El granny square es el clasico en redondo (grupos de
+3 pa y esquinas de 2 cad); no reproduce motivos complejos de la foto y lo
+declara en una advertencia.
 """
 
 from __future__ import annotations
@@ -22,6 +22,7 @@ from engine.ir import (
     Op,
     Pattern,
     PatternMeta,
+    Repeat,
     Section,
     SectionTarget,
     Step,
@@ -457,16 +458,92 @@ def generate_crochet_scarf(spec: GarmentSpec, params: PatternParams) -> Pattern:
     )
 
 
+def granny_round_stitches(round_number: int) -> int:
+    """Puntos (pa + cad) de la vuelta n de un granny clasico: 16n + 4."""
+    return 16 * round_number + 4
+
+
+def _granny_rounds(rounds: int) -> tuple[Step, ...]:
+    steps: list[Step] = [
+        build_step(1, 0, (Repeat(4, (Op(StitchKind.GRANNY_START),)),))
+    ]
+    for number in range(2, rounds + 1):
+        sides = number - 2
+        group: tuple[Op, ...] = (Op(StitchKind.GRANNY_CORNER),)
+        if sides:
+            group += (Op(StitchKind.GRANNY_SIDE, times=sides),)
+        steps.append(
+            build_step(number, granny_round_stitches(number - 1), (Repeat(4, group),))
+        )
+    return tuple(steps)
+
+
 def generate_granny_square(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    """Granny square clasico en redondo: grupos de 3 pa, esquinas de 2 cad.
+
+    Lado = 2 x vueltas x alto de una vuelta de pa (ASUNCION: el anillo central
+    queda absorbido en la primera vuelta). Ver docs/fuentes.md.
+    """
+    if params.densidad is None:
+        params = params.model_copy(
+            update={"densidad": crochet_gauge(params.peso_hilo.value, "crochet_dc")}
+        )
+    gauge = resolve_gauge(params)
     size = params.dimensiones_cm.get("size", params.medidas_cm.get("size", 15.0))
-    return _flat_pattern(
-        spec,
-        params,
-        family="granny_square",
-        title_key="title.granny_square",
-        section_id="granny_square",
-        section_key="section.granny_square",
-        width=size,
-        length=size,
-        warning=Warning("granny_simplified", "warning.granny_simplified"),
+    round_cm = 1.0 / gauge.rows_per_cm
+    rounds = max(1, round_half_up(size / (2 * round_cm)))
+    actual = 2 * rounds * round_cm
+    steps = _granny_rounds(rounds)
+    section = Section(
+        id="granny_square",
+        name_key="section.granny_square",
+        mode="round",
+        steps=steps,
+        start_stitches=0,
+        end_stitches=granny_round_stitches(rounds),
+        target=SectionTarget(
+            measurement_key="width",
+            target_cm=size,
+            tolerance_cm=round_cm,
+            dimension="length",
+        ),
+        # Cada vuelta suma alto en los dos lados del cuadrado.
+        meta={"row_count": 2 * rounds, "rounds": rounds},
+        bind_off=True,
+        note_keys=("pattern.granny_intro",),
+    )
+    warnings = _warnings(params)
+    warnings.append(Warning("granny_classic", "warning.granny_classic"))
+    colors = tuple(spec.colorwork.paleta) if spec.colorwork else ()
+    if len(colors) > 1:
+        letters = ", ".join(f"{chr(65 + i)} ({c})" for i, c in enumerate(colors))
+        warnings.append(
+            Warning(
+                "granny_colors",
+                "pattern.granny_colors",
+                severity="info",
+                params={"colors": letters},
+            )
+        )
+    return Pattern(
+        meta=_meta(spec, params, "granny_square", "title.granny_square"),
+        spec=spec,
+        params=params,
+        sections=(section,),
+        measurements=(
+            # Tolerancia: media vuelta por lado es el error maximo de redondeo.
+            Measurement(
+                key="width", value_cm=actual, target_cm=size, tolerance_cm=round_cm, kind="width"
+            ),
+            Measurement(
+                key="length", value_cm=actual, target_cm=size, tolerance_cm=round_cm, kind="length"
+            ),
+        ),
+        materials=_materials(
+            spec,
+            params,
+            actual * actual,
+            ("notion.crochet_hook", "notion.tapestry_needle", "notion.tape_measure"),
+        ),
+        warnings=tuple(warnings),
     )

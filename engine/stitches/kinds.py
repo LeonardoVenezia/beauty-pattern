@@ -43,6 +43,10 @@ class StitchKind(StrEnum):
     CROCHET_INC = "crochet_inc"
     CROCHET_DEC = "crochet_dec"
     MAGIC_RING = "magic_ring"
+    # Granny square clasico, trabajado en los espacios de la vuelta anterior.
+    GRANNY_START = "granny_start"
+    GRANNY_CORNER = "granny_corner"
+    GRANNY_SIDE = "granny_side"
 
 
 @dataclass(frozen=True)
@@ -85,6 +89,12 @@ _EFFECTS: dict[StitchKind, Effect] = {
     StitchKind.CROCHET_DEC: Effect(2, 1),
     # Supuesto de amigurumi: anillo magico con 6 puntos bajos iniciales.
     StitchKind.MAGIC_RING: Effect(0, 6),
+    # Granny: cada grupo cuenta sus pa y cad. Trabajar en un espacio "consume"
+    # el grupo de 3 pa anterior y las cadenas del espacio (asi cada vuelta
+    # consume exactamente la anterior). Vuelta n: 12n pa + 4n+4 cad = 16n+4.
+    StitchKind.GRANNY_START: Effect(0, 5),  # en el anillo: 3 pa, 2 cad
+    StitchKind.GRANNY_CORNER: Effect(5, 9),  # esquina: 3 pa, 2 cad, 3 pa, 1 cad
+    StitchKind.GRANNY_SIDE: Effect(4, 4),  # lado: 3 pa en el esp, 1 cad
 }
 
 _CABLES = {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK}

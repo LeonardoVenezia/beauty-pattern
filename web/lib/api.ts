@@ -74,6 +74,7 @@ export type Measurement = {
 export type PatternWarning = {
   code: string;
   message_key: string;
+  message?: string;
   params: Record<string, string | number>;
   severity: "info" | "warning" | "error";
 };

@@ -84,14 +84,31 @@ def _item_text(item: Item, lang: str) -> str:
     return t("pattern.repeat_group", lang, n=item.times, ops=ops)
 
 
+_GRANNY_CLUSTERS = {
+    StitchKind.GRANNY_START: 1,
+    StitchKind.GRANNY_CORNER: 2,
+    StitchKind.GRANNY_SIDE: 1,
+}
+
+
+def _granny_clusters(step: Step) -> int:
+    return sum(_GRANNY_CLUSTERS.get(op.kind, 0) for op in step.expanded_ops())
+
+
 def _step_body(step: Step, lang: str) -> str:
     if len(step.items) == 1 and isinstance(step.items[0], Repeat):
-        ops = ", ".join(_op_text(op, lang) for op in step.items[0].ops)
+        repeat = step.items[0]
+        ops = ", ".join(_op_text(op, lang) for op in repeat.ops)
+        if _granny_clusters(step):
+            return t("pattern.repeat_more", lang, ops=ops, n=repeat.times - 1)
         return t("pattern.repeat_row", lang, ops=ops)
     return ", ".join(_item_text(item, lang) for item in step.items)
 
 
 def _count_text(step: Step, lang: str) -> str:
+    clusters = _granny_clusters(step)
+    if clusters:
+        return t("pattern.cluster_count", lang, n=clusters)
     return t("pattern.stitch_count_short", lang, n=step.stitch_count_end)
 
 
@@ -402,17 +419,28 @@ def render_step_lines(lines: tuple[StepLine, ...], mode: str, lang: str) -> tupl
 # ---------------------------------------------------------------------------
 
 
+# Operaciones compuestas: el glosario debe explicar tambien sus partes.
+_IMPLIED_KINDS: dict[StitchKind, tuple[StitchKind, ...]] = {
+    StitchKind.GRANNY_START: (StitchKind.DC, StitchKind.CH, StitchKind.MAGIC_RING),
+    StitchKind.GRANNY_CORNER: (StitchKind.DC, StitchKind.CH, StitchKind.SLST),
+    StitchKind.GRANNY_SIDE: (StitchKind.DC, StitchKind.CH),
+}
+
+
 def _used_kinds(pattern: Pattern) -> tuple[StitchKind, ...]:
     seen: list[StitchKind] = []
 
+    def add(kind: StitchKind) -> None:
+        for each in (kind, *_IMPLIED_KINDS.get(kind, ())):
+            if each not in seen:
+                seen.append(each)
+
     def collect(item: Item) -> None:
         if isinstance(item, Op):
-            if item.kind not in seen:
-                seen.append(item.kind)
+            add(item.kind)
             return
         for op in item.ops:
-            if op.kind not in seen:
-                seen.append(op.kind)
+            add(op.kind)
 
     for section in pattern.sections:
         for step in section.steps:
@@ -432,6 +460,7 @@ def glossary_blocks(pattern: Pattern, lang: str) -> tuple[Block, ...]:
         blocks.append(
             Block(BlockKind.GLOSSARY, entry, label=abbreviation, value=meaning)
         )
+    blocks.sort(key=lambda block: (block.label or "").casefold())
     if blocks:
         sts_entry = t("glossary.sts", lang)
         abbreviation, meaning = sts_entry.split("::", 1)
@@ -445,6 +474,8 @@ def glossary_blocks(pattern: Pattern, lang: str) -> tuple[Block, ...]:
 
 
 def _section_intro(section: Section, lang: str) -> str:
+    if section.id == "granny_square":
+        return t("pattern.granny_ring", lang)
     if section.division:
         parts = ", ".join(t(f"pattern.div.{part}", lang, n=n) for part, n in section.division)
         return t(

@@ -87,3 +87,15 @@ publica verificada se marca **ASUNCION**.
   version es un cuadrado solido simplificado (ASUNCION).
 
 Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.
+
+## Granny square clasico
+
+- **Construccion:** granny square tradicional en redondo: vuelta 1 con
+  4 grupos de 3 pa separados por 2 cad en un anillo; cada vuelta siguiente
+  teje (3 pa, 2 cad, 3 pa) en cada esquina y 3 pa en cada espacio de 1 cad.
+  Es la construccion de dominio publico mas difundida en crochet.
+- **Conteo:** vuelta n = 4n grupos (12n pa) y 4n + 4 cad. El simulador lo
+  verifica como 16n + 4 puntos.
+- **ASUNCION:** cada vuelta agrega el alto de una vuelta de pa a cada lado del
+  cuadrado (lado = 2 x vueltas x alto de pa). El anillo se considera absorbido
+  en la primera vuelta.

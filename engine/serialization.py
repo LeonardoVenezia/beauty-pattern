@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
+from engine.i18n import t
 from engine.ir import (
     CountRef,
     Item,
@@ -107,6 +108,8 @@ def pattern_to_dict(pattern: Pattern) -> dict[str, Any]:
             {
                 "code": warning.code,
                 "message_key": warning.message_key,
+                # Texto ya traducido: los clientes no mantienen su propia copia.
+                "message": t(warning.message_key, pattern.params.idioma, **warning.params),
                 "params": dict(warning.params),
                 "severity": warning.severity,
             }
