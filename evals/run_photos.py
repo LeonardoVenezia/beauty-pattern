@@ -57,6 +57,8 @@ def rubric(expected: dict[str, Any], spec: GarmentSpec) -> dict[str, bool]:
         "documento_sin_claves": False,
         "textura_en_el_patron": not expected.get("texturas"),
         "categoria_correcta": spec.categoria.value == expected.get("categoria", spec.categoria.value),
+        # "motivo": true en expected = la foto es un motivo radial a reproducir.
+        "motivo_reproducido": not expected.get("motivo"),
     }
     try:
         patterns = generate_size_set(spec, PatternParams())
@@ -67,6 +69,8 @@ def rubric(expected: dict[str, Any], spec: GarmentSpec) -> dict[str, bool]:
     document = build_document(patterns, highlight="M")
     text = render_document_text(document)
     checks["documento_sin_claves"] = not _KEY_LEAK.search(text) and render_document_pdf(document).startswith(b"%PDF")
+    if expected.get("motivo"):
+        checks["motivo_reproducido"] = patterns[0].meta.family == "crochet_motif"
     if expected.get("texturas"):
         checks["textura_en_el_patron"] = any("panel_rows" in s.meta for s in patterns[0].sections)
     return checks

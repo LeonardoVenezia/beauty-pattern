@@ -38,6 +38,8 @@ def route(spec: GarmentSpec) -> tuple[GarmentSpec, tuple[str, ...]]:
     if technique in _KNIT and category is Category.GRANNY_SQUARE:
         category = Category.OTHER
         notes.append("knit_square")
+    if technique is Technique.CROCHET and category is Category.BLANKET and spec.motivo is not None:
+        notes.append("blanket_motif")
     if category is Category.GLOVES:
         category = Category.MITTENS
         notes.append("gloves")

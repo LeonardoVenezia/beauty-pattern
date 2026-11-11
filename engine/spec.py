@@ -183,6 +183,48 @@ class YarnAppearance(BaseModel):
     aspecto: YarnLook | None = None
 
 
+class MotifShape(StrEnum):
+    CIRCLE = "circle"
+    SQUARE = "square"
+
+
+class MotifStitch(StrEnum):
+    SC = "sc"
+    HDC = "hdc"
+    DC = "dc"
+    TR = "tr"
+    MESH = "mesh"  # red: pa separados por cadenas
+    CLUSTER = "cluster"
+    POPCORN = "popcorn"
+    PUFF = "puff"
+
+
+class MotifBand(BaseModel):
+    """Una banda del motivo, del centro hacia afuera."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    punto: MotifStitch
+    color: int | None = Field(default=None, ge=0, le=7)  # indice en la paleta
+    peso: int = Field(default=1, ge=1, le=4)  # grosor relativo de la banda
+
+
+class MotifDesign(BaseModel):
+    """Estructura de un motivo radial de crochet (mandala, carpeta, cuadrado).
+
+    Es una descripcion de lo que se ve, con vocabulario cerrado. Los conteos
+    de puntos y la cantidad de vueltas los calcula el motor para la medida
+    pedida (engine/garments/motif.py).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    forma: MotifShape = MotifShape.CIRCLE
+    simetria: int = Field(default=8, ge=3, le=24)  # petalos o repeticiones radiales
+    bandas: list[MotifBand] = Field(min_length=1, max_length=16)
+    cuadrar_en_banda: int | None = Field(default=None, ge=0, le=15)
+
+
 class GarmentSpec(BaseModel):
     """Lo que la foto permite afirmar. Nunca contiene medidas ni conteos."""
 
@@ -201,6 +243,7 @@ class GarmentSpec(BaseModel):
     colorwork: Colorwork | None = None
     acabados: list[Finish] = Field(default_factory=list)
     hilo_aparente: YarnAppearance | None = None
+    motivo: MotifDesign | None = None
     incertidumbres: list[str] = Field(default_factory=list)
     no_visible: list[str] = Field(default_factory=list)
     confianza: dict[str, float] = Field(default_factory=dict)

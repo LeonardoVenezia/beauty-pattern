@@ -554,6 +554,10 @@ def render_schematic_svg(
             from render.granny import render_granny_svg
 
             return render_granny_svg(pattern, language)
+        if fam == "crochet_motif":
+            from render.motif import render_motif_svg
+
+            return render_motif_svg(pattern, language)
         if fam == "hat":
             return _hat_svg(pattern, language)
         if fam == "cowl":

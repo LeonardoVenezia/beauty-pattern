@@ -211,7 +211,7 @@ def format_step_line(
         label = t("pattern.next_round" if mode == "round" else "pattern.next_row", lang)
     else:
         label = t("pattern.round" if mode == "round" else "pattern.row", lang, n=step.number)
-    note = t(step.note_key, lang) + " " if step.note_key else ""
+    note = _note_text(step, lang) + " " if step.note_key else ""
     body = _step_body(step, lang, markers=markers)
     return f"{note}{label}: {body} {_count_text(step, lang)}"
 
@@ -316,10 +316,14 @@ def _masked_values(step: Step) -> tuple[int, ...]:
     return tuple(values)
 
 
+def _note_text(step: Step, lang: str) -> str:
+    return t(step.note_key or "", lang, **dict(step.note_params))
+
+
 def _same_step(a: Step, b: Step) -> bool:
     return (
         a.items == b.items
-        and a.note_key == b.note_key
+        and a.note == b.note
         and a.stitch_count_end == b.stitch_count_end
     )
 
@@ -366,7 +370,7 @@ def _cycle_end(steps: tuple[Step, ...], start: int, cycle: int) -> int:
     if start + 2 * cycle > n:
         return start
     base_shape = tuple(_step_shape(steps[start + i]) for i in range(cycle))
-    base_notes = tuple(steps[start + i].note_key for i in range(cycle))
+    base_notes = tuple(steps[start + i].note for i in range(cycle))
     deltas: list[tuple[int, ...]] = []
     j = start
     while j < n:
@@ -374,7 +378,7 @@ def _cycle_end(steps: tuple[Step, ...], start: int, cycle: int) -> int:
         step = steps[j]
         if (
             _step_shape(step) != base_shape[position]
-            or step.note_key != base_notes[position]
+            or step.note != base_notes[position]
         ):
             break
         vector = _masked_values(step)
@@ -522,7 +526,7 @@ def render_step_lines(
     rnd = mode == "round"
 
     def render_alternating(line: AlternatingLine) -> None:
-        note = t(line.first.note_key, lang) + " " if line.first.note_key else ""
+        note = _note_text(line.first, lang) + " " if line.first.note_key else ""
         count = _count_text(line.last, lang)
         plain = {_is_plain(line.first), _is_plain(line.second)} == {True}
         first_op = line.first.items[0]
@@ -562,7 +566,7 @@ def render_step_lines(
                     a=line.first.number,
                     b=line.last.number,
                 )
-            note = t(line.first.note_key, lang) + " " if line.first.note_key else ""
+            note = _note_text(line.first, lang) + " " if line.first.note_key else ""
             body = _step_body(line.first, lang, markers=markers)
             blocks.append(
                 Block(BlockKind.STEP, f"{note}{label}: {body} {_count_text(line.last, lang)}")
@@ -870,7 +874,7 @@ def _panel_section_blocks(section: Section, lang: str, relative: bool) -> tuple[
             else:
                 key = "pattern.panel_rounds" if first_run else "pattern.panel_rounds_more"
                 text = t(key, lang, n=count, rows=rows, sts=steps[end - 1].stitch_count_end)
-            note = t(run_first.note_key, lang) + " " if run_first.note_key else ""
+            note = _note_text(run_first, lang) + " " if run_first.note_key else ""
             blocks.append(Block(BlockKind.STEP, note + text))
             first_run = False
             index = end
@@ -894,7 +898,7 @@ def _panel_section_blocks(section: Section, lang: str, relative: bool) -> tuple[
                 repeats_found += 1
                 j += 2
         for step in steps[index : index + 2] if repeats_found else steps[index : index + 1]:
-            note = t(step.note_key, lang) + " " if step.note_key else ""
+            note = _note_text(step, lang) + " " if step.note_key else ""
             blocks.append(
                 Block(BlockKind.STEP, f"{note}{label}: {_panel_step_body(step, lang)} {_count_text(step, lang)}")
             )

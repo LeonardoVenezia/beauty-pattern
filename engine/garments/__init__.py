@@ -32,6 +32,7 @@ from engine.garments.crochet import (
     generate_granny_square,
 )
 from engine.garments.flat import generate_flat
+from engine.garments.motif import generate_crochet_motif
 from engine.garments.raglan import generate_raglan_top_down
 from engine.garments.routing import route
 from engine.garments.set_in import generate_set_in
@@ -76,8 +77,13 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
     return replace(pattern, warnings=(*pattern.warnings, *extra))
 
 
+_MOTIF_CATEGORIES = {Category.GRANNY_SQUARE, Category.OTHER, Category.BLANKET}
+
+
 def _generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
     if spec.tecnica is Technique.CROCHET:
+        if spec.motivo is not None and spec.categoria in _MOTIF_CATEGORIES:
+            return generate_crochet_motif(spec, params)
         if spec.categoria is Category.AMIGURUMI:
             return generate_amigurumi(spec, params)
         if spec.categoria is Category.SCARF:

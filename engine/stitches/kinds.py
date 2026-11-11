@@ -45,6 +45,15 @@ class StitchKind(StrEnum):
     CROCHET_DEC = "crochet_dec"
     MAGIC_RING = "magic_ring"
     RING = "ring"  # anillo magico con `width` pts del punto de la pieza
+    # Motivos (engine/garments/motif.py).
+    TR = "tr"  # punto alto doble
+    SKIP = "skip"  # saltar 1 pt
+    CLUSTER = "cluster"  # 3 pa cerrados juntos en el mismo pt
+    POPCORN = "popcorn"  # 5 pa en el mismo pt, cerrados como pop
+    PUFF = "puff"  # punto puff (3 lazadas sacadas en el mismo pt)
+    CORNER_SC = "corner_sc"  # (1 pt, 2 cad, 1 pt) en el esp de esquina
+    CORNER_DC = "corner_dc"  # (2 pts, 2 cad, 2 pts) en el esp de esquina
+    SQUARE_TURN = "square_turn"  # (2 pad, 2 cad, 2 pad) en el mismo pt
     # Granny square clasico, trabajado en los espacios de la vuelta anterior.
     GRANNY_START = "granny_start"
     GRANNY_CORNER = "granny_corner"
@@ -98,6 +107,16 @@ _EFFECTS: dict[StitchKind, Effect] = {
     StitchKind.GRANNY_START: Effect(0, 5),  # en el anillo: 3 pa, 2 cad
     StitchKind.GRANNY_CORNER: Effect(5, 9),  # esquina: 3 pa, 2 cad, 3 pa, 1 cad
     StitchKind.GRANNY_SIDE: Effect(4, 4),  # lado: 3 pa en el esp, 1 cad
+    StitchKind.TR: Effect(1, 1),
+    StitchKind.SKIP: Effect(1, 0),
+    StitchKind.CLUSTER: Effect(1, 1),
+    StitchKind.POPCORN: Effect(1, 1),
+    StitchKind.PUFF: Effect(1, 1),
+    # Esquinas de un cuadrado: las 2 cad del espacio de la vuelta anterior se
+    # "consumen" y se producen los pts del grupo (como en el granny).
+    StitchKind.CORNER_SC: Effect(2, 4),
+    StitchKind.CORNER_DC: Effect(2, 6),
+    StitchKind.SQUARE_TURN: Effect(1, 6),
 }
 
 _CABLES = {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK}

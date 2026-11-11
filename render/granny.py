@@ -28,7 +28,15 @@ _NEUTRAL = ["#efe6d2", "#d9c7a7", "#c4ad8a", "#a88f6d"]
 
 
 def _hex(name: str, index: int) -> str:
-    return _NAMED.get(name.strip().lower(), _NEUTRAL[index % len(_NEUTRAL)])
+    """Tono del color nombrado; tambien "verde salvia" o "sage_green" (por
+    la palabra conocida que aparezca)."""
+    key = name.strip().lower()
+    if key in _NAMED:
+        return _NAMED[key]
+    for word in key.replace("_", " ").replace("-", " ").split():
+        if word in _NAMED:
+            return _NAMED[word]
+    return _NEUTRAL[index % len(_NEUTRAL)]
 
 
 def render_granny_svg(pattern: Pattern, lang: str) -> str:

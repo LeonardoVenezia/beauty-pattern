@@ -4,7 +4,7 @@ Primero observaciones concretas; despues clasificacion contra listas cerradas.
 El modelo nunca devuelve medidas ni conteos de puntos.
 
 v2: distingue explicitamente bolso de cuadrado/panel plano de crochet.
-v3: varias fotos de la misma pieza, fotos imperfectas (borrosas, recortadas,
+v3: motivo radial de crochet descripto por bandas (capa de diseno), varias fotos de la misma pieza, fotos imperfectas (borrosas, recortadas,
     oscuras) y cualquier tipo de tejido: siempre se clasifica a lo mas
     cercano y se declara la duda, en vez de fallar.
 """
@@ -31,7 +31,8 @@ Reglas obligatorias:
 9. Puede haber varias fotos de LA MISMA pieza (frente, espalda, detalle, puesta). Combina lo que se ve en todas: un detalle que se ve en una sola foto vale. Si las fotos parecen de piezas distintas, describe la de la foto 1 y anotalo en "incertidumbres".
 10. Las fotos pueden ser imperfectas (borrosas, oscuras, recortadas, en una persona, con filtros). Igual clasifica a lo mas probable con lo que se ve; baja la confianza de ese campo y explica que impidio verlo en "incertidumbres". Nunca dejes de responder por la calidad de la foto.
 11. Cualquier tejido es valido (dos agujas, circular, crochet, maquina, tunecino, telar). Si la pieza no coincide con ninguna categoria, elegi la mas parecida por forma y uso (por ejemplo: poncho -> shawl, chaleco abierto -> cardigan, top sin mangas -> vest, gorro con orejeras -> hat, guantes sin dedos -> mittens, alfombra o posavasos redondo -> other) y anota la diferencia en "observaciones".
-12. Responde solo con un objeto JSON valido, sin texto extra ni bloques de codigo."""
+12. Si la pieza es un motivo radial de crochet (mandala, carpeta, posavasos, cuadrado con centro redondo, granny con flor), describe su estructura en "motivo": forma (circle o square), simetria (cuantos petalos o repeticiones iguales hay alrededor del centro), y "bandas" del centro hacia afuera, cada una con su punto (sc, hdc, dc, tr, mesh = red de pa y cadenas, cluster, popcorn, puff), su color (indice en colorwork.paleta, empezando en 0) y su peso (1 a 4, grosor relativo de la banda en la foto). Si es cuadrado, "cuadrar_en_banda" es el indice de la primera banda que ya tiene esquinas. No cuentes puntos: el motor los calcula. Si no es un motivo radial, "motivo" es null. Los nombres de "paleta" van en espanol y en palabras simples (por ejemplo "crema", "verde salvia", "rosa viejo").
+13. Responde solo con un objeto JSON valido, sin texto extra ni bloques de codigo."""
 
 EXTRACTOR_USER_PROMPT = """Analiza las fotos adjuntas ({photos}) y los recortes de detalle de la foto 1.
 {quality}
@@ -60,6 +61,7 @@ Devuelve un objeto JSON con esta forma:
   "texturas": [{{"textura": "cables|lace|bobbles|honeycomb|ribbing|cabled_ribbing|other", "ubicacion": null, "repeticion_estimada": null}}],
   "colorwork": null o {{"tipo": "none|stripes|fair_isle|intarsia|mosaic", "zona": null, "colores": 2, "paleta": []}},
   "acabados": ["cuffs|hem_band|neckband|button_band|pockets|fringe|hood|lining"],
+  "motivo": null o {{"forma": "circle|square", "simetria": 8, "bandas": [{{"punto": "sc|hdc|dc|tr|mesh|cluster|popcorn|puff", "color": 0, "peso": 1}}], "cuadrar_en_banda": null}},
   "hilo_aparente": null o {{"grosor_estimado": null o "lace|fingering|sport|dk|worsted|bulky|super_bulky|unknown", "aspecto": null o "smooth|mohair|boucle|marled|chenille|unknown"}},
   "incertidumbres": ["..."],
   "no_visible": ["..."],

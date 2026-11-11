@@ -27,6 +27,13 @@ export type GarmentSpec = {
     grosor_estimado: string | null;
     aspecto: string | null;
   } | null;
+  // Motivo radial de crochet descripto por la IA (capa de diseño).
+  motivo?: {
+    forma: string;
+    simetria: number;
+    bandas: Array<{ punto: string; color: number | null; peso: number }>;
+    cuadrar_en_banda: number | null;
+  } | null;
   incertidumbres: string[];
   no_visible: string[];
   confianza: Record<string, number>;

@@ -370,6 +370,15 @@ export default function HomePage() {
 
   const activeDimensionFields = useMemo<readonly DimensionField[]>(() => {
     if (!spec) return [];
+    if (spec.motivo && spec.tecnica === "crochet") {
+      return [
+        [
+          "size",
+          spec.motivo.forma === "square" ? "Lado del motivo" : "Diámetro del motivo",
+          "Ej. 20",
+        ],
+      ];
+    }
     if (spec.categoria === "blanket" && spec.tecnica === "crochet") {
       return [["size", "Lado del módulo", "Ej. 15"]];
     }
@@ -813,6 +822,13 @@ export default function HomePage() {
               Revisá y corregí lo que haga falta. La confianza baja está marcada en
               ámbar.
             </p>
+            {spec.motivo && spec.tecnica === "crochet" ? (
+              <p className="mt-3 rounded-xl bg-sage/10 p-3 text-sm text-ink/80">
+                Detecté un motivo {spec.motivo.forma === "square" ? "cuadrado" : "redondo"} con{" "}
+                {spec.motivo.bandas.length} bandas y simetría de {spec.motivo.simetria}. El
+                patrón lo reproduce con vueltas calculadas para la medida que elijas.
+              </p>
+            ) : null}
             {qualityNotes.length > 0 ? (
               <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-ink/80">
                 {qualityNotes.join(" ")} Si podés, sumá otra foto más nítida para

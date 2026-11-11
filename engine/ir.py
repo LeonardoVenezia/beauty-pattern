@@ -79,6 +79,12 @@ class Step:
     items: tuple[Item, ...]
     stitch_count_end: int
     note_key: str | None = None
+    # Parametros del texto de la nota (por ejemplo, el color de una banda).
+    note_params: tuple[tuple[str, str], ...] = ()
+
+    @property
+    def note(self) -> tuple[str | None, tuple[tuple[str, str], ...]]:
+        return self.note_key, self.note_params
 
     def __post_init__(self) -> None:
         if self.number < 0:
@@ -124,13 +130,16 @@ def build_step(
     start_stitches: int,
     items: Sequence[Item],
     note_key: str | None = None,
+    note_params: tuple[tuple[str, str], ...] = (),
 ) -> Step:
     """Construye un paso que consume exactamente los puntos disponibles.
 
     Es el constructor recomendado para los generadores: si un paso no consume
     todos los puntos (o consume de mas), falla aca y no llega al simulador.
     """
-    step = Step(number=number, items=tuple(items), stitch_count_end=0, note_key=note_key)
+    step = Step(
+        number=number, items=tuple(items), stitch_count_end=0, note_key=note_key, note_params=note_params
+    )
     if step.consumes != start_stitches:
         raise ValueError(
             f"vuelta {number}: consume {step.consumes} puntos, hay {start_stitches}"

@@ -45,6 +45,7 @@ def _step_to_dict(step: Step) -> dict[str, Any]:
         "items": [_item_to_dict(item) for item in step.items],
         "stitch_count_end": step.stitch_count_end,
         "note_key": step.note_key,
+        **({"note_params": [list(pair) for pair in step.note_params]} if step.note_params else {}),
     }
 
 
@@ -156,6 +157,7 @@ def _step_from_dict(data: dict[str, Any]) -> Step:
         items=tuple(_item_from_dict(item) for item in data["items"]),
         stitch_count_end=int(data["stitch_count_end"]),
         note_key=data.get("note_key"),
+        note_params=tuple((str(k), str(v)) for k, v in data.get("note_params", ())),
     )
 
 
