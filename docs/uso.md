@@ -26,6 +26,19 @@ PDF en `data/demo/`. Si el simulador falla, el comando termina con error y no
 escribe el PDF. El diagrama y los números se calculan de forma determinista
 desde la IR verificada (la IA no dibuja).
 
+## Generar un PDF desde un archivo (CLI)
+
+```bash
+make patron ARCHIVO=examples/sueter-raglan.yaml TALLE=M
+uv run python -m scripts.generar_patron examples/granny-square.yaml \
+  --salida granny.pdf --papel Letter --imprimir
+```
+
+El archivo YAML o JSON tiene `spec` (lo que se ve en la prenda) y `params`
+(hilo, densidad, medidas, idioma). Las prendas salen con todos los talles en
+notación `a (b, c)` y el talle elegido resaltado. Los errores indican el
+archivo y el campo a corregir.
+
 ## IA real
 
 Completa `AI_API_KEY` en `.env` y exporta las variables (o usa un gestor de

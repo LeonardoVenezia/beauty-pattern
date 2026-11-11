@@ -1,6 +1,6 @@
 # Handoff — Tejedora
 
-**Fecha:** 2026-11-10
+**Fecha:** 2026-11-11 (actualizado; ver sección 0)
 **Rama:** `build/main-agent`
 **HEAD de código de referencia:** `cd0fe4d` (último commit de implementación;
 esta documentación se agrega en commits posteriores sobre la misma rama)
@@ -17,6 +17,41 @@ agente que retome el proyecto. Antes de tocar código, leer también
 > Ningún número de un patrón (puntos, vueltas, medidas, metraje) sale de un
 > LLM. El esquema y el PDF se generan de forma determinista desde la IR
 > verificada por el simulador; la IA no dibuja.
+
+## 0. Sesión 2026-11-11 — calidad de mercado (leer primero)
+
+Objetivo: que el PDF cumpla `Especificación generador de patrones de tejido
+(estándar de mercado).md`. Diagnóstico en `DECISIONS.md` D022: el problema
+era de concepto y de motor, no de IA. Lo hecho está en D023 y en `PROGRESS.md`.
+
+- **Nuevos módulos:** `engine/multisize.py` (todos los talles `a (b, c)`),
+  `engine/document.py` (14 secciones), `render/pdf.py` (reescrito sobre el
+  documento), `render/sweater.py` (esquema con cotas por letra),
+  `render/granny.py`, `scripts/generar_patron.py`, `examples/*.yaml`.
+- **Flujo del PDF:** `render_pattern_pdf(pattern)` regenera todos los talles
+  con `generate_size_set` (cada uno simulado) y resalta el talle del
+  patrón. La API (`GET /pattern/{id}/pdf?papel=Letter&imprimir=true`) no
+  cambió de forma.
+- **CLI:** `make patron ARCHIVO=examples/sueter-raglan.yaml TALLE=M`.
+- **Invariantes nuevos con test:** el texto combinado proyecta exactamente a
+  cada talle (`tests/test_multisize.py`); la sisa crece con el talle; ninguna
+  clave i18n sin traducir en ninguna familia (`tests/test_document.py`,
+  `tests/test_i18n_keys.py`).
+- **Español:** abreviaturas de la especificación (der, rev, 2pjd, pts, mc),
+  tildes, instrucciones en infinitivo. Al agregar textos, mantener ese estilo.
+- **Verificación:** 2255 tests, `make lint` y `tsc` de la web en verde.
+  `svglib` sí está instalado y el esquema se incrusta.
+
+**Próximos pasos, en orden:**
+1. *Capa de diseño* para reproducir motivos de la foto (p. ej. el mandala de
+   `patron.jpeg`): la IA describe la estructura con vocabulario cerrado
+   (vueltas, familias de punto, repeticiones radiales, color por vuelta) y
+   el motor calcula y simula. Hoy se entrega un granny clásico y se avisa.
+2. *Evaluación real:* 20–30 fotos con atributos esperados y una rúbrica sobre
+   el PDF. Después, comparar modelos de visión (es un cambio de `.env`).
+3. Gráficos de calado/jacquard en el PDF (`render/chart.py` ya existe).
+4. Esquemas con letras para cardigan, chaleco y accesorios.
+5. La web muestra el texto de un talle; pasar a mostrar el documento.
 
 ## 1. Qué es este proyecto
 
@@ -240,9 +275,9 @@ piezas, PDF, sin IA en el dibujo) y D019/D020.
 
 ## 6. Limitaciones conocidas
 
-1. **Granny square simplificado:** genera un cuadrado sólido, no reproduce el
-   motivo floral ni los grupos de la foto. Se advierte con
-   `granny_simplified`.
+1. **Granny square clásico:** se teje en redondo con grupos de 3 pa y color
+   por vuelta, pero no reproduce motivos complejos de la foto (pétalos,
+   puffs, relieves). Se advierte con `granny_classic`.
 2. **Manta en crochet:** la UI ofrece “Manta” y crochet, pero el backend
    despacha `BLANKET` a `generate_granny_square` y pide “Lado del módulo”. No
    calcula una manta completa ni la cantidad/uniones de módulos. Revisar y

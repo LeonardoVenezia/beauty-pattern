@@ -82,3 +82,21 @@ def test_pdf_has_outline_pages_and_metadata(paper: str) -> None:
     assert b"Tejedora" in pdf
     print_pdf = render_document_pdf(_doc(SWEATER), print_mode=True)
     assert print_pdf.startswith(b"%PDF")
+
+
+_KEY_LEAK = re.compile(r"\b(?:pattern|doc|schematic|warning|measure|title|section|desc)\.[a-z_.]+")
+
+
+@pytest.mark.parametrize("category", list(Category), ids=lambda c: c.value)
+@pytest.mark.parametrize("technique", [Technique.NEEDLES, Technique.CIRCULAR, Technique.CROCHET])
+def test_every_family_renders_without_raw_keys(category: Category, technique: Technique) -> None:
+    from engine.garments import GarmentError
+    from engine.text import render_document_text
+
+    try:
+        patterns = generate_size_set(GarmentSpec(categoria=category, tecnica=technique), PatternParams())
+    except GarmentError:
+        pytest.skip("familia no soportada para esta tecnica")
+    document = build_document(patterns, highlight="M")
+    assert not _KEY_LEAK.findall(render_document_text(document))
+    assert render_document_pdf(document).startswith(b"%PDF")

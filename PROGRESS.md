@@ -353,3 +353,28 @@ escote/sisa/copa finos donde la IR no lo expone); en este entorno `svglib` no
 se instaló en el venv, así que el PDF puede generarse sin el esquema embebido
 (hay fallback; con `svglib` instalado se incrusta). La web aún no refleja la
 misma maquetación jerárquica que el PDF. Ver `DECISIONS.md` D021.
+
+## Calidad de mercado (2026-11-11)
+
+Diagnóstico y rumbo en `DECISIONS.md` D022 y D023.
+
+- [x] Correcciones: elástico como repetición (`*1 der, 1 rev*`), densidad de
+  crochet CYC por punto (antes usaba la de dos agujas y las medidas eran
+  falsas), claves i18n crudas en el PDF (más un test que lo impide), vuelta de
+  separación de mangas explícita, granny square real en redondo.
+- [x] Escalado: sisa del raglán con la tabla (antes 25 → 14 cm entre M y L),
+  mangas con intervalo único. Tests de propiedades.
+- [x] Todos los talles en un patrón con notación `a (b, c)` y prueba de ida y
+  vuelta por talle.
+- [x] Documento de 14 secciones y PDF comercial (talle resaltado, A4/Carta,
+  imprimir, marcadores, página X de Y), esquema de pullover con cotas por
+  letra, diagrama de granny por vueltas.
+- [x] CLI `make patron ARCHIVO=examples/sueter-raglan.yaml TALLE=M` y 4
+  ejemplos.
+- [x] Verificación: **2255 tests** (15 omitidos: familias no soportadas por
+  técnica), `ruff` y `mypy` en verde, `tsc` de la web en verde.
+
+**Pendiente (no hecho):** reproducir motivos complejos de la foto (capa de
+diseño); evaluaciones con fotos reales; gráficos de calado/jacquard en el
+PDF; esquemas con letras para cardigan, chaleco y accesorios; la web todavía
+muestra el texto de un talle (el PDF ya trae todos).

@@ -377,3 +377,39 @@ fuente publica verificada.
 - **Alternativas descartadas:** cambiar de modelo de visión primero (no
   cambia la salida mientras el motor ignore los atributos); generar texto o
   números con LLM (viola "la IA interpreta, el código calcula").
+
+## D023 — Patrón de mercado: todos los talles, documento de 14 secciones y PDF (2026-11-11)
+
+- **Todos los talles en un patrón (`engine/multisize.py`):** cada talle se
+  genera y pasa por el simulador por separado. Solo la presentación se
+  combina: se alinean las líneas por su forma (texto sin números) y los
+  números se escriben `a (b, c)`. Las líneas que existen solo en algunos
+  talles van como "Solo talles L, XL: ... 7 (14) ...". Garantía testeada en
+  las 6 familias de prenda: proyectar el texto combinado a un talle
+  reproduce exactamente el texto de ese talle.
+  *Alternativa descartada:* un motor "multi-talle" que calcule todos los
+  talles a la vez; duplicaba la lógica y debilitaba el simulador.
+- **Comparar talles reveló errores de escalado que el simulador no podía
+  ver** (verifica contra objetivos que calcula el mismo generador): sisa del
+  raglán de 25 → 14 cm entre M y L, y disminuciones de manga con intervalos
+  irregulares. Se corrigieron en el motor (esquema estándar de raglán con
+  F/S/P vueltas; intervalo único de manga) y hay tests de propiedades.
+- **Notación comercial:** etiquetas relativas en dos agujas ("Vuelta
+  siguiente", "Repetir las últimas 5 vueltas 13 veces más"), "todos los pts
+  al der", aumentos de raglán con marcadores, "der hasta quedar 3 pts",
+  puntos de control de medida; crochet mantiene las vueltas numeradas.
+  Abreviaturas ES alineadas con la especificación (der, rev, 2pjd, laz,
+  desl, pts, mc), tildes y modo infinitivo.
+- **Documento (`engine/document.py`) y PDF (`render/pdf.py`):** las 14
+  secciones de la especificación, nivel CYC derivado de las técnicas
+  usadas, tabla de talles con letras A, B, C... iguales a las del esquema,
+  aguja/ganchillo en mm y US (tablas CYC verificadas), página X de Y,
+  marcadores del PDF, A4/Carta, versión para imprimir y talle resaltado.
+- **Portada sin foto:** la foto de entrada suele ser de un tercero
+  (Instagram), así que no se publica en el PDF; la portada usa el esquema.
+  Si más adelante la persona sube la foto de su propia prenda terminada,
+  puede ir en la portada.
+- **CLI:** `scripts/generar_patron.py` (`make patron`) toma un YAML/JSON con
+  `spec` + `params`, no el YAML de diseño libre de la especificación. Motivo:
+  el producto parte de una foto y el motor necesita `GarmentSpec`, no texto
+  de instrucciones escrito a mano. Ver próximos pasos en `HANDOFF.md`.
