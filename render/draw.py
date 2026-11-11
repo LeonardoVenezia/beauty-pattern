@@ -159,7 +159,7 @@ def dim_v(
         if extension:
             parts.append(
                 f'<line x1="{_f(x)}" y1="{_f(yy)}" x2="{_f(x + extension)}" '
-                f'stroke="{STROKE}" stroke-width="0.7"/>'
+                f'y2="{_f(yy)}" stroke="{STROKE}" stroke-width="0.7"/>'
             )
     anchor_x = x + 10 if side == "right" else x - 10
     anchor = "start" if side == "right" else "end"

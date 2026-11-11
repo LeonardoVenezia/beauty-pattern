@@ -133,6 +133,19 @@ def _raglan_parts(step: Step) -> tuple[bool, ...] | None:
     return tuple(parts)
 
 
+def _paired_decrease_text(step: Step, lang: str) -> str | None:
+    """`1 der, ssk, N der, 2pjd, 1 der` -> `... der hasta quedar 3 pts ...`."""
+    kinds = [
+        (item.kind, item.times) if isinstance(item, Op) else None for item in step.items
+    ]
+    if kinds[:2] == [(StitchKind.KNIT, 1), (StitchKind.SSK, 1)] and kinds[3:] == [
+        (StitchKind.K2TOG, 1),
+        (StitchKind.KNIT, 1),
+    ] and kinds[2] is not None and kinds[2][0] is StitchKind.KNIT:
+        return t("pattern.paired_decrease", lang)
+    return None
+
+
 def _is_plain(step: Step) -> bool:
     only = step.items[0] if len(step.items) == 1 else None
     return (
@@ -156,6 +169,9 @@ def _step_body(step: Step, lang: str, *, markers: bool = False) -> str:
         parts = _raglan_parts(step)
         if parts is not None:
             return _raglan_marker_body(parts, lang)
+    paired = _paired_decrease_text(step, lang)
+    if paired is not None:
+        return paired
     if len(step.items) == 1 and isinstance(step.items[0], Op):
         only = step.items[0]
         if only.times == step.consumes and only.times > 1:

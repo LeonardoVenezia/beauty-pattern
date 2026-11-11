@@ -530,10 +530,21 @@ def render_raglan_schematic_svg(pattern: Pattern, *, lang: str | None = None) ->
     return render_schematic_svg(pattern, lang=lang)
 
 
-def render_schematic_svg(pattern: Pattern, *, lang: str | None = None) -> str:
+_SWEATERS = {"raglan_top_down", "yoke", "set_in", "set_in_sleeve", "drop_shoulder"}
+
+
+def render_schematic_svg(
+    pattern: Pattern, *, lang: str | None = None, letters_only: bool = False
+) -> str:
+    """Esquema SVG. `letters_only`: cotas solo con letras (PDF de varios talles,
+    las medidas van en la tabla de talles)."""
     language = lang or pattern.params.idioma
     fam = pattern.meta.family
     try:
+        if fam in _SWEATERS and any(m.key == "sleeve_length" for m in pattern.measurements):
+            from render.sweater import render_sweater_svg
+
+            return render_sweater_svg(pattern, language, values=not letters_only)
         if fam in {"bag", "crochet_bag"}:
             return _bag_svg(pattern, language)
         if fam == "granny_square":

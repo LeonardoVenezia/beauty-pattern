@@ -1,294 +1,341 @@
-"""PDF del patron: portada, materiales, muestra, medidas, esquema e instrucciones.
+"""PDF del patron con el formato del estandar de mercado.
 
-Usa la misma estructura de bloques que el texto y el mismo SVG de esquema que
-la web (convertido a Drawing con svglib) para que haya una sola fuente de
-verdad. Los numeros provienen siempre de la IR verificada por el motor.
+Renderiza un `PatternDocument` (engine/document.py): portada, ficha tecnica,
+talles, materiales, muestra, abreviaturas, notas, instrucciones, esquema,
+terminacion y creditos. Encabezado y pie en cada pagina ("Pagina 3 de 12"),
+marcadores del PDF por seccion, metadatos, A4 o Carta, version para imprimir
+(sin fondos) y talle resaltado. Los numeros vienen siempre de la IR
+verificada; este modulo solo maqueta.
 """
 
 from __future__ import annotations
 
+import re
 from io import BytesIO
+from typing import Any, Literal
 
 from reportlab.lib import colors  # type: ignore[import-untyped]
 from reportlab.lib.enums import TA_CENTER  # type: ignore[import-untyped]
-from reportlab.lib.pagesizes import A4  # type: ignore[import-untyped]
-from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet  # type: ignore[import-untyped]
-from reportlab.lib.units import cm  # type: ignore[import-untyped]
+from reportlab.lib.pagesizes import A4, LETTER  # type: ignore[import-untyped]
+from reportlab.lib.styles import ParagraphStyle  # type: ignore[import-untyped]
+from reportlab.lib.units import cm, mm  # type: ignore[import-untyped]
+from reportlab.pdfgen.canvas import Canvas  # type: ignore[import-untyped]
 from reportlab.platypus import (  # type: ignore[import-untyped]
     Flowable,
+    Frame,
     KeepTogether,
+    PageBreak,
+    PageTemplate,
     Paragraph,
-    SimpleDocTemplate,
     Spacer,
     Table,
     TableStyle,
 )
+from reportlab.platypus.doctemplate import BaseDocTemplate  # type: ignore[import-untyped]
 
 try:
     from svglib.svglib import svg2rlg  # type: ignore[import-untyped]
 except Exception:  # pragma: no cover - fallback si svglib no esta instalado
     svg2rlg = None  # type: ignore[assignment]
 
-from engine.blocks import (
-    BlockKind,
-    build_pattern_blocks,
-)
+from engine.blocks import BlockKind
+from engine.document import PatternDocument, build_document
 from engine.i18n import t
 from engine.ir import Pattern
+from engine.multisize import NOT_APPLICABLE
 from render.schematic import render_schematic_svg
 
-_INK = colors.HexColor("#3a2a1e")
-_SOFT = colors.HexColor("#6b4f3a")
+Paper = Literal["A4", "Letter"]
+
+_INK = colors.HexColor("#33261c")
+_SOFT = colors.HexColor("#6b5442")
 _RULE = colors.HexColor("#d8c3ac")
 _PANEL = colors.HexColor("#f6f0e8")
+_ACCENT = colors.HexColor("#9c4a2f")
 
 
-def _styles() -> dict[str, ParagraphStyle]:
-    base = getSampleStyleSheet()
+def _styles(print_mode: bool) -> dict[str, ParagraphStyle]:
+    def style(name: str, **kw: Any) -> ParagraphStyle:
+        base: dict[str, Any] = {"fontName": "Helvetica", "fontSize": 10.5, "leading": 15, "textColor": _INK}
+        base.update(kw)
+        return ParagraphStyle(name, **base)
+
     return {
-        "title": ParagraphStyle(
-            "PTitle",
-            parent=base["Title"],
-            fontName="Helvetica-Bold",
-            fontSize=22,
-            leading=26,
-            textColor=_INK,
-            alignment=TA_CENTER,
-            spaceAfter=4,
+        "cover_title": style("CoverTitle", fontName="Helvetica-Bold", fontSize=30, leading=36, alignment=TA_CENTER),
+        "cover_sub": style("CoverSub", fontSize=13, leading=18, textColor=_SOFT, alignment=TA_CENTER),
+        "h1": style(
+            "H1", fontName="Helvetica-Bold", fontSize=15, leading=19, spaceBefore=12, spaceAfter=5,
+            textColor=_INK if print_mode else _ACCENT, keepWithNext=1,
         ),
-        "subtitle": ParagraphStyle(
-            "PSubtitle",
-            parent=base["Normal"],
-            fontName="Helvetica",
-            fontSize=11,
-            leading=14,
-            textColor=_SOFT,
-            alignment=TA_CENTER,
-            spaceAfter=14,
-        ),
-        "h1": ParagraphStyle(
-            "PH1",
-            parent=base["Heading2"],
-            fontName="Helvetica-Bold",
-            fontSize=14,
-            leading=18,
-            textColor=_INK,
-            spaceBefore=10,
-            spaceAfter=4,
-        ),
-        "h2": ParagraphStyle(
-            "PH2",
-            parent=base["Heading3"],
-            fontName="Helvetica-Bold",
-            fontSize=11,
-            leading=14,
-            textColor=_INK,
-            spaceBefore=6,
-            spaceAfter=2,
-        ),
-        "body": ParagraphStyle(
-            "PBody",
-            parent=base["Normal"],
-            fontName="Helvetica",
-            fontSize=10,
-            leading=14,
-            textColor=_INK,
-            spaceAfter=2,
-        ),
-        "step": ParagraphStyle(
-            "PStep",
-            parent=base["Normal"],
-            fontName="Helvetica",
-            fontSize=10,
-            leading=14,
-            textColor=_INK,
-            leftIndent=14,
-            firstLineIndent=-14,
-            spaceAfter=3,
-        ),
-        "bullet": ParagraphStyle(
-            "PBullet",
-            parent=base["Normal"],
-            fontName="Helvetica",
-            fontSize=10,
-            leading=14,
-            textColor=_INK,
-            leftIndent=12,
-            firstLineIndent=-8,
-            spaceAfter=2,
-        ),
-        "small": ParagraphStyle(
-            "PSmall",
-            parent=base["Normal"],
-            fontName="Helvetica",
-            fontSize=9,
-            leading=12,
-            textColor=_SOFT,
-            spaceAfter=2,
-        ),
+        "h2": style("H2", fontName="Helvetica-Bold", fontSize=12, leading=16, spaceBefore=9, spaceAfter=3, keepWithNext=1),
+        "body": style("Body", spaceAfter=3),
+        "step": style("Step", leftIndent=12, firstLineIndent=-12, spaceAfter=4),
+        "note": style("Note", fontSize=9.5, leading=13, textColor=_SOFT, leftIndent=10, firstLineIndent=-8, spaceAfter=2),
+        "cell": style("Cell", fontSize=9.5, leading=12.5),
+        "cell_bold": style("CellBold", fontName="Helvetica-Bold", fontSize=9.5, leading=12.5),
     }
 
 
 def _esc(text: str) -> str:
-    return (
-        text.replace("&", "&amp;")
-        .replace("<", "&lt;")
-        .replace(">", "&gt;")
-    )
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
-def _schematic_flowable(pattern: Pattern, lang: str, max_width: float) -> Flowable | None:
+_VALUE = rf"(?:\d+(?:[.,]\d+)?|{NOT_APPLICABLE})"
+_MULTI = re.compile(rf"({_VALUE}) \(({_VALUE}(?:, {_VALUE})*)\)")
+
+
+def _highlight(text: str, index: int | None, sizes: tuple[str, ...], lang: str) -> str:
+    """Escapa y resalta el valor del talle `index` en cada grupo `a (b, c)`."""
+    escaped = _esc(text)
+    if index is None:
+        return escaped
+    local = index
+    head, sep, rest = t("pattern.only_sizes", lang, sizes="\x00").partition("\x00")
+    if escaped.startswith(head) and sep:
+        listed, _, _ = escaped[len(head) :].partition(rest)
+        present = [s.strip() for s in listed.split(",")]
+        if sizes[index] not in present:
+            return escaped
+        local = present.index(sizes[index])
+
+    def mark(match: re.Match[str]) -> str:
+        values = [match.group(1), *[v.strip() for v in match.group(2).split(",")]]
+        if local >= len(values):
+            return match.group(0)
+        values[local] = f'<font color="#9c4a2f"><b>{values[local]}</b></font>'
+        return f"{values[0]} ({', '.join(values[1:])})"
+
+    return _MULTI.sub(mark, escaped)
+
+
+def _drawing(
+    pattern: Pattern, lang: str, max_w: float, max_h: float, *, letters_only: bool = False
+) -> Flowable | None:
     if svg2rlg is None:
         return None
-    svg = render_schematic_svg(pattern, lang=lang)
+    svg = render_schematic_svg(pattern, lang=lang, letters_only=letters_only)
     drawing = svg2rlg(BytesIO(svg.encode("utf-8")))
     if drawing is None:
         return None
-    scale = min(max_width / drawing.width, (16.0 * cm) / drawing.height, 1.0)
+    scale = min(max_w / drawing.width, max_h / drawing.height, 1.0)
     drawing.width *= scale
     drawing.height *= scale
     drawing.scale(scale, scale)
+    drawing.hAlign = "CENTER"
     return drawing
 
 
-def _kv_table(rows: list[tuple[str, str]], width: float, styles: dict[str, ParagraphStyle]) -> Table:
-    data = [
-        [
-            Paragraph(f"<b>{_esc(label)}</b>", styles["body"]),
-            Paragraph(_esc(value), styles["body"]),
-        ]
-        for label, value in rows
+def _table(
+    rows: tuple[tuple[str, ...], ...],
+    width: float,
+    styles: dict[str, ParagraphStyle],
+    *,
+    header: bool,
+    highlight_col: int | None,
+    print_mode: bool,
+) -> Table:
+    data = []
+    for r, row in enumerate(rows):
+        cells = []
+        for c, value in enumerate(row):
+            bold = (header and r == 0) or c == 0 or (highlight_col is not None and c == highlight_col)
+            cells.append(Paragraph(_esc(value), styles["cell_bold" if bold else "cell"]))
+        data.append(cells)
+    columns = len(rows[0])
+    first = width * (0.34 if columns > 2 else 0.30)
+    widths = [first] + [(width - first) / (columns - 1)] * (columns - 1)
+    table = Table(data, colWidths=widths, hAlign="LEFT", repeatRows=1 if header else 0)
+    commands: list[tuple[Any, ...]] = [
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("INNERGRID", (0, 0), (-1, -1), 0.25, _RULE),
+        ("BOX", (0, 0), (-1, -1), 0.5, _RULE),
+        ("TOPPADDING", (0, 0), (-1, -1), 3),
+        ("BOTTOMPADDING", (0, 0), (-1, -1), 3),
+        ("LEFTPADDING", (0, 0), (-1, -1), 5),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 5),
     ]
-    table = Table(data, colWidths=[width * 0.38, width * 0.62], hAlign="LEFT")
-    table.setStyle(
-        TableStyle(
-            [
-                ("BACKGROUND", (0, 0), (-1, -1), colors.white),
-                ("ROWBACKGROUNDS", (0, 0), (-1, -1), [colors.white, _PANEL]),
-                ("TEXTCOLOR", (0, 0), (-1, -1), _INK),
-                ("VALIGN", (0, 0), (-1, -1), "TOP"),
-                ("INNERGRID", (0, 0), (-1, -1), 0.25, _RULE),
-                ("BOX", (0, 0), (-1, -1), 0.5, _RULE),
-                ("TOPPADDING", (0, 0), (-1, -1), 4),
-                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-                ("LEFTPADDING", (0, 0), (-1, -1), 6),
-                ("RIGHTPADDING", (0, 0), (-1, -1), 6),
-            ]
-        )
-    )
+    if not print_mode:
+        commands.append(("ROWBACKGROUNDS", (0, 1 if header else 0), (-1, -1), [colors.white, _PANEL]))
+        if header:
+            commands.append(("BACKGROUND", (0, 0), (-1, 0), _RULE))
+        if highlight_col is not None:
+            commands.append(("BACKGROUND", (highlight_col, 0), (highlight_col, -1), colors.HexColor("#f3dccf")))
+    elif header:
+        commands.append(("LINEBELOW", (0, 0), (-1, 0), 1, _INK))
+    table.setStyle(TableStyle(commands))
     return table
 
 
-def render_pattern_pdf(pattern: Pattern, *, lang: str | None = None) -> bytes:
-    language = lang or pattern.params.idioma
+class _Doc(BaseDocTemplate):  # type: ignore[misc]
+    """Agrega marcadores del PDF (bookmarks) en cada titulo de seccion."""
+
+    def afterFlowable(self, flowable: Flowable) -> None:
+        if isinstance(flowable, Paragraph) and flowable.style.name in {"H1", "H2"}:
+            text = flowable.getPlainText()
+            self._headings = getattr(self, "_headings", 0) + 1
+            key = f"h{self._headings}"
+            self.canv.bookmarkPage(key)
+            level = 0 if flowable.style.name == "H1" else 1
+            self.canv.addOutlineEntry(text, key, level=level, closed=level == 1)
+
+
+def _numbered_canvas(document: PatternDocument) -> type[Canvas]:
+    lang = document.language
+
+    class NumberedCanvas(Canvas):  # type: ignore[misc]
+        """Dos pasadas para poder escribir "Pagina 3 de 12"."""
+
+        def __init__(self, *args: Any, **kwargs: Any) -> None:
+            super().__init__(*args, **kwargs)
+            self._pages: list[dict[str, Any]] = []
+
+        def showPage(self) -> None:
+            self._pages.append(dict(self.__dict__))
+            self._startPage()
+
+        def save(self) -> None:
+            total = len(self._pages)
+            for state in self._pages:
+                self.__dict__.update(state)
+                if self._pageNumber > 1:
+                    self._decorate(total)
+                super().showPage()
+            super().save()
+
+        def _decorate(self, total: int) -> None:
+            width, height = self._pagesize
+            self.saveState()
+            self.setStrokeColor(_RULE)
+            self.setLineWidth(0.5)
+            self.line(18 * mm, height - 13 * mm, width - 18 * mm, height - 13 * mm)
+            self.line(18 * mm, 13 * mm, width - 18 * mm, 13 * mm)
+            self.setFont("Helvetica", 8)
+            self.setFillColor(_SOFT)
+            self.drawString(18 * mm, height - 11 * mm, f"{document.title} · Tejedora")
+            self.drawRightString(width - 18 * mm, height - 11 * mm, document.subtitle)
+            self.drawString(18 * mm, 9 * mm, t("doc.copyright", lang, year=document.date[:4]))
+            self.drawRightString(
+                width - 18 * mm, 9 * mm, t("doc.page", lang, n=self._pageNumber, total=total)
+            )
+            self.restoreState()
+
+    return NumberedCanvas
+
+
+def render_document_pdf(
+    document: PatternDocument, *, paper: Paper = "A4", print_mode: bool = False
+) -> bytes:
+    lang = document.language
     buffer = BytesIO()
-    doc = SimpleDocTemplate(
+    pagesize = LETTER if paper == "Letter" else A4
+    doc = _Doc(
         buffer,
-        pagesize=A4,
-        leftMargin=2 * cm,
-        rightMargin=2 * cm,
-        topMargin=1.8 * cm,
-        bottomMargin=1.8 * cm,
-        title=t(pattern.meta.title_key, language),
+        pagesize=pagesize,
+        leftMargin=18 * mm,
+        rightMargin=18 * mm,
+        topMargin=18 * mm,
+        bottomMargin=18 * mm,
+        title=document.title,
         author="Tejedora",
+        subject=document.subtitle,
+        keywords=["tejido", "patron", *document.sizes],
+        creator="Tejedora",
+        lang=lang,
     )
-    styles = _styles()
-    frame_w = doc.width
-
+    frame = Frame(doc.leftMargin, doc.bottomMargin, doc.width, doc.height, id="body")
+    doc.addPageTemplates([PageTemplate(id="page", frames=[frame])])
+    styles = _styles(print_mode)
+    width = doc.width
     story: list[Flowable] = []
-    story.append(Paragraph(_esc(t(pattern.meta.title_key, language)), styles["title"]))
-    story.append(
-        Paragraph(
-            _esc(
-                f"{t('pattern.generated_by', language)} · "
-                f"{t('pattern.size', language, size=pattern.meta.size)} · "
-                f"{t('pattern.units', language, units=pattern.params.unidades)} · "
-                f"{t('pattern.skill', language, level=pattern.params.nivel)}"
-            ),
-            styles["subtitle"],
-        )
+
+    # 1. Portada: titulo, datos y el esquema como ilustracion.
+    story.append(Spacer(1, 2 * cm))
+    story.append(Paragraph(_esc(document.title), styles["cover_title"]))
+    story.append(Spacer(1, 6))
+    story.append(Paragraph(_esc(document.subtitle), styles["cover_sub"]))
+    story.append(Paragraph("Tejedora", styles["cover_sub"]))
+    story.append(Spacer(1, 1 * cm))
+    multi = len(document.sizes) > 1
+    cover = _drawing(
+        document.schematic, lang, width, doc.height * (0.45 if print_mode else 0.6), letters_only=multi
     )
+    if cover is not None:
+        story.append(cover)
+    story.append(PageBreak())
 
-    schematic = _schematic_flowable(pattern, language, frame_w)
-    if schematic is not None:
-        story.append(schematic)
-        story.append(Spacer(1, 10))
+    highlight = document.highlight
+    section: list[Flowable] = []
 
-    blocks = build_pattern_blocks(pattern, lang=language)
+    def flush() -> None:
+        nonlocal section
+        if section:
+            story.append(KeepTogether(section[:2]))
+            story.extend(section[2:])
+            section = []
 
-    current_section: list[Flowable] = []
-    glossary_rows: list[tuple[str, str]] = []
+    def add(flowable: Flowable) -> None:
+        (section if section else story).append(flowable)
 
-    def flush_section() -> None:
-        nonlocal current_section
-        if current_section:
-            # Mantener encabezado + primer paso juntos si hay espacio.
-            keep = 2 if len(current_section) >= 2 else len(current_section)
-            story.append(KeepTogether(current_section[:keep]))
-            story.extend(current_section[keep:])
-            story.append(Spacer(1, 4))
-            current_section = []
-
-    def flush_glossary() -> None:
-        nonlocal glossary_rows
-        if glossary_rows:
-            story.append(_kv_table(glossary_rows, frame_w, styles))
-            story.append(Spacer(1, 4))
-            glossary_rows = []
-
-    for block in blocks:
-        if block.kind is BlockKind.TITLE:
-            continue
-        if block.kind is BlockKind.SUBTITLE:
-            story.append(Paragraph(_esc(block.text), styles["small"]))
-            continue
-        if block.kind is BlockKind.DOC_HEADING:
-            flush_section()
-            flush_glossary()
+    for block in document.blocks:
+        kind = block.kind
+        if kind is BlockKind.PAGE_BREAK:
+            flush()
+            story.append(PageBreak())
+        elif kind is BlockKind.DOC_HEADING:
+            flush()
             story.append(Paragraph(_esc(block.text), styles["h1"]))
-            continue
-        if block.kind is BlockKind.SECTION_HEADING:
-            flush_glossary()
-            flush_section()
-            current_section = [Paragraph(_esc(block.text), styles["h2"])]
-            continue
-        if block.kind is BlockKind.MEASURE:
-            flush_glossary()
-            if block.label:
-                story.append(
-                    Paragraph(
-                        f"<b>{_esc(block.label)}:</b> {_esc(block.text)}",
-                        styles["body"],
-                    )
-                )
-            else:
-                story.append(Paragraph(_esc(block.text), styles["body"]))
-            continue
-        if block.kind is BlockKind.GLOSSARY:
-            flush_section()
-            if block.label and block.value:
-                glossary_rows.append((block.label, block.value))
-            else:
-                glossary_rows.append((block.text, ""))
-            continue
-        if block.kind in {BlockKind.STEP, BlockKind.REPEAT}:
-            flush_glossary()
-            target = current_section if current_section else story
-            target.append(Paragraph(f"• {_esc(block.text)}", styles["step"]))
-            continue
-        if block.kind is BlockKind.WARNING:
-            flush_glossary()
-            target = current_section if current_section else story
-            target.append(Paragraph(f"• {_esc(block.text)}", styles["bullet"]))
-            continue
-        if block.kind is BlockKind.LINE:
-            flush_glossary()
-            target = current_section if current_section else story
-            target.append(Paragraph(_esc(block.text), styles["body"]))
-            continue
+        elif kind is BlockKind.SECTION_HEADING:
+            flush()
+            section = [Paragraph(_esc(block.text), styles["h2"])]
+        elif kind is BlockKind.TABLE:
+            flush()
+            header = len(block.rows) > 1 and len(block.rows[0]) > 2
+            column = highlight + 1 if header and highlight is not None else None
+            table = _table(block.rows, width, styles, header=header, highlight_col=column, print_mode=print_mode)
+            heading = story.pop() if story and isinstance(story[-1], Paragraph) and story[-1].style.name == "H1" else None
+            story.append(KeepTogether([heading, table] if heading is not None else [table]))
+            story.append(Spacer(1, 4))
+        elif kind is BlockKind.SCHEMATIC:
+            flush()
+            drawing = _drawing(document.schematic, lang, width, doc.height * 0.7, letters_only=multi)
+            if drawing is not None:
+                story.append(KeepTogether([drawing]))
+        elif kind in {BlockKind.STEP, BlockKind.REPEAT}:
+            add(Paragraph("• " + _highlight(block.text, highlight, document.sizes, lang), styles["step"]))
+        elif kind is BlockKind.WARNING:
+            add(Paragraph("• " + _esc(block.text), styles["note"]))
+        elif kind is BlockKind.MEASURE:
+            add(Paragraph(f"<b>{_esc(block.label or '')}:</b> {_esc(block.text)}", styles["body"]))
+        elif kind is BlockKind.GLOSSARY:
+            add(Paragraph(f"<b>{_esc(block.label or '')}</b> = {_esc(block.value or '')}", styles["body"]))
+        elif kind in {BlockKind.LINE, BlockKind.SUBTITLE}:
+            add(Paragraph(_highlight(block.text, highlight, document.sizes, lang), styles["body"]))
+    flush()
 
-    flush_section()
-    flush_glossary()
-
-    doc.build(story)
+    doc.build(story, canvasmaker=_numbered_canvas(document))
     return buffer.getvalue()
+
+
+def render_pattern_pdf(
+    pattern: Pattern,
+    *,
+    lang: str | None = None,
+    paper: Paper = "A4",
+    print_mode: bool = False,
+    all_sizes: bool = True,
+) -> bytes:
+    """PDF de un patron. Las prendas incluyen todos los talles verificados,
+    con el talle del patron resaltado; si no se pueden regenerar, solo el suyo.
+    """
+    from engine.garments import GarmentError, generate_size_set
+
+    patterns = [pattern]
+    if all_sizes:
+        try:
+            patterns = generate_size_set(pattern.spec, pattern.params)
+        except GarmentError:
+            patterns = [pattern]
+        if pattern.meta.size not in {p.meta.size for p in patterns}:
+            patterns = [pattern]
+    document = build_document(patterns, highlight=pattern.meta.size, lang=lang)
+    return render_document_pdf(document, paper=paper, print_mode=print_mode)
