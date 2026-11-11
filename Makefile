@@ -3,7 +3,7 @@ PY := $(UV) run python
 ENV_FILE := $(if $(wildcard .env),--env-file .env,)
 export PATH := $(HOME)/.local/bin:$(PATH)
 
-.PHONY: patron setup web-install test lint typecheck eval demo dev api web e2e pdf examples clean
+.PHONY: eval-fotos patron setup web-install test lint typecheck eval demo dev api web e2e pdf examples clean
 
 setup:
 	$(UV) sync --all-groups
@@ -23,6 +23,10 @@ typecheck: lint
 
 eval:
 	$(PY) -m evals.run_eval
+
+# Fotos reales en evals/photos (ver su README). Usa la IA real del .env.
+eval-fotos:
+	$(UV) run $(ENV_FILE) python -m evals.run_photos
 
 demo:
 	$(PY) -m scripts.demo
