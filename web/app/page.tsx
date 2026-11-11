@@ -39,32 +39,12 @@ const techniques = [
   ["needles", "Dos agujas"],
   ["circular", "Circular"],
   ["crochet", "Crochet"],
+  ["machine", "Máquina"],
 ] as const;
 
-const supportedTechniques: Record<string, readonly string[]> = {
-  pullover: ["needles", "circular"],
-  cardigan: ["needles", "circular"],
-  vest: ["needles", "circular"],
-  hat: ["needles", "circular"],
-  scarf: ["needles", "circular", "crochet"],
-  cowl: ["needles", "circular"],
-  mittens: ["needles", "circular"],
-  socks: ["needles", "circular"],
-  shawl: ["needles", "circular"],
-  blanket: ["needles", "circular", "crochet"],
-  granny_square: ["crochet"],
-  bag: ["needles", "circular", "crochet"],
-  amigurumi: ["crochet"],
-  other: ["needles", "circular", "crochet"],
-  gloves: [],
-};
-
-const garmentConstructions = new Set([
-  "raglan_top_down",
-  "drop_shoulder",
-  "set_in_sleeve",
-  "yoke",
-]);
+// Toda categoria acepta toda tecnica: el servidor elige la familia mas
+// cercana y lo avisa en las advertencias del patron (engine/garments/routing.py).
+const supportedTechniques: Record<string, readonly string[]> = {};
 
 const constructions = [
   ["raglan_top_down", "Raglán de arriba hacia abajo"],
@@ -74,6 +54,8 @@ const constructions = [
   ["bottom_up", "De abajo hacia arriba"],
   ["in_one_piece", "En una pieza"],
   ["flat_panels", "Piezas planas"],
+  ["round_tube", "Tubo en redondo"],
+  ["modules", "Módulos"],
   ["other", "Otra"],
 ] as const;
 
@@ -338,18 +320,7 @@ function optionLabel(
 }
 
 function normalizeSpec(spec: GarmentSpec): GarmentSpec {
-  const allowed = supportedTechniques[spec.categoria] ?? [];
-  const tecnica = allowed.includes(spec.tecnica)
-    ? spec.tecnica
-    : (allowed[0] ?? spec.tecnica);
-  if (
-    spec.categoria === "pullover" &&
-    spec.construccion &&
-    !garmentConstructions.has(spec.construccion)
-  ) {
-    return { ...spec, tecnica, construccion: "raglan_top_down" };
-  }
-  return { ...spec, tecnica };
+  return spec;
 }
 
 const MAX_PHOTOS = 4;
@@ -389,7 +360,7 @@ export default function HomePage() {
     spec?.tecnica === "crochet" ? crochetStitches : baseStitches;
   const isGarment = spec ? garmentCategories.has(spec.categoria) : false;
   const allowedTechniques = spec
-    ? (supportedTechniques[spec.categoria] ?? [])
+    ? (supportedTechniques[spec.categoria] ?? techniques.map(([key]) => key))
     : [];
   const techniqueOptions = techniques.filter(([key]) =>
     allowedTechniques.includes(key),
