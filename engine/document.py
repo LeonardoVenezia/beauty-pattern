@@ -22,7 +22,7 @@ from engine.blocks import (
     glossary_blocks,
     instruction_blocks,
 )
-from engine.garments.panels import panel_for
+from engine.garments.panels import build_panel, panel_for, texture_motif
 from engine.i18n import has_key, t
 from engine.ir import Pattern
 from engine.multisize import format_values, merge_size_blocks, size_note
@@ -313,9 +313,13 @@ def build_document(
 
     # 11. Graficos (paneles de textura).
     charts: list[StitchPattern] = []
-    body = next((s for s in base.sections if "panel_rows" in s.meta and s.division), None)
+    body = next((s for s in base.sections if "panel_rows" in s.meta), None)
     if body is not None:
-        panel = panel_for(base.spec, body.division)
+        motif = texture_motif(base.spec)
+        if body.division:
+            panel = panel_for(base.spec, body.division)
+        else:
+            panel = build_panel(motif, body.meta["panel_segment"]) if motif else None
         if panel is not None:
             charts.append(panel.chart())
             heading("doc.charts")

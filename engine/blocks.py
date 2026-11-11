@@ -727,38 +727,65 @@ def _length(value_cm: float, units: str, lang: str) -> str:
     return f"{_half(value_cm)} {t('unit.cm', lang)}"
 
 
+def _panel_layout(step: Step, lang: str, width: int) -> str | None:
+    """`30 der, mc, 38 pts de panel, mc, 71 der...` desde una vuelta del panel."""
+    parts: list[str] = []
+    in_panel = False
+    for item in step.items:
+        plain = isinstance(item, Op) and item.kind in {StitchKind.KNIT, StitchKind.PURL} and item.times > 4
+        if plain and isinstance(item, Op):
+            if in_panel:
+                parts.append(t("pattern.panel_marker", lang))
+                in_panel = False
+            parts.append(_op_text(item, lang))
+        elif not in_panel:
+            if parts:
+                parts.append(t("pattern.panel_marker", lang))
+            parts.append(t("pattern.panel_sts", lang, w=width))
+            in_panel = True
+    return ", ".join(parts) if parts else None
+
+
 def _panel_lines(section: Section, lang: str) -> tuple[Block, ...] | None:
-    """Cuerpo con paneles de textura: marcadores + referencia al grafico.
+    """Tramo con panel de textura: marcadores + referencia al grafico.
 
     Las vueltas de la IR siguen explicitas (y simuladas); el texto las resume
-    como en un patron impreso. Devuelve None si la forma no es la esperada.
+    como en un patron impreso.
     """
     rows = section.meta.get("panel_rows")
-    if not rows or len(section.steps) < 2:
+    start = section.meta.get("panel_start", 1)
+    if not rows or len(section.steps) <= start:
         return None
-    first = section.steps[1]
-    plain = [item.times for item in first.items if isinstance(item, Op) and item.kind is StitchKind.KNIT]
-    if len(plain) != 3 or not any(isinstance(item, Repeat) for item in first.items):
-        return None
+    panel_steps = section.steps[start:]
+    first = panel_steps[0]
     width = section.meta["panel_width"]
+    layout = _panel_layout(first, lang, width)
+    if layout is None:
+        return None
+    flat = section.mode == "flat"
     repeats = section.meta["panel_repeats"]
-    count = len(section.steps) - 1
+    cable = any(
+        isinstance(item, Repeat) and any(op.kind in {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK} for op in item.ops)
+        for step in panel_steps[:rows]
+        for item in step.items
+    )
+    count = len(panel_steps)
     last = count % rows or rows
-    cable = not isinstance(first.items[-2], Op) or first.items[-2].kind is not StitchKind.PURL
+    if flat:
+        side_key = "pattern.side_rs" if any(
+            isinstance(i, Op) and i.kind is StitchKind.KNIT and i.times > 4 for i in first.items
+        ) else "pattern.side_ws"
+        body = t("pattern.panel_rows_flat", lang, n=count, rows=rows, side=t(side_key, lang), sts=section.end_stitches)
+    else:
+        body = t("pattern.panel_rounds", lang, n=count, rows=rows, sts=section.end_stitches)
     return (
-        Block(
-            BlockKind.LINE,
-            t("pattern.panel_markers", lang, a=plain[0], w=width, b=plain[1], c=plain[2]),
-        ),
+        Block(BlockKind.LINE, t("pattern.panel_markers", lang, layout=layout)),
         Block(
             BlockKind.LINE,
             t("pattern.panel_cable" if cable else "pattern.panel_contiguous", lang, w=width, r=repeats),
         ),
-        Block(
-            BlockKind.STEP,
-            t("pattern.panel_rounds", lang, n=count, rows=rows, sts=section.end_stitches),
-        ),
-        Block(BlockKind.LINE, t("pattern.panel_end", lang, k=last)),
+        Block(BlockKind.STEP, body),
+        Block(BlockKind.LINE, t("pattern.panel_end_flat" if flat else "pattern.panel_end", lang, k=last)),
     )
 
 
@@ -775,6 +802,11 @@ def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
         steps = section.steps[1:] if section.division else section.steps
         panel = _panel_lines(section, language)
         if panel is not None:
+            start = section.meta.get("panel_start", 1)
+            before = section.steps[1:start] if section.division else section.steps[:start]
+            blocks.extend(
+                render_step_lines(compress_steps(before), section.mode, language, relative=True)
+            )
             blocks.extend(panel)
         else:
             blocks.extend(

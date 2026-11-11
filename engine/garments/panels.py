@@ -109,6 +109,27 @@ class Panel:
             items.append(Op(StitchKind.PURL, times=_BORDER))
         return tuple(items)
 
+    def flat_items(self, row: int) -> tuple[Item, ...]:
+        """Hilera plana del panel: las impares son del LD (como en redondo);
+        las pares, del LR, se tejen invertidas y con der <-> rev."""
+        items = self.items(row)
+        if row % 2 == 1:
+            return items
+        swap = {StitchKind.KNIT: StitchKind.PURL, StitchKind.PURL: StitchKind.KNIT}
+
+        def flip(op: Op) -> Op:
+            if op.kind not in swap:
+                raise ValueError(f"{self.motif_id}: la hilera {row} tiene {op.kind.value} del reves")
+            return Op(swap[op.kind], times=op.times)
+
+        flipped: list[Item] = []
+        for item in reversed(items):
+            if isinstance(item, Repeat):
+                flipped.append(Repeat(item.times, tuple(flip(op) for op in reversed(item.ops))))
+            else:
+                flipped.append(flip(item))
+        return tuple(flipped)
+
     def chart(self) -> StitchPattern:
         """Una unidad del motivo, para el grafico del documento."""
         return StitchPattern(

@@ -71,3 +71,34 @@ def test_plain_photo_has_no_panel() -> None:
     spec = GarmentSpec(categoria=Category.PULLOVER, tecnica=Technique.CIRCULAR)
     assert texture_motif(spec) is None
     assert "panel_rows" not in generate(spec, PatternParams()).section("body").meta
+
+
+@pytest.mark.parametrize("texture", TEXTURES)
+@pytest.mark.parametrize(
+    ("category", "construction"),
+    [(Category.PULLOVER, Construction.DROP_SHOULDER), (Category.CARDIGAN, None), (Category.VEST, None)],
+)
+def test_flat_pieces_get_panel(texture: str, category: Category, construction: Construction | None) -> None:
+    spec = GarmentSpec(
+        categoria=category, tecnica=Technique.NEEDLES, construccion=construction, texturas=[{"textura": texture}]
+    )
+    for size in BODY_SIZES:
+        pattern = generate(spec, PatternParams(talla=size))
+        assert simulate(pattern).ok, size
+        assert "panel_rows" in pattern.section("back").meta
+    document = build_document(generate_size_set(spec, PatternParams()), highlight="M")
+    assert document.charts
+
+
+def test_flat_wrong_side_panel_row_is_mirrored() -> None:
+    from engine.garments.panels import build_panel
+
+    panel = build_panel("cable_2x2_front", 100)
+    assert panel is not None
+    from engine.ir import Op, Repeat
+
+    ws = panel.flat_items(2)
+    repeat, border = ws
+    assert isinstance(repeat, Repeat) and isinstance(border, Op)
+    assert [op.kind for op in repeat.ops] == [StitchKind.KNIT, StitchKind.PURL]
+    assert border.kind is StitchKind.KNIT and border.times == 2  # 2 rev vistos del LR

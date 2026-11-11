@@ -7,7 +7,10 @@ siempre el reves al reves.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from engine.distribution import paired_decreases
+from engine.garments.panels import Panel
 from engine.ir import Item, Op, Step, build_step
 from engine.stitches.catalog import StitchPattern, expand_row, get_stitch
 from engine.stitches.kinds import StitchKind
@@ -34,7 +37,7 @@ class FlatRows:
     def right_side(self) -> bool:
         return self.number % 2 == 1
 
-    def add(self, items: tuple[Item, ...] | list[Op], note: str | None = None) -> None:
+    def add(self, items: Sequence[Item], note: str | None = None) -> None:
         step = build_step(self.number, self.current, items, note_key=note)
         self.steps.append(step)
         self.current = step.stitch_count_end
@@ -43,6 +46,18 @@ class FlatRows:
     def plain(self, note: str | None = None) -> None:
         kind = StitchKind.KNIT if self.right_side else StitchKind.PURL
         self.add((Op(kind, times=self.current),), note)
+
+    def panel_row(self, panel: Panel, row: int) -> None:
+        """Jersey con el panel centrado; `row` es la hilera del grafico."""
+        left = (self.current - panel.width) // 2
+        right = self.current - panel.width - left
+        if self.right_side:
+            items: list[Item] = [Op(StitchKind.KNIT, times=left), *panel.flat_items(row)]
+            items.append(Op(StitchKind.KNIT, times=right))
+        else:
+            items = [Op(StitchKind.PURL, times=right), *panel.flat_items(row)]
+            items.append(Op(StitchKind.PURL, times=left))
+        self.add([item for item in items if not (isinstance(item, Op) and item.times == 0)])
 
     def bind_off_start(self, count: int, note: str | None = None) -> None:
         kind = StitchKind.KNIT if self.right_side else StitchKind.PURL

@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 
 from engine import ENGINE_VERSION
 from engine.garments.base import ImpossibleProportionsError
+from engine.garments.panels import build_panel, texture_motif
 from engine.garments.rows import FlatRows, hem_rib, rib_rows
 from engine.gauge import Gauge
 from engine.i18n import t
@@ -176,14 +177,36 @@ def _panel_section(
     *,
     note_key: str | None = None,
     hem_rows: int = 0,
+    spec: GarmentSpec | None = None,
 ) -> Section:
-    """Pieza plana en jersey (reves al reves), con elastico abajo si se pide."""
+    """Pieza plana en jersey (reves al reves), con elastico abajo si se pide.
+
+    Si la foto tiene textura, el cuerpo lleva un panel centrado (`panels`).
+    """
     flat = FlatRows(0)
     flat.add((Op(StitchKind.CAST_ON, times=stitches),), "pattern.note.cast_on_panel")
     hem = min(hem_rows, max(0, rows - 2))
     rib_rows(flat, hem_rib(stitches), hem, "pattern.note.hem")
+    motif = texture_motif(spec) if spec is not None else None
+    panel = build_panel(motif, stitches) if motif else None
+    panel_start = len(flat.steps)
+    first_rs = flat.number if flat.right_side else flat.number + 1
     for index in range(rows - hem):
-        flat.plain(note_key if index == 0 else None)
+        if panel is not None:
+            flat.panel_row(panel, (flat.number - first_rs) % panel.rows + 1)
+        else:
+            flat.plain(note_key if index == 0 else None)
+    extra = (
+        {
+            "panel_rows": panel.rows,
+            "panel_repeats": panel.repeats,
+            "panel_width": panel.width,
+            "panel_start": panel_start,
+            "panel_segment": stitches,
+        }
+        if panel is not None
+        else {}
+    )
     return Section(
         id=section_id,
         name_key=name_key,
@@ -197,7 +220,7 @@ def _panel_section(
             tolerance_cm=0.5,
             dimension="length",
         ),
-        meta={"row_count": rows, "cast_on": stitches},
+        meta={"row_count": rows, "cast_on": stitches, **extra},
         bind_off=True,
     )
 
@@ -248,7 +271,7 @@ def _rib_section(
     )
 
 
-def _sections(plan: FlatPlan, gauge: Gauge) -> tuple[Section, ...]:
+def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec) -> tuple[Section, ...]:
     sections: list[Section] = [
         _panel_section(
             "back",
@@ -258,6 +281,7 @@ def _sections(plan: FlatPlan, gauge: Gauge) -> tuple[Section, ...]:
             plan.body_length_cm,
             note_key="pattern.note.flat_panel",
             hem_rows=plan.cuff_rows or max(2, plan.neckband_rows),
+            spec=spec,
         )
     ]
     if plan.kind == "cardigan":
@@ -271,6 +295,7 @@ def _sections(plan: FlatPlan, gauge: Gauge) -> tuple[Section, ...]:
                     plan.body_length_cm,
                     note_key="pattern.note.flat_panel",
                     hem_rows=plan.cuff_rows or max(2, plan.neckband_rows),
+            spec=spec,
                 )
             )
     else:
@@ -283,6 +308,7 @@ def _sections(plan: FlatPlan, gauge: Gauge) -> tuple[Section, ...]:
                 plan.body_length_cm,
                 note_key="pattern.note.flat_panel",
                 hem_rows=plan.cuff_rows or max(2, plan.neckband_rows),
+            spec=spec,
             )
         )
 
@@ -360,7 +386,16 @@ def _warnings(
         warnings.append(
             Warning("custom_measurements", "warning.custom_measurements", severity="info")
         )
-    if base_id != "stockinette":
+    motif = texture_motif(spec)
+    if motif is not None:
+        warnings.append(
+            Warning(
+                "texture_panel",
+                "warning.texture_panel_flat",
+                params={"stitch": t(get_stitch(motif).name_key, params.idioma)},
+            )
+        )
+    elif base_id != "stockinette":
         stitch_name = t(get_stitch(base_id).name_key, params.idioma)
         warnings.append(
             Warning(
@@ -457,7 +492,7 @@ def generate_flat(
     base_id = catalog_id_for_name(spec.punto_base or StitchPatternName.STOCKINETTE)
     if base_id == "other":
         base_id = "stockinette"
-    sections = _sections(plan, gauge)
+    sections = _sections(plan, gauge, spec)
 
     body_area = (
         gauge.cm_for_stitches(plan.total_sts)
