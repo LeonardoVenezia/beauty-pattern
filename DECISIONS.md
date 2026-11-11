@@ -454,3 +454,55 @@ fuente publica verificada.
   categoría y técnica correctas; el modelo describió los pétalos como
   bodoques y los huecos como calado, lo que es razonable. Falta el conjunto
   de fotos con derechos claros para medir de verdad.
+
+## D026 — Cualquier tejido, fotos imperfectas y varias fotos (2026-11-11)
+
+- **Ninguna combinación sin patrón.** De 62 combinaciones de categoría ×
+  técnica × construcción que la IA puede devolver, todas fallaban con
+  "no soportado". Ahora `engine/garments/routing.py` lleva cada una a la
+  familia verificada más cercana y lo declara como advertencia `approx_*`:
+  máquina → dos agujas; guantes → mitones; crochet de mitones o medias →
+  dos agujas; amigurumi a dos agujas → crochet; construcciones de pullover
+  sin familia → la más parecida (de abajo hacia arriba → manga encajada,
+  piezas → hombro caído, resto → raglán). *Alternativa descartada:* rechazar,
+  porque deja a la persona sin nada y la aproximación es honesta si se avisa.
+  El PDF conserva esas advertencias al regenerar los talles.
+- **Crochet de prendas:** pullover, cárdigan y chaleco en rectángulos (la
+  construcción de crochet más común para principiantes), gorro (círculo
+  plano + tubo), cuello y chal. Textura no identificada y jacquard sin
+  gráfico se avisan siempre.
+- **Varias fotos (hasta 4) y calidad medida.** `/analyze` acepta `files`.
+  `vision/quality.py` mide desenfoque, resolución y exposición sin IA; el
+  aviso va al prompt (para que el modelo sea prudente) y a la web (para
+  pedir otra foto). Prompt `extractor-v3`: combina fotos, clasifica aunque
+  la foto sea mala bajando la confianza, y elige lo más cercano para piezas
+  fuera de catálogo. La web dejó de reescribir técnica y construcción en
+  silencio.
+
+## D027 — Escote del cárdigan (2026-11-11)
+
+- En V por defecto; redondo si la foto muestra cuello redondo, alto o
+  chimenea. Cada delantero pierde la mitad del escote de la espalda, así el
+  hombro coincide (JoinCheck). V: disminuciones en dos ritmos regulares
+  desde la altura de la sisa (ASUNCIÓN). El panel de textura se centra en la
+  zona del hombro para que el escote no lo alcance.
+
+## D028 — Capa de diseño: motivos radiales de crochet (2026-11-11)
+
+- **Problema:** la IA veía un mandala y el motor entregaba un granny clásico.
+- **Decisión:** la IA describe la *estructura* con vocabulario cerrado
+  (`MotifDesign`: forma, simetría, bandas con punto, color y grosor
+  relativo) y el motor calcula vueltas por banda, puntos por vuelta
+  (círculo plano: 2π·r / ancho de punto, redondeado a la simetría), vueltas
+  caladas, la vuelta que cuadra y las esquinas. El simulador verifica cada
+  vuelta. Es coherente con "la IA interpreta; el código calcula": el modelo
+  no da ningún conteo; la simetría y el orden de bandas son observaciones,
+  como la paleta.
+- *Alternativas descartadas:* que la IA escriba las vueltas (viola la regla
+  y no cierra); un catálogo cerrado de mandalas (no generaliza).
+- Si las bandas no entran en la medida pedida, se entrega más grande y se
+  avisa (no se falla). 2000 diseños al azar: todos verificados.
+- Probado con la IA real sobre `patron.jpeg`: cuadrado, simetría 8, 8
+  bandas con 4 colores, 3 muestras coincidentes.
+- *Límite:* no reproduce la forma exacta de cada pétalo (picos, arcos de
+  cadenas); reproduce bandas, punto, color y simetría.

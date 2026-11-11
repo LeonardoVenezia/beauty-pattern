@@ -51,11 +51,15 @@ acumulador de hileras planas LD/LR). 2305 tests.
 compensación de trenzas con `panel_motivo_cm`, `make eval-fotos` (ver
 `evals/photos/README.md`). D025. 2320 tests.
 
+**Continuación 3:** varias fotos + calidad medida (`vision/quality.py`,
+prompt `extractor-v3`); `engine/garments/routing.py` (toda combinación da
+patrón, con advertencias `approx_*`); crochet de prendas/gorro/cuello/chal;
+escote del cárdigan; capa de diseño `engine/garments/motif.py`
+(`spec.motivo`). D026–D028. 2411 tests.
+
 **Próximos pasos, en orden:**
-1. *Capa de diseño* para reproducir motivos de la foto (p. ej. el mandala de
-   `patron.jpeg`): la IA describe la estructura con vocabulario cerrado
-   (vueltas, familias de punto, repeticiones radiales, color por vuelta) y
-   el motor calcula y simula. Hoy se entrega un granny clásico y se avisa.
+1. *Formas de pétalo* en los motivos (picos, arcos de cadenas) y gráfico de
+   símbolos de crochet.
 2. *Evaluación real:* el armado está (`make eval-fotos`); faltan 20–30
    fotos con derechos claros en `evals/photos/`. Después, comparar modelos
    de visión (es un cambio de `.env`).

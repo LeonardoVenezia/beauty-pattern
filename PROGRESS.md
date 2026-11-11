@@ -403,6 +403,19 @@ evaluación con fotos reales; capa de diseño para motivos complejos.
   real sobre la imagen de prueba.
 - [x] Verificación: **2320 tests**, `make lint` y `tsc` en verde.
 
-**Pendiente:** cargar 20–30 fotos con derechos claros en `evals/photos/` y
-correr `make eval-fotos`; escote del cárdigan (en V); capa de diseño para
-motivos complejos (p. ej. mandalas de crochet).
+**Pendiente (resuelto en la continuación 3, salvo las fotos):** cargar 20–30
+fotos con derechos claros en `evals/photos/` y correr `make eval-fotos`.
+
+## Cualquier tejido, varias fotos y capa de diseño (2026-11-11, continuación 3)
+
+- [x] Hasta 4 fotos por análisis y aviso de calidad medido (D026).
+- [x] Ninguna combinación de la IA sin patrón: ruteo a la familia más
+  cercana con advertencia; prendas, gorro, cuello y chal de crochet (D026).
+- [x] Escote del cárdigan en V o redondo (D027).
+- [x] Capa de diseño para motivos radiales de crochet (D028); probado con la
+  IA real sobre la imagen de prueba.
+- [x] Verificación: **2411 tests**, `make lint` y `tsc` en verde.
+
+**Pendiente:** fotos reales para `make eval-fotos`; escote en V de pullover;
+guantes con dedos; jacquard como gráfico de color; formas de pétalo
+(picos, arcos de cadenas) en los motivos.

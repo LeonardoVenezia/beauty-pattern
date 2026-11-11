@@ -142,3 +142,34 @@ Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.
   por lado; la tira levanta todos los pts cerrados y 3 de cada 4 hileras de
   los costados del escote. La espalda termina recta. Si hay panel de
   textura, termina en el escote (los pts centrales se cierran).
+
+## Calidad de la foto (vision/quality.py)
+
+- **ASUNCION:** umbrales a ojo sobre fotos de celular: lado menor < 480 px
+  (poca resolución), varianza del laplaciano < 40 a 512 px (desenfocada),
+  brillo medio < 55 (oscura) o > 215 (muy clara). Solo avisan; no deciden.
+
+## Prendas de crochet en rectángulos
+
+- **ASUNCION:** punto base medio punto alto si la foto no muestra otro;
+  abertura de cuello barco = 65 % del contorno de cuello (mínimo 24 cm);
+  mangas rectas con 6 cm de holgura sobre el brazo. Gorro: 92 % del
+  contorno de cabeza; coronilla plana con aumentos por vuelta =
+  2π × alto de vuelta × pts/cm (da 6 en pb, 8 en mpa, 12 en pa, valores
+  clásicos de círculo plano).
+
+## Escote del cárdigan
+
+- **ASUNCION:** la V empieza a la altura de la sisa del talle y baja la
+  mitad del escote de la espalda por delantero; el redondo usa los mismos
+  7 cm y 20 % del escote redondo en piezas.
+
+## Motivos radiales de crochet (engine/garments/motif.py)
+
+- Círculo plano: puntos por vuelta = 2π × radio / ancho de punto, la misma
+  regla que da los aumentos clásicos (6 por vuelta en pb).
+- **ASUNCION:** alto relativo al pb de referencia: pad 0,40, puff 0,65 (pb,
+  mpa y pa como en `engine/gauge.py`). Vuelta que cuadra: esquina de
+  (2 pad, 2 cad, 2 pad) en un pt y lados escalonados pad/pa/mpa/pb (12 %
+  de cada uno); después, esquinas de 2 cad. En la parte cuadrada, los puntos
+  calados se tejen como pa.
