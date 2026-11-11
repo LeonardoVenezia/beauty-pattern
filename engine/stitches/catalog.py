@@ -10,7 +10,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal
 
-from engine.ir import Op
+from engine.ir import Item, Op, Repeat
 from engine.rounding import round_half_up
 from engine.spec import StitchPatternName
 from engine.stitches.chart import ChartCell, chart_cells_from_ops
@@ -329,8 +329,13 @@ def expand_row(
     row_number: int,
     *,
     in_the_round: bool = False,
-) -> tuple[Op, ...]:
-    """Expande una vuelta del motivo a un ancho de `stitches` puntos."""
+) -> tuple[Item, ...]:
+    """Expande una vuelta del motivo a un ancho de `stitches` puntos.
+
+    Un motivo de varias operaciones (p. ej. elastico 1x1) se devuelve como
+    `Repeat` (*1 d, 1 r; rep*), no multiplicando cada operacion: `40 d, 40 r`
+    no es un elastico, es otra tela.
+    """
     if stitches <= 0:
         raise ValueError("stitches debe ser > 0")
     if stitches % pattern.multiple != 0:
@@ -339,17 +344,21 @@ def expand_row(
         )
     repeats = stitches // pattern.multiple
     base_ops = pattern.ops_for_row(row_number, in_the_round=in_the_round)
-    expanded: list[Op] = []
-    for op in base_ops:
-        expanded.append(Op(op.kind, times=op.times * repeats, width=op.width))
-    consumed = sum(op.consumes for op in expanded)
-    produced = sum(op.produces for op in expanded)
+    expanded: tuple[Item, ...]
+    if len(base_ops) == 1 or repeats == 1:
+        expanded = tuple(
+            Op(op.kind, times=op.times * repeats, width=op.width) for op in base_ops
+        )
+    else:
+        expanded = (Repeat(times=repeats, ops=tuple(base_ops)),)
+    consumed = sum(item.consumes for item in expanded)
+    produced = sum(item.produces for item in expanded)
     if consumed != stitches or produced != stitches:
         raise ValueError(
             f"{pattern.id} vuelta {row_number}: consume {consumed}, produce "
             f"{produced}, se esperaban {stitches}"
         )
-    return tuple(expanded)
+    return expanded
 
 
 def validate_catalog() -> list[str]:

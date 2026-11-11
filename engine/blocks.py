@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from enum import Enum, auto
 
 from engine.i18n import has_key, t
-from engine.ir import Item, Op, Pattern, Section, Step
+from engine.ir import Item, Op, Pattern, Repeat, Section, Step
 from engine.spec import resolve_gauge
 from engine.stitches.kinds import StitchKind
 
@@ -85,6 +85,9 @@ def _item_text(item: Item, lang: str) -> str:
 
 
 def _step_body(step: Step, lang: str) -> str:
+    if len(step.items) == 1 and isinstance(step.items[0], Repeat):
+        ops = ", ".join(_op_text(op, lang) for op in step.items[0].ops)
+        return t("pattern.repeat_row", lang, ops=ops)
     return ", ".join(_item_text(item, lang) for item in step.items)
 
 

@@ -371,6 +371,7 @@ ES: dict[str, str] = {
     # Texto de secciones del raglan
     "pattern.size": "Talle: {size}",
     "pattern.section_start": "Con {n} puntos en la aguja:",
+    "pattern.repeat_row": "*{ops}; rep desde * hasta el final",
     "pattern.repeat_group": "Repetir {n} veces: {ops}",
     "pattern.stitch_count": "[{n} puntos]",
     "pattern.note.increase_yoke": "Aumenta puntos repartidos de forma uniforme en la vuelta.",

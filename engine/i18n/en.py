@@ -369,6 +369,7 @@ EN: dict[str, str] = {
     "yarn.unknown": "unknown weight",
     "pattern.size": "Size: {size}",
     "pattern.section_start": "With {n} stitches on the needle:",
+    "pattern.repeat_row": "*{ops}; rep from * to end",
     "pattern.repeat_group": "Repeat {n} times: {ops}",
     "pattern.stitch_count": "[{n} stitches]",
     "pattern.note.increase_yoke": "Increase stitches evenly around the round.",

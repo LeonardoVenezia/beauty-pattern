@@ -116,3 +116,14 @@ def test_chart_cells_sum_to_multiple() -> None:
                 pattern.id,
                 row,
             )
+
+
+def test_rib_expands_as_repeat_not_blocks() -> None:
+    """Regresion: 1x1 en 80 p es *1 d, 1 r* x40, no 40 d + 40 r."""
+    from engine.ir import Repeat
+
+    items = expand_row(get_stitch("rib_1x1"), 80, 1, in_the_round=True)
+    assert len(items) == 1
+    assert isinstance(items[0], Repeat)
+    assert items[0].times == 40
+    assert [op.times for op in items[0].ops] == [1, 1]
