@@ -678,4 +678,6 @@ EN: dict[str, str] = {
     "warning.approx.construction": "The photo's construction has no family of its own; the closest one is used (see “Construction”). The final shape is equivalent, but the working order changes.",
     "warning.texture_unidentified": "The photo shows a texture that is not in the catalog; the pattern uses the base stitch. It can be swapped for the desired texture if it keeps the same stitch multiple.",
     "warning.colorwork_generic": "The pattern does not include the photo's color chart (fair isle, intarsia or mosaic); use the palette as a reference and design the motif separately.",
+    "pattern.note.v_neck_decrease": "V-neck: decrease 1 st at the neck edge (the center-front edge) on the rows given.",
+    "pattern.note.front_neck_bind_off": "Neck: bind off the given sts at the center-front edge.",
 }

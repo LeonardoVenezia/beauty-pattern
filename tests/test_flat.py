@@ -13,11 +13,15 @@ from engine.spec import (
     Construction,
     Fit,
     GarmentSpec,
+    Neckline,
     PatternParams,
     SleeveLength,
     Technique,
+    Texture,
+    TextureObservation,
     YarnWeight,
 )
+from engine.stitches.kinds import StitchKind
 from engine.text import render_pattern_text
 from render.pdf import render_pattern_pdf
 from render.schematic import render_schematic_svg
@@ -184,3 +188,29 @@ def test_flat_stockinette_purls_wrong_side_rows(spec: GarmentSpec) -> None:
         assert StitchKind.PURL in plain, section.id
         for a, b in pairwise(plain):
             assert not (a is b is StitchKind.KNIT), section.id
+
+
+@pytest.mark.parametrize("neckline", [None, Neckline.CREW], ids=["v", "crew"])
+def test_cardigan_fronts_shape_the_neck_and_match_the_back_shoulder(neckline: Neckline | None) -> None:
+    spec = spec_for(Category.CARDIGAN).model_copy(update={"escote": neckline})
+    pattern = generate(spec, PatternParams(talla="M"))
+    assert simulate(pattern).ok
+    by_id = {section.id: section for section in pattern.sections}
+    shoulder = by_id["back"].meta["shoulder"]
+    assert by_id["left_front"].end_stitches == by_id["right_front"].end_stitches == shoulder
+    assert "no_neck_shaping" not in {w.code for w in pattern.warnings}
+    right = by_id["right_front"].steps
+    shaped = [s for s in right if any(getattr(i, "kind", None) in {StitchKind.SSK, StitchKind.BIND_OFF} for i in s.items)]
+    # Delantero derecho: el escote esta al comienzo de las hileras del LD.
+    assert all(s.number % 2 == 1 or s.items[0].kind is StitchKind.BIND_OFF for s in shaped)
+    if neckline is None:  # V: disminuciones repartidas, sin cierre
+        assert not any(getattr(i, "kind", None) is StitchKind.BIND_OFF for s in right for i in s.items)
+
+
+def test_cardigan_cable_panel_stays_clear_of_the_v_neck() -> None:
+    spec = spec_for(Category.CARDIGAN).model_copy(
+        update={"texturas": [TextureObservation(textura=Texture.CABLES)]}
+    )
+    for size in ("XS", "M", "3XL"):
+        pattern = generate(spec, PatternParams(talla=size, peso_hilo=YarnWeight.BULKY))
+        assert simulate(pattern).ok

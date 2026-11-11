@@ -680,4 +680,6 @@ ES: dict[str, str] = {
     "warning.approx.construction": "La construcción de la foto no tiene una familia propia; se usa la más parecida (ver «Construcción»). La forma final es equivalente, pero el orden de tejido cambia.",
     "warning.texture_unidentified": "En la foto se ve una textura que no está en el catálogo; el patrón va en el punto base. Se puede reemplazar por la textura deseada si respeta el mismo múltiplo de puntos.",
     "warning.colorwork_generic": "El patrón no incluye el gráfico de colores de la foto (jacquard, intarsia o mosaico); usar la paleta como referencia y diseñar el motivo aparte.",
+    "pattern.note.v_neck_decrease": "Escote en V: disminuir 1 pt en el borde del escote (el borde del medio del delantero) en las hileras indicadas.",
+    "pattern.note.front_neck_bind_off": "Escote: cerrar los pts indicados en el borde del medio del delantero.",
 }

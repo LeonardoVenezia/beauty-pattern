@@ -16,6 +16,7 @@ from engine.garments.base import ImpossibleProportionsError
 from engine.garments.panels import build_panel, compensation, texture_motif
 from engine.garments.rows import (
     FlatRows,
+    front_neck_rows,
     hem_rib,
     neck_sections,
     neckband_stitches,
@@ -44,6 +45,7 @@ from engine.sizes import BodySize, ease_for_fit, resolve_body_size
 from engine.spec import (
     BodyLength,
     GarmentSpec,
+    Neckline,
     PatternParams,
     SleeveLength,
     StitchPatternName,
@@ -78,6 +80,8 @@ class FlatPlan:
     neck_sts: int
     neck_center: int
     neck: tuple[int, int, int] | None  # (hileras, disminuciones, cierre central)
+    # Cardigan: (hileras, cierre en el borde, disminuciones, en V) por delantero.
+    front_neck: tuple[int, int, int, bool] | None
     neckband_sts: int
     neckband_rows: int
     band_sts: int
@@ -111,6 +115,31 @@ def _sleeve_length_cm(spec: GarmentSpec, size: BodySize) -> float:
     )
 
 
+V_NECK_STYLES_CREW = {Neckline.CREW, Neckline.TURTLENECK, Neckline.FUNNEL}
+
+
+def _plan_front_neck(
+    spec: GarmentSpec, size: BodySize, gauge: Gauge, neck_center: int, rows_available: int
+) -> tuple[int, int, int, bool] | None:
+    """Escote de cada delantero del cardigan: en V (por defecto) o redondo.
+
+    Cada delantero pierde la mitad del escote de la espalda, asi el hombro
+    coincide con el de la espalda. ASUNCION: la V empieza a la altura de la
+    sisa (profundidad = sisa del talle); el redondo usa `plan_crew_neck`.
+    """
+    half = neck_center // 2
+    if spec.escote in V_NECK_STYLES_CREW:
+        try:
+            depth, decs, _center = plan_crew_neck(neck_center, rows_available, gauge.rows_per_cm)
+        except ValueError:
+            return None
+        return depth, half - decs, decs, False
+    depth = min(gauge.rows_for_cm(size.armhole_cm), rows_available)
+    if half < 1 or 2 * half > depth:
+        return None
+    return depth, 0, half, True
+
+
 def plan_flat(spec: GarmentSpec, params: PatternParams, kind: str) -> tuple[FlatPlan, Gauge, BodySize]:
     size = resolve_body_size(params.talla, params.medidas_cm)
     gauge = resolve_gauge(params)
@@ -118,7 +147,12 @@ def plan_flat(spec: GarmentSpec, params: PatternParams, kind: str) -> tuple[Flat
     body_length_cm = _body_length_cm(spec, size)
     target_sts = (size.bust_cm + ease) * gauge.stitches_per_10cm / 10.0
     if kind == "cardigan":
+        # Par, para que el elastico del borde entre justo en cada delantero.
         front_each = max(2, round_half_up(target_sts / 4))
+        even = 2 * round_half_up(target_sts / 8)
+        # Par (el elastico entra justo) si no aleja el contorno mas de 1,5 cm.
+        if abs(4 * even - target_sts) <= 1.5 * gauge.stitches_per_cm:
+            front_each = max(2, even)
         back = 2 * front_each
         total_sts = back + 2 * front_each
         front_sts = front_each
@@ -154,13 +188,19 @@ def plan_flat(spec: GarmentSpec, params: PatternParams, kind: str) -> tuple[Flat
         max(4, gauge.stitches_for_cm(size.neck_cm + 2.0)), 4, mode="nearest"
     )
     neckband_rows = max(1, gauge.rows_for_cm(NECKBAND_CM))
-    # Escote redondo en el delantero (pullover y chaleco); el cardigan sigue
-    # con el escote recto de los delanteros.
+    # Escote redondo en el delantero (pullover y chaleco); el cardigan lleva
+    # el escote en cada delantero (`_plan_front_neck`).
     neck_center = min(adjust_stitches(max(4, neck_sts // 2), 2, mode="nearest"), front_sts - 8)
     neck_center -= (front_sts - neck_center) % 2
     neck_plan: tuple[int, int, int] | None = None
+    front_neck: tuple[int, int, int, bool] | None = None
     neckband_sts = neck_sts
-    if kind != "cardigan":
+    if kind == "cardigan":
+        neck_center = adjust_stitches(max(4, neck_sts // 2), 2, mode="nearest")
+        front_neck = _plan_front_neck(spec, size, gauge, neck_center, body_rows - (cuff_rows or 2) - 2)
+        if front_neck is not None:
+            neckband_sts = neckband_stitches(neck_center, 2 * front_neck[1], front_neck[0])
+    else:
         hem = cuff_rows or max(2, neckband_rows)
         try:
             neck_plan = plan_crew_neck(neck_center, body_rows - hem - 2, gauge.rows_per_cm)
@@ -184,10 +224,11 @@ def plan_flat(spec: GarmentSpec, params: PatternParams, kind: str) -> tuple[Flat
         neck_sts=neck_sts,
         neck_center=neck_center,
         neck=neck_plan,
+        front_neck=front_neck,
         neckband_sts=neckband_sts,
         neckband_rows=neckband_rows,
         band_sts=band_sts,
-        band_rows=body_rows,
+        band_rows=body_rows - (front_neck[0] if front_neck else 0),
         body_length_cm=body_length_cm,
         sleeve_length_cm=sleeve_length_cm,
         ease=ease,
@@ -207,6 +248,8 @@ def _panel_section(
     spec: GarmentSpec | None = None,
     neck: tuple[int, int, int] | None = None,
     params: PatternParams | None = None,
+    front_neck: tuple[int, int, int, bool] | None = None,
+    neck_at_start: bool = False,
 ) -> tuple[Section, ...]:
     """Pieza plana en jersey (reves al reves), con elastico abajo si se pide.
 
@@ -217,14 +260,21 @@ def _panel_section(
     hem = min(hem_rows, max(0, rows - 2))
     rib_rows(flat, hem_rib(stitches), hem, "pattern.note.hem")
     motif = texture_motif(spec) if spec is not None else None
-    panel = build_panel(motif, stitches) if motif else None
+    # En un delantero con escote, el panel va centrado en la parte del hombro
+    # para que las disminuciones del escote nunca lo alcancen.
+    neck_sts = (front_neck[1] + front_neck[2]) if front_neck else 0
+    panel = build_panel(motif, stitches - neck_sts) if motif else None
     panel_start = len(flat.steps)
     if panel is not None:
         comp = 0
         if params is not None and rows - hem > 6:
             comp = compensation(panel, resolve_gauge(params).stitches_per_cm, params.panel_motivo_cm)
-        flat.start_panel(panel, comp)
-    target = rows - (neck[0] if neck else 0)  # hileras antes del escote o del cierre
+        offset = None
+        if front_neck:
+            offset = (stitches - neck_sts - panel.width) // 2 + (neck_sts if neck_at_start else 0)
+        flat.start_panel(panel, comp, left=offset)
+    shaped = neck[0] if neck else (front_neck[0] if front_neck else 0)
+    target = rows - shaped  # hileras antes del escote o del cierre
     while len(flat.steps) - 1 < target:
         done = len(flat.steps) - 1
         if flat.extra and not flat.pending_increase and target - done <= 2:
@@ -233,6 +283,25 @@ def _panel_section(
             continue
         flat.row(note=note_key if done == hem and panel is None else None)
     extra = flat.panel_meta(panel_start, stitches)
+    if front_neck is not None:
+        depth, bind_off, decs, spread = front_neck
+        front_neck_rows(flat, depth, bind_off, decs, neck_at_start=neck_at_start, spread=spread)
+        return (Section(
+            id=section_id,
+            name_key=name_key,
+            mode="flat",
+            steps=tuple(flat.steps),
+            start_stitches=0,
+            end_stitches=flat.current,
+            target=SectionTarget(
+                measurement_key=f"{section_id}_length",
+                target_cm=target_cm,
+                tolerance_cm=0.5,
+                dimension="length",
+            ),
+            meta={"row_count": rows, "cast_on": stitches, "neck_rows": depth, **extra},
+            bind_off=True,
+        ),)
     if neck is not None:
         _depth, decs, center_bo = neck
         before, after = flat.split_for_neck(center_bo, "pattern.note.neck_split")
@@ -334,7 +403,7 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec, params: PatternPa
             params=params,
         )
     ]
-    if plan.neck is not None:
+    if plan.neck is not None or plan.front_neck is not None:
         # Costura de hombro: la espalda deja libres los pts del escote.
         back = sections[0]
         shoulder = (plan.back_sts - plan.neck_center) // 2
@@ -352,6 +421,10 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec, params: PatternPa
                     hem_rows=hem,
                     spec=spec,
                     params=params,
+                    front_neck=plan.front_neck,
+                    # Delantero derecho: el borde del medio esta al comienzo
+                    # de las hileras del LD.
+                    neck_at_start=side == "right",
                 )
             )
     else:
@@ -414,7 +487,7 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec, params: PatternPa
                     plan.band_sts,
                     plan.band_rows,
                     "garter",
-                    plan.body_length_cm,
+                    plan.body_length_cm * plan.band_rows / plan.body_rows,
                     note_key="pattern.note.button_band",
                 )
             )
@@ -433,7 +506,7 @@ def _warnings(
         Warning("assumption", "warning.assumption", severity="info"),
         Warning("flat_panels", "warning.flat_panels"),
     ]
-    if plan.neck is None:
+    if plan.neck is None and plan.front_neck is None:
         warnings.append(Warning("no_neck_shaping", "warning.no_neck_shaping"))
     if plan.kind == "cardigan":
         warnings.append(Warning("no_buttonholes", "warning.no_buttonholes"))
@@ -519,7 +592,23 @@ def _measurements(
 
 def _joins(plan: FlatPlan) -> tuple[JoinCheck, ...]:
     joins: list[JoinCheck] = []
-    if plan.kind == "cardigan":
+    if plan.kind == "cardigan" and plan.front_neck is not None:
+        joins.append(
+            JoinCheck(
+                label_key="join.side_seam",
+                left=(CountRef("back", "meta:cast_on"),),
+                right=(CountRef("left_front", "meta:cast_on"), CountRef("right_front", "meta:cast_on")),
+            )
+        )
+        for side in ("left_front", "right_front"):
+            joins.append(
+                JoinCheck(
+                    label_key="join.shoulder_seam",
+                    left=(CountRef("back", "meta:shoulder"),),
+                    right=(CountRef(side, "end"),),
+                )
+            )
+    elif plan.kind == "cardigan":
         joins.append(
             JoinCheck(
                 label_key="join.side_seam",

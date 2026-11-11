@@ -57,11 +57,13 @@ class FlatRows:
         if self.panel is not None:
             self.chart_row = self.chart_row % self.panel.rows + 1
 
-    def start_panel(self, panel: Panel, extra: int = 0) -> None:
+    def start_panel(self, panel: Panel, extra: int = 0, left: int | None = None) -> None:
+        """`left`: pts lisos antes del panel (al comienzo de las hileras del
+        LD); por defecto, el panel va centrado."""
         self.extra = extra
         self.pending_increase = extra > 0
         self.panel = panel
-        self.left = (self.current - panel.width) // 2
+        self.left = (self.current - panel.width) // 2 if left is None else left
         self.right = self.current - panel.width - self.left
         # Las hileras impares del grafico son del LD.
         self.chart_row = 1 if self.right_side else panel.rows
@@ -96,9 +98,7 @@ class FlatRows:
                 items += [Op(StitchKind.K2TOG), Op(StitchKind.KNIT)]
             self.add(items, note)
             return
-        if dec_start != dec_end:
-            raise ValueError("con panel solo se disminuye en los dos bordes")
-        if self.right_side and self.pending_increase and not (bind_off or decrease):
+        if self.right_side and self.pending_increase and not (bind_off or dec_start or dec_end):
             a, b = self.extra // 2, self.extra - self.extra // 2
             items += [Op(StitchKind.KNIT, times=self.left)]
             if a:
@@ -114,20 +114,24 @@ class FlatRows:
             return
         if self.right_side:
             self.left -= bind_off
-            if decrease:
+            if dec_start:
                 items += [Op(StitchKind.KNIT), Op(StitchKind.SSK)]
-            items.append(Op(StitchKind.KNIT, times=self.left - (3 if decrease else 0)))
+            if self.left - 3 * dec_start:
+                items.append(Op(StitchKind.KNIT, times=self.left - (3 if dec_start else 0)))
             items.extend(self.panel.flat_items(self.chart_row))
-            items.append(Op(StitchKind.KNIT, times=self.right - (3 if decrease else 0)))
-            if decrease:
+            if self.right - 3 * dec_end:
+                items.append(Op(StitchKind.KNIT, times=self.right - (3 if dec_end else 0)))
+            if dec_end:
                 items += [Op(StitchKind.K2TOG), Op(StitchKind.KNIT)]
-                self.left -= 1
-                self.right -= 1
+            self.left -= int(dec_start)
+            self.right -= int(dec_end)
         else:
             self.right -= bind_off
-            items.append(Op(StitchKind.PURL, times=self.right))
+            if self.right:
+                items.append(Op(StitchKind.PURL, times=self.right))
             items.extend(self.panel.flat_items(self.chart_row))
-            items.append(Op(StitchKind.PURL, times=self.left))
+            if self.left:
+                items.append(Op(StitchKind.PURL, times=self.left))
         self.add(items, note)
 
     def plain(self, note: str | None = None) -> None:
@@ -281,3 +285,43 @@ def neck_sections(before: int, after: int, decreases: int, rows: int, shoulder: 
             )
         )
     return sections[0], sections[1]
+
+
+def front_neck_rows(
+    flat: FlatRows, rows: int, bind_off: int, decreases: int, *, neck_at_start: bool, spread: bool
+) -> None:
+    """Escote de un delantero de cardigan sobre las ultimas `rows` hileras.
+
+    Cierra `bind_off` pts en el borde del escote (comienzo de hilera del LD si
+    el escote esta al comienzo, si no del LR) y despues disminuye 1 pt en ese
+    borde en hileras del LD: seguidas (cuello redondo) o repartidas en todo el
+    tramo (escote en V, `spread`).
+    """
+    end = len(flat.steps) - 1 + rows
+    if bind_off:
+        if flat.right_side != neck_at_start:
+            flat.plain()
+        flat.row(bind_off=bind_off, note="pattern.note.front_neck_bind_off")
+    remaining = end - (len(flat.steps) - 1)
+    rs_rows = [n for n in range(flat.number, flat.number + remaining) if n % 2 == 1]
+    if decreases > len(rs_rows):
+        raise ValueError("no entran las disminuciones del escote")
+    if spread:
+        # Dos ritmos regulares, como en un patron comercial: "cada 2q hileras
+        # N veces y despues cada 2(q+1) hileras M veces".
+        q, r = divmod(len(rs_rows), decreases)
+        chosen: set[int] = set()
+        position = 0
+        for gap in [q] * (decreases - r) + [q + 1] * r:
+            chosen.add(rs_rows[position])
+            position += gap
+    else:
+        chosen = set(rs_rows[:decreases])
+    first = True
+    while len(flat.steps) - 1 < end:
+        if flat.number in chosen:
+            note = ("pattern.note.v_neck_decrease" if spread else "pattern.note.neck_decrease") if first else None
+            flat.row(dec_start=neck_at_start, dec_end=not neck_at_start, note=note)
+            first = False
+        else:
+            flat.plain()
