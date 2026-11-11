@@ -14,7 +14,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from engine import ENGINE_VERSION
-from engine.distribution import decrease_evenly, even_positions, increase_evenly, split_even
+from engine.distribution import (
+    decrease_evenly,
+    even_positions,
+    increase_evenly,
+    regular_rows,
+    split_even,
+)
 from engine.garments.base import ImpossibleProportionsError
 from engine.gauge import Gauge
 from engine.i18n import t
@@ -419,7 +425,7 @@ def _sleeve_section(side: str, plan: YokePlan) -> Section:
         else []
     )
     positions = (
-        set(even_positions(plan.sleeve_rows, decrease_rounds))
+        set(regular_rows(plan.sleeve_rows, decrease_rounds))
         if decrease_rounds
         else set()
     )

@@ -14,9 +14,9 @@ from datetime import UTC, datetime
 
 from engine import ENGINE_VERSION
 from engine.distribution import (
-    even_positions,
     increase_evenly,
     paired_decreases,
+    regular_rows,
     split_even,
 )
 from engine.garments.base import ImpossibleProportionsError
@@ -301,7 +301,7 @@ def _sleeve(side: str, plan: SetInPlan) -> Section:
         split_even(increases, increase_rounds) if increase_rounds else []
     )
     positions = (
-        set(even_positions(plan.sleeve_body_rows, increase_rounds))
+        set(regular_rows(plan.sleeve_body_rows, increase_rounds))
         if increase_rounds
         else set()
     )

@@ -21,7 +21,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from engine import ENGINE_VERSION
-from engine.distribution import even_positions, paired_decreases
+from engine.distribution import paired_decreases, regular_rows
 from engine.garments.base import ImpossibleProportionsError
 from engine.gauge import Gauge
 from engine.i18n import t
@@ -93,7 +93,8 @@ class RaglanPlan:
     cuff_rows: int
     sleeve_decreases: int
     sleeve_capped: bool
-    every_round: bool
+    fast_rounds: int
+    plain_rounds: int
     neckband_cm: float
     body_length_cm: float
     sleeve_length_cm: float
@@ -236,19 +237,17 @@ def plan_raglan(
     body_before = back_neck + front_neck + RAGLAN_STS + 4 * r_body
     body_sts = body_before + 2 * underarm
     sleeve_sts = sleeve_neck + 2 * r_sleeve + underarm
+    # Esquema estandar de raglan: F vueltas de aumento seguidas, S vueltas de
+    # aumento cada 2 vueltas y P vueltas sin aumentos, para que la
+    # profundidad del canesu llegue al objetivo en todos los talles. Antes se
+    # pasaba a "aumentar en todas las vueltas" y la sisa caia a la mitad.
     max_rounds = max(r_body, r_sleeve)
-    standard_rows = 1 + 2 * max_rounds
-    fast_rows = 1 + max_rounds
     target_yoke_cm = size.armhole_cm + 4.0
-    standard_depth_cm = gauge.cm_for_rows(standard_rows)
-    fast_depth_cm = gauge.cm_for_rows(fast_rows)
-    every_round = standard_depth_cm > target_yoke_cm + 2
-    if (
-        sleeve_length_cm <= standard_depth_cm + CUFF_CM + 2
-        and fast_depth_cm < standard_depth_cm
-    ):
-        every_round = True
-    yoke_rows = fast_rows if every_round else standard_rows
+    room_cm = min(body_length_cm - HEM_CM, sleeve_length_cm - CUFF_CM) - 2.5
+    target_rows = gauge.rows_for_cm(min(target_yoke_cm, room_cm))
+    yoke_rows = max(1 + max_rounds, target_rows)
+    fast_rounds = min(max_rounds, max(0, 1 + 2 * max_rounds - yoke_rows))
+    plain_rounds = yoke_rows - (1 + fast_rounds + 2 * (max_rounds - fast_rounds))
     yoke_depth_cm = gauge.cm_for_rows(yoke_rows)
 
     if body_length_cm <= yoke_depth_cm + HEM_CM + 2:
@@ -332,7 +331,8 @@ def plan_raglan(
         cuff_rows=cuff_rows,
         sleeve_decreases=sleeve_decreases,
         sleeve_capped=capped,
-        every_round=every_round,
+        fast_rounds=fast_rounds,
+        plain_rounds=plain_rounds,
         neckband_cm=neckband_cm,
         body_length_cm=body_length_cm,
         sleeve_length_cm=sleeve_length_cm,
@@ -431,7 +431,7 @@ def _yoke_section(plan: RaglanPlan) -> Section:
         if sleeve_inc:
             sleeve += 2
 
-        if not plan.every_round:
+        if index > plan.fast_rounds:
             number += 1
             total = back + front + 2 * sleeve + RAGLAN_STS
             steps.append(
@@ -444,6 +444,11 @@ def _yoke_section(plan: RaglanPlan) -> Section:
             )
 
     end = plan.neck_sts + 4 * plan.r_body + 4 * plan.r_sleeve
+    for _ in range(plan.plain_rounds):
+        number += 1
+        steps.append(
+            build_step(number, end, (Op(StitchKind.KNIT, times=end),), note_key="pattern.note.plain")
+        )
     return Section(
         id="yoke",
         name_key="section.yoke",
@@ -471,9 +476,6 @@ def _yoke_section(plan: RaglanPlan) -> Section:
             "body_before": plan.body_before,
             "body": plan.body_sts,
         },
-        note_keys=(
-            ("pattern.note.increase_every_round",) if plan.every_round else ()
-        ),
     )
 
 
@@ -567,7 +569,7 @@ def _hem_section(plan: RaglanPlan, gauge: Gauge) -> Section:
 
 
 def _sleeve_section(side: str, plan: RaglanPlan) -> Section:
-    decrease_rows = set(even_positions(plan.sleeve_rows, plan.sleeve_decreases))
+    decrease_rows = set(regular_rows(plan.sleeve_rows, plan.sleeve_decreases))
     steps: list[Step] = []
     current = plan.sleeve_sts
     for number in range(1, plan.sleeve_rows + 1):
@@ -682,14 +684,6 @@ def _warnings(
     if plan.sleeve_capped:
         warnings.append(
             Warning("sleeve_decrease_limit", "warning.sleeve_decrease_limit")
-        )
-    if plan.every_round:
-        warnings.append(
-            Warning(
-                "fast_increases",
-                "warning.fast_increases",
-                params={"cm": round(plan.yoke_depth_cm, 1)},
-            )
         )
     if spec.escote is Neckline.HOOD:
         warnings.append(

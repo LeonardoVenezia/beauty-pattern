@@ -74,6 +74,24 @@ def even_positions(total: int, count: int) -> list[int]:
     ]
 
 
+def regular_rows(total_rows: int, count: int) -> list[int]:
+    """Vueltas (1..total) de una forma regular: cada N vueltas, `count` veces.
+
+    Es la forma en que se escribe un patron comercial ("dism cada 8 vueltas
+    10 veces, tejer sin dism hasta el largo"): un solo intervalo y el resto
+    de las vueltas sin cambios al final. A diferencia de `even_positions`,
+    los intervalos nunca alternan.
+    """
+    if count < 0:
+        raise ValueError("count no puede ser negativo")
+    if count == 0:
+        return []
+    if count > total_rows:
+        raise ValueError(f"no entran {count} cambios en {total_rows} vueltas")
+    interval = max(1, total_rows // (count + 1))
+    return [interval * (index + 1) for index in range(count)]
+
+
 def _increase_kind(index: int, count: int) -> StitchKind:
     """M1L en la mitad izquierda y M1R en la derecha (simetria)."""
     return StitchKind.M1L if index < (count + 1) // 2 else StitchKind.M1R

@@ -17,6 +17,7 @@ from enum import Enum, auto
 
 from engine.i18n import has_key, t
 from engine.ir import Item, Op, Pattern, Repeat, Section, Step
+from engine.rounding import round_half_up
 from engine.spec import resolve_gauge
 from engine.stitches.kinds import StitchKind
 
@@ -95,7 +96,69 @@ def _granny_clusters(step: Step) -> int:
     return sum(_GRANNY_CLUSTERS.get(op.kind, 0) for op in step.expanded_ops())
 
 
-def _step_body(step: Step, lang: str) -> str:
+def _raglan_parts(step: Step) -> tuple[bool, ...] | None:
+    """Lee una vuelta de canesu raglan: 4 partes [m1l] d [m1r] + 2 d de raglan.
+
+    Devuelve si cada parte aumenta, o None si la vuelta no tiene esa forma.
+    """
+    items = list(step.items)
+    parts: list[bool] = []
+    index = 0
+    for _ in range(4):
+
+        def at(i: int, kind: StitchKind) -> bool:
+            item = items[i] if i < len(items) else None
+            return isinstance(item, Op) and item.kind is kind
+
+        inc_left = at(index, StitchKind.M1L)
+        index += inc_left
+        if not at(index, StitchKind.KNIT):
+            return None
+        index += 1
+        inc_right = at(index, StitchKind.M1R)
+        index += inc_right
+        raglan = items[index] if index < len(items) else None
+        if not (isinstance(raglan, Op) and raglan.kind is StitchKind.KNIT and raglan.times == 2):
+            return None
+        index += 1
+        if inc_left != inc_right:
+            return None
+        parts.append(inc_left)
+    if index != len(items) or not any(parts):
+        return None
+    return tuple(parts)
+
+
+def _is_plain(step: Step) -> bool:
+    only = step.items[0] if len(step.items) == 1 else None
+    return (
+        isinstance(only, Op)
+        and only.kind in {StitchKind.KNIT, StitchKind.PURL}
+        and only.times == step.consumes
+    )
+
+
+def _raglan_marker_body(parts: tuple[bool, ...], lang: str) -> str:
+    texts = [t("pattern.raglan_part_inc" if inc else "pattern.raglan_part", lang) for inc in parts]
+    if len(set(parts)) == 1:
+        return t("pattern.repeat_more", lang, ops=texts[0], n=3)
+    if parts[:2] == parts[2:]:
+        return t("pattern.repeat_once_more", lang, ops=f"{texts[0]}, {texts[1]}")
+    return ", ".join(texts)
+
+
+def _step_body(step: Step, lang: str, *, markers: bool = False) -> str:
+    if markers:
+        parts = _raglan_parts(step)
+        if parts is not None:
+            return _raglan_marker_body(parts, lang)
+    if len(step.items) == 1 and isinstance(step.items[0], Op):
+        only = step.items[0]
+        if only.times == step.consumes and only.times > 1:
+            if only.kind is StitchKind.KNIT:
+                return t("pattern.all_knit", lang)
+            if only.kind is StitchKind.PURL:
+                return t("pattern.all_purl", lang)
     if len(step.items) == 1 and isinstance(step.items[0], Repeat):
         repeat = step.items[0]
         ops = ", ".join(_op_text(op, lang) for op in repeat.ops)
@@ -112,11 +175,21 @@ def _count_text(step: Step, lang: str) -> str:
     return t("pattern.stitch_count_short", lang, n=step.stitch_count_end)
 
 
-def format_step_line(step: Step, mode: str, lang: str) -> str:
-    """Vuelta/hilera explicita, con abreviaturas y conteo declarado."""
-    label = t("pattern.round" if mode == "round" else "pattern.row", lang, n=step.number)
+def format_step_line(
+    step: Step, mode: str, lang: str, *, relative: bool = False, markers: bool = False
+) -> str:
+    """Vuelta/hilera explicita, con abreviaturas y conteo declarado.
+
+    `relative`: "Vuelta siguiente" en vez del numero (dos agujas, varios
+    talles: el numero de vuelta cambia por talle y no ayuda a seguirlo).
+    """
+    if relative and step.number > 1:
+        label = t("pattern.next_round" if mode == "round" else "pattern.next_row", lang)
+    else:
+        label = t("pattern.round" if mode == "round" else "pattern.row", lang, n=step.number)
     note = t(step.note_key, lang) + " " if step.note_key else ""
-    return f"{note}{label}: {_step_body(step, lang)} {_count_text(step, lang)}"
+    body = _step_body(step, lang, markers=markers)
+    return f"{note}{label}: {body} {_count_text(step, lang)}"
 
 
 # ---------------------------------------------------------------------------
@@ -369,49 +442,66 @@ def compress_steps(steps: tuple[Step, ...]) -> tuple[StepLine, ...]:
     return _merge_identical(tuple(result))
 
 
-def render_step_lines(lines: tuple[StepLine, ...], mode: str, lang: str) -> tuple[Block, ...]:
+def render_step_lines(
+    lines: tuple[StepLine, ...],
+    mode: str,
+    lang: str,
+    *,
+    relative: bool = False,
+    markers: bool = False,
+) -> tuple[Block, ...]:
     blocks: list[Block] = []
+    rnd = mode == "round"
 
     def render_one(line: StepLine) -> None:
+        if isinstance(line, SingleLine) and relative and line.step.number > 1 and _is_plain(line.step):
+            line = RangeLine(first=line.step, last=line.step)
         if isinstance(line, SingleLine):
-            blocks.append(Block(BlockKind.STEP, format_step_line(line.step, mode, lang)))
+            text = format_step_line(line.step, mode, lang, relative=relative, markers=markers)
+            blocks.append(Block(BlockKind.STEP, text))
         elif isinstance(line, RangeLine):
-            label = t(
-                "pattern.rounds_range" if mode == "round" else "pattern.rows_range",
-                lang,
-                a=line.first.number,
-                b=line.last.number,
-            )
-            note = t(line.first.note_key, lang) + " " if line.first.note_key else ""
-            body = _step_body(line.first, lang)
-            blocks.append(
-                Block(
-                    BlockKind.STEP,
-                    f"{note}{label}: {body} {_count_text(line.last, lang)}",
+            if relative:
+                label = t(
+                    "pattern.next_rounds" if rnd else "pattern.next_rows",
+                    lang,
+                    n=line.last.number - line.first.number + 1,
                 )
+            else:
+                label = t(
+                    "pattern.rounds_range" if rnd else "pattern.rows_range",
+                    lang,
+                    a=line.first.number,
+                    b=line.last.number,
+                )
+            note = t(line.first.note_key, lang) + " " if line.first.note_key else ""
+            body = _step_body(line.first, lang, markers=markers)
+            blocks.append(
+                Block(BlockKind.STEP, f"{note}{label}: {body} {_count_text(line.last, lang)}")
             )
 
     for line in lines:
         if isinstance(line, CycleLine):
             for explicit in line.explicit:
                 render_one(explicit)
-            blocks.append(
-                Block(
-                    BlockKind.REPEAT,
-                    t(
-                        "pattern.rounds_repeat" if mode == "round" else "pattern.rows_repeat",
-                        lang,
-                        a=line.first_number,
-                        b=line.last_number,
-                        n=line.extra_cycles,
-                        sts=line.final_step.stitch_count_end,
-                    ),
+            length = line.last_number - line.first_number + 1
+            if relative:
+                key = "pattern.repeat_last_rounds" if rnd else "pattern.repeat_last_rows"
+                if length == 1:
+                    key = "pattern.repeat_last_round" if rnd else "pattern.repeat_last_row"
+                text = t(key, lang, l=length, n=line.extra_cycles, sts=line.final_step.stitch_count_end)
+            else:
+                text = t(
+                    "pattern.rounds_repeat" if rnd else "pattern.rows_repeat",
+                    lang,
+                    a=line.first_number,
+                    b=line.last_number,
+                    n=line.extra_cycles,
+                    sts=line.final_step.stitch_count_end,
                 )
-            )
+            blocks.append(Block(BlockKind.REPEAT, text))
         else:
             render_one(line)
     return tuple(blocks)
-
 
 
 # ---------------------------------------------------------------------------
@@ -496,6 +586,15 @@ def _section_intro(section: Section, lang: str) -> str:
             return t("pattern.cast_on_crochet", lang, n=chains)
     if section.id == "neckband":
         return t("pattern.cast_on_round", lang, n=section.start_stitches)
+    if section.id == "yoke" and "back_neck" in section.meta:
+        meta = section.meta
+        return t(
+            "pattern.raglan_setup",
+            lang,
+            back=meta["back_neck"],
+            front=meta["front_neck"],
+            sleeve=meta["sleeve_neck"],
+        )
     if section.id == "yoke":
         meta = section.meta
         return t(
@@ -523,22 +622,32 @@ def _section_intro(section: Section, lang: str) -> str:
     return t("pattern.section_start", lang, n=section.start_stitches)
 
 
+def _half(value: float) -> str:
+    """Redondeo a 0,5: los patrones impresos no dan decimas de cm."""
+    return f"{round_half_up(value * 2) / 2:g}"
+
+
 def _length(value_cm: float, units: str, lang: str) -> str:
     if units == "in":
-        return f"{value_cm / 2.54:.1f} {t('unit.in', lang)}"
-    return f"{value_cm:.1f} {t('unit.cm', lang)}"
+        return f"{_half(value_cm / 2.54)} {t('unit.in', lang)}"
+    return f"{_half(value_cm)} {t('unit.cm', lang)}"
 
 
 def build_pattern_blocks(
     pattern: Pattern,
     *,
     lang: str | None = None,
+    size_subtitle: bool = True,
 ) -> tuple[Block, ...]:
-    """Convierte la IR verificada en bloques listos para renderizar."""
+    """Convierte la IR verificada en bloques listos para renderizar.
+
+    `size_subtitle=False` para combinar talles: el documento pone su propio
+    encabezado con la lista de talles.
+    """
     language = lang or pattern.params.idioma
     gauge = resolve_gauge(pattern.params)
     blocks: list[Block] = [Block(BlockKind.TITLE, t(pattern.meta.title_key, language))]
-    if pattern.meta.family in _GARMENT_FAMILIES:
+    if size_subtitle and pattern.meta.family in _GARMENT_FAMILIES:
         blocks.append(
             Block(BlockKind.SUBTITLE, t("pattern.size_short", language, size=pattern.meta.size))
         )
@@ -621,9 +730,27 @@ def build_pattern_blocks(
             blocks.append(Block(BlockKind.LINE, intro))
         for note_key in section.note_keys:
             blocks.append(Block(BlockKind.LINE, t(note_key, language)))
+        steps = section.steps[1:] if section.division else section.steps
         blocks.extend(
-            render_step_lines(compress_steps(section.steps), section.mode, language)
+            render_step_lines(
+                compress_steps(steps),
+                section.mode,
+                language,
+                relative=pattern.spec.tecnica.value != "crochet",
+                markers=section.id == "yoke" and pattern.meta.family == "raglan_top_down",
+            )
         )
+        if section.target is not None and section.target.dimension == "length" and section.steps:
+            blocks.append(
+                Block(
+                    BlockKind.LINE,
+                    t(
+                        "pattern.checkpoint_length",
+                        language,
+                        length=_length(section.target.target_cm, pattern.params.unidades, language),
+                    ),
+                )
+            )
         if section.bind_off:
             bind_key = (
                 "pattern.bind_off_crochet"
