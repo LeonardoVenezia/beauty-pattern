@@ -82,7 +82,8 @@ async def run() -> dict[str, Any]:
     rows = []
     prompt_version = ""
     for case in cases:
-        prepared = prepare_image((PHOTOS / case["file"]).read_bytes())
+        names = case.get("files") or [case["file"]]  # una o varias fotos de la pieza
+        prepared = [prepare_image((PHOTOS / name).read_bytes()) for name in names]
         result = await extract_garment(prepared, config)
         prompt_version = result.prompt_version
         expected = case.get("expected", {})

@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from ai.config import AIConfig
 from ai.critic import critique_pattern
 from ai.errors import AIConfigError, AIError
-from ai.extractor import extract_garment
+from ai.extractor import MAX_PHOTOS, extract_garment
 from ai.probe import CapabilityProbe
 from ai.writer import write_pattern_text
 from api.ratelimit import limiter_from_env
@@ -30,7 +30,7 @@ from engine.stitches.catalog import STITCH_PATTERNS
 from engine.text import render_pattern_text
 from render.pdf import render_pattern_pdf
 from render.schematic import render_schematic_svg
-from vision.preprocess import ImageValidationError, prepare_image
+from vision.preprocess import ImageValidationError, PreparedImage, prepare_image
 
 
 def _cors_origins() -> list[str]:
@@ -122,23 +122,38 @@ async def health_ai(refresh: bool = False) -> dict[str, object]:
 
 @app.post("/analyze")
 async def analyze(
-    request: Request, file: Annotated[UploadFile, File()]
+    request: Request,
+    file: Annotated[UploadFile | None, File()] = None,
+    files: Annotated[list[UploadFile] | None, File()] = None,
 ) -> dict[str, object]:
+    """Una o varias fotos de la misma pieza (campo `files`, hasta 4; `file`
+    sigue aceptado). Cada foto se valida y se le mide la calidad."""
     if not limiter.allow(_client_key(request)):
         raise HTTPException(status_code=429, detail="demasiadas solicitudes")
-    data = await file.read(_max_upload_bytes() + 1)
-    if len(data) > _max_upload_bytes():
-        raise HTTPException(status_code=413, detail="la imagen supera el maximo permitido")
-    try:
-        prepared = prepare_image(data)
-    except ImageValidationError as exc:
-        raise HTTPException(status_code=422, detail=str(exc)) from exc
+    uploads = [*([file] if file is not None else []), *(files or [])]
+    if not uploads:
+        raise HTTPException(status_code=422, detail="falta la foto")
+    if len(uploads) > MAX_PHOTOS:
+        raise HTTPException(status_code=422, detail=f"hasta {MAX_PHOTOS} fotos por analisis")
+    datas: list[bytes] = []
+    prepared_photos: list[PreparedImage] = []
+    for index, upload in enumerate(uploads, start=1):
+        data = await upload.read(_max_upload_bytes() + 1)
+        if len(data) > _max_upload_bytes():
+            raise HTTPException(status_code=413, detail=f"la foto {index} supera el maximo permitido")
+        try:
+            prepared_photos.append(prepare_image(data))
+        except ImageValidationError as exc:
+            raise HTTPException(status_code=422, detail=f"foto {index}: {exc}") from exc
+        datas.append(data)
+    data = datas[0]
+    prepared = prepared_photos[0]
     try:
         config = AIConfig.from_env()
     except AIConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     try:
-        result = await extract_garment(prepared, config)
+        result = await extract_garment(prepared_photos, config)
     except AIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     database = database_from_env()
@@ -153,6 +168,10 @@ async def analyze(
             field: list(values) for field, values in result.disagreements.items()
         },
         "prompt_version": result.prompt_version,
+        "photo_quality": [
+            {"photo": index, "issues": list(photo.quality)}
+            for index, photo in enumerate(prepared_photos, start=1)
+        ],
         "cached": result.cached,
         "usage": asdict(result.usage),
     }

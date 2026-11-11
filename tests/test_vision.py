@@ -116,3 +116,15 @@ def test_segmenters() -> None:
     assert bool(mask[50, 50]) is True
     assert bool(mask[0, 0]) is False
     assert np.all(NoopSegmenter().segment(image))
+
+
+def test_quality_flags_blur_and_darkness_but_not_a_sharp_photo() -> None:
+    from PIL import ImageFilter
+
+    from vision.quality import assess_quality
+
+    noise = Image.effect_noise((800, 800), 80).convert("RGB")
+    assert assess_quality(noise) == ()
+    assert "blurry" in assess_quality(noise.filter(ImageFilter.GaussianBlur(4)))
+    assert "dark" in assess_quality(Image.new("RGB", (800, 800), (10, 10, 10)))
+    assert "small" in assess_quality(noise.resize((300, 300)))

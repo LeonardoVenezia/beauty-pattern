@@ -20,6 +20,8 @@ Cada foto va en esta carpeta y tiene una entrada en `cases.json`:
 
 - `expected` lleva solo lo que se ve con seguridad en la foto. Los valores
   posibles son los de `engine/spec.py` (los mismos del prompt del extractor).
+- Para varias fotos de la misma pieza, usar `"files": ["a.jpg", "b.jpg"]`
+  en lugar de `file` (hasta 4; la primera es la vista general).
 - `texturas` es la lista de texturas que tienen que aparecer (puede ser `[]`).
 - Antes de commitear una foto, confirmar que hay derechos para usarla.
 

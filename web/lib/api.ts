@@ -55,6 +55,7 @@ export type AnalysisResponse = {
   confidence: Record<string, number>;
   disagreements: Record<string, string[]>;
   prompt_version: string;
+  photo_quality?: { photo: number; issues: string[] }[];
   cached: boolean;
   usage: {
     prompt_tokens: number;
@@ -161,9 +162,9 @@ async function parseError(response: Response): Promise<string> {
   }
 }
 
-export async function analyzeImage(file: File): Promise<AnalysisResponse> {
+export async function analyzeImage(files: File[]): Promise<AnalysisResponse> {
   const form = new FormData();
-  form.append("file", file);
+  for (const file of files) form.append("files", file);
   const response = await fetch(`${API_URL}/analyze`, {
     method: "POST",
     body: form,

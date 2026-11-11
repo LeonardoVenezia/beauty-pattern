@@ -13,6 +13,8 @@ from io import BytesIO
 
 from PIL import Image, ImageOps, UnidentifiedImageError
 
+from vision.quality import assess_quality
+
 MAX_SIDE = 1344
 MAX_PIXELS = 40_000_000
 MIN_CROP_SIDE = 48
@@ -38,6 +40,7 @@ class PreparedImage:
     crops: dict[str, bytes]
     digest: str
     original_format: str
+    quality: tuple[str, ...] = ()  # ver vision/quality.py
 
 
 def _clean_rgb(image: Image.Image) -> Image.Image:
@@ -110,6 +113,7 @@ def prepare_image(
                 crops=crops,
                 digest=hashlib.sha256(data).hexdigest(),
                 original_format=original_format,
+                quality=assess_quality(image),
             )
     except ImageValidationError:
         raise

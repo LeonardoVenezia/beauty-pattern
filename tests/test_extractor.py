@@ -10,7 +10,7 @@ from ai.config import AIConfig
 from ai.errors import ExtractionError
 from ai.extractor import build_messages, consolidate, extract_garment
 from ai.fake import FakeAIClient
-from ai.prompts.extractor_v2 import EXTRACTOR_SYSTEM_PROMPT, EXTRACTOR_USER_PROMPT
+from ai.prompts.extractor_v3 import EXTRACTOR_SYSTEM_PROMPT, EXTRACTOR_USER_PROMPT
 from ai.types import ImagePart
 from vision.preprocess import prepare_image
 
@@ -57,7 +57,7 @@ async def test_fake_extractor_is_deterministic_and_uses_images() -> None:
     assert result.spec.construccion.value == "raglan_top_down"
     assert result.confidence["categoria"] == 1.0
     assert len(result.samples) == 3
-    assert result.prompt_version == "extractor-v2"
+    assert result.prompt_version == "extractor-v3"
     assert result.usage.total_tokens == 0
     assert "espalda" in result.spec.no_visible
 
@@ -128,3 +128,21 @@ def test_prompt_distinguishes_bag_from_flat_square() -> None:
     assert "NO es un bolso" in EXTRACTOR_SYSTEM_PROMPT
     assert "granny_square" in EXTRACTOR_USER_PROMPT
     assert "asas o correas" in EXTRACTOR_SYSTEM_PROMPT
+
+
+async def test_extractor_sends_every_photo_and_quality_notice() -> None:
+    first, second = prepared(), prepared()
+    client = FakeAIClient(handler=lambda messages, model, response_format: json.dumps(payload()))
+    await extract_garment([first, second], fake_config(1), client=client, samples=1)
+    parts = [part for message in client.calls[0].messages for part in message.parts]
+    images = [part for part in parts if isinstance(part, ImagePart)]
+    assert len(images) == 2 + len(first.crops)  # recortes solo de la foto 1
+    text = " ".join(part.text for part in parts if hasattr(part, "text"))
+    assert "Foto 2:" in text
+    assert "Aviso de calidad" in text  # fondo blanco liso: desenfocada
+
+
+def test_prompt_handles_imperfect_photos_and_any_knitting() -> None:
+    assert "varias fotos" in EXTRACTOR_SYSTEM_PROMPT
+    assert "imperfectas" in EXTRACTOR_SYSTEM_PROMPT
+    assert "Cualquier tejido es valido" in EXTRACTOR_SYSTEM_PROMPT

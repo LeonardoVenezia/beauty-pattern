@@ -352,10 +352,18 @@ function normalizeSpec(spec: GarmentSpec): GarmentSpec {
   return { ...spec, tecnica };
 }
 
+const MAX_PHOTOS = 4;
+const QUALITY_TEXT: Record<string, string> = {
+  small: "tiene poca resolución",
+  blurry: "está desenfocada",
+  dark: "está oscura",
+  bright: "está muy clara",
+};
+
 export default function HomePage() {
   const [step, setStep] = useState<Step>("upload");
-  const [file, setFile] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
   const [analysis, setAnalysis] = useState<AnalysisResponse | null>(null);
   const [spec, setSpec] = useState<GarmentSpec | null>(null);
   const [result, setResult] = useState<PatternResponse | null>(null);
@@ -444,11 +452,14 @@ export default function HomePage() {
   }, []);
 
   function onFile(event: ChangeEvent<HTMLInputElement>) {
-    const selected = event.target.files?.[0];
-    if (!selected) return;
-    if (preview) URL.revokeObjectURL(preview);
-    setFile(selected);
-    setPreview(URL.createObjectURL(selected));
+    const selected = Array.from(event.target.files ?? []);
+    event.target.value = "";
+    if (selected.length === 0) return;
+    // Se suman a las ya elegidas (hasta 4 fotos de la misma pieza).
+    const next = [...files, ...selected].slice(0, MAX_PHOTOS);
+    previews.forEach((url) => URL.revokeObjectURL(url));
+    setFiles(next);
+    setPreviews(next.map((item) => URL.createObjectURL(item)));
     setAnalysis(null);
     setSpec(null);
     setResult(null);
@@ -460,12 +471,18 @@ export default function HomePage() {
     setStep("upload");
   }
 
+  function removePhoto(index: number) {
+    URL.revokeObjectURL(previews[index]);
+    setFiles(files.filter((_, i) => i !== index));
+    setPreviews(previews.filter((_, i) => i !== index));
+  }
+
   async function onAnalyze() {
-    if (!file) return;
+    if (files.length === 0) return;
     setBusy(true);
     setError(null);
     try {
-      const data = await analyzeImage(file);
+      const data = await analyzeImage(files);
       setAnalysis(data);
       setSpec(normalizeSpec(data.spec));
       setImageId(data.image_id);
@@ -644,6 +661,13 @@ export default function HomePage() {
     );
   }
 
+  const qualityNotes = (analysis?.photo_quality ?? [])
+    .filter((item) => item.issues.length > 0)
+    .map(
+      (item) =>
+        `La foto ${item.photo} ${item.issues.map((code) => QUALITY_TEXT[code] ?? code).join(" y ")}.`,
+    );
+
   function confidenceFor(key: string): number | null {
     const value = analysis?.confidence[key] ?? spec?.confianza[key];
     return typeof value === "number" ? value : null;
@@ -713,12 +737,13 @@ export default function HomePage() {
         <section className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
           <h2 className="text-2xl font-semibold">Empezá con una foto clara</h2>
           <p className="mt-2 text-ink/70">
-            Se ve mejor la prenda completa, de frente, con buena luz. También podés
-            usar una foto de Instagram o de tu galería.
+            Se ve mejor la prenda completa, de frente, con buena luz. Podés sumar
+            hasta {MAX_PHOTOS} fotos de la misma pieza (espalda, detalle del punto,
+            puesta) y también usar fotos de Instagram o de tu galería.
           </p>
           <label className="mt-6 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sage/50 bg-sage/5 p-6 text-center hover:bg-sage/10">
             <span className="text-lg font-semibold text-sage">
-              Elegir o sacar una foto
+              {files.length > 0 ? "Sumar otra foto" : "Elegir o sacar una foto"}
             </span>
             <span className="mt-1 text-sm text-ink/60">
               JPG, PNG o WebP · hasta 12 MB
@@ -726,27 +751,42 @@ export default function HomePage() {
             <input
               type="file"
               accept="image/*"
-              capture="environment"
+              multiple
               onChange={onFile}
               className="sr-only"
             />
           </label>
 
-          {preview ? (
-            <div className="mt-6 overflow-hidden rounded-2xl border border-ink/10 bg-ink/5">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={preview}
-                alt="Foto de la prenda elegida"
-                className="max-h-96 w-full object-contain"
-              />
+          {previews.length > 0 ? (
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              {previews.map((url, index) => (
+                <div
+                  key={url}
+                  className="relative overflow-hidden rounded-2xl border border-ink/10 bg-ink/5"
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={url}
+                    alt={`Foto ${index + 1} de la prenda`}
+                    className="max-h-60 w-full object-contain"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(index)}
+                    aria-label={`Quitar la foto ${index + 1}`}
+                    className="absolute right-2 top-2 min-h-9 min-w-9 rounded-full bg-white/90 text-lg font-semibold text-ink shadow"
+                  >
+                    ×
+                  </button>
+                </div>
+              ))}
             </div>
           ) : null}
 
           <button
             type="button"
             onClick={onAnalyze}
-            disabled={!file || busy}
+            disabled={files.length === 0 || busy}
             className="mt-6 min-h-12 w-full rounded-xl bg-ink px-5 py-3 text-lg font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
             {busy ? "Analizando la foto…" : "Analizar foto"}
@@ -802,6 +842,12 @@ export default function HomePage() {
               Revisá y corregí lo que haga falta. La confianza baja está marcada en
               ámbar.
             </p>
+            {qualityNotes.length > 0 ? (
+              <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-ink/80">
+                {qualityNotes.join(" ")} Si podés, sumá otra foto más nítida para
+                que el análisis sea más seguro.
+              </p>
+            ) : null}
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <Field
@@ -1353,8 +1399,8 @@ export default function HomePage() {
             type="button"
             onClick={() => {
               setStep("upload");
-              setFile(null);
-              setPreview(null);
+              setFiles([]);
+              setPreviews([]);
               setAnalysis(null);
               setSpec(null);
               setResult(null);

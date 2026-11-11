@@ -178,3 +178,19 @@ def test_security_headers() -> None:
     assert response.headers["X-Content-Type-Options"] == "nosniff"
     assert response.headers["X-Frame-Options"] == "DENY"
     assert response.headers["Referrer-Policy"] == "no-referrer"
+
+
+def test_analyze_accepts_several_photos_and_reports_quality(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    _fake_env(monkeypatch, tmp_path)
+    photos = [("files", (f"f{i}.png", _png(), "image/png")) for i in range(3)]
+    with TestClient(app) as client:
+        response = client.post("/analyze", files=photos)
+        too_many = client.post(
+            "/analyze", files=[("files", (f"f{i}.png", _png(), "image/png")) for i in range(5)]
+        )
+    assert response.status_code == 200, response.text
+    quality = response.json()["photo_quality"]
+    assert [item["photo"] for item in quality] == [1, 2, 3]
+    assert too_many.status_code == 422

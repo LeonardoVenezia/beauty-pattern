@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter
+from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -17,7 +18,7 @@ from ai.client import AIClient, OpenAICompatibleClient
 from ai.config import AIConfig
 from ai.errors import AIError, ExtractionError
 from ai.fake import FakeAIClient
-from ai.prompts.extractor_v2 import (
+from ai.prompts.extractor_v3 import (
     EXTRACTOR_PROMPT_VERSION,
     EXTRACTOR_REPAIR_PROMPT,
     EXTRACTOR_SYSTEM_PROMPT,
@@ -121,18 +122,52 @@ def consolidate(samples: list[GarmentSpec]) -> ExtractionResult:
     )
 
 
-def build_messages(prepared: PreparedImage) -> list[Message]:
-    crop_names = ", ".join(prepared.crops) if prepared.crops else "ninguno"
+_QUALITY_TEXT = {
+    "small": "baja resolucion",
+    "blurry": "desenfocada",
+    "dark": "oscura",
+    "bright": "sobreexpuesta",
+}
+MAX_PHOTOS = 4
+
+
+def build_messages(prepared: PreparedImage | Sequence[PreparedImage]) -> list[Message]:
+    """Mensajes del extractor: todas las fotos y los recortes de la foto 1.
+
+    Los recortes solo salen de la primera foto (la vista general); las demas
+    van enteras para no multiplicar imagenes. Los problemas de calidad que
+    detecto `vision.quality` se le dicen al modelo para que sea prudente.
+    """
+    photos = [prepared] if isinstance(prepared, PreparedImage) else list(prepared)
+    if not photos:
+        raise ExtractionError("no hay fotos para analizar")
+    photos = photos[:MAX_PHOTOS]
+    first = photos[0]
+    crop_names = ", ".join(first.crops) if first.crops else "ninguno"
+    quality = [
+        f"Foto {index}: " + ", ".join(_QUALITY_TEXT[code] for code in photo.quality) + "."
+        for index, photo in enumerate(photos, start=1)
+        if photo.quality
+    ]
+    quality_text = (
+        "Aviso de calidad (medido, no adivinado): " + " ".join(quality) + " Se prudente con los detalles finos.\n"
+        if quality
+        else ""
+    )
     parts: list[TextPart | ImagePart] = [
         TextPart(
             EXTRACTOR_USER_PROMPT.format(
+                photos=f"{len(photos)} foto" + ("s" if len(photos) > 1 else ""),
+                quality=quality_text,
                 crops=crop_names,
-                crop_names=crop_names,
             )
         ),
-        ImagePart(prepared.main, prepared.mime_type),
     ]
-    for name, data in prepared.crops.items():
+    for index, photo in enumerate(photos, start=1):
+        if len(photos) > 1:
+            parts.append(TextPart(f"Foto {index}:"))
+        parts.append(ImagePart(photo.main, photo.mime_type))
+    for name, data in first.crops.items():
         parts.append(TextPart(f"Recorte {name}:"))
         parts.append(ImagePart(data, "image/jpeg"))
     return [
@@ -230,7 +265,7 @@ def _fake_handler() -> Any:
 
 
 async def extract_garment(
-    prepared: PreparedImage,
+    prepared: PreparedImage | Sequence[PreparedImage],
     config: AIConfig,
     *,
     client: AIClient | None = None,
