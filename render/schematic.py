@@ -317,8 +317,6 @@ def _panel_svg(pattern: Pattern, lang: str) -> str:
     if title.startswith("section."):
         title = t(pattern.meta.title_key, lang)
     cut = t("schematic.cut_one", lang)
-    if cut.startswith("schematic."):
-        cut = "Cortar 1 / Tejer 1"
     return _rect_piece_svg(pattern, lang, piece_title=title, width_cm=w, length_cm=length_cm, w_key=w_key, l_key=l_key, cut=cut)
 
 
@@ -326,8 +324,6 @@ def _bag_svg(pattern: Pattern, lang: str) -> str:
     w = _value(pattern, "width", 30.0)
     length_cm = _value(pattern, "length", 30.0)
     cut = t("schematic.cut_one", lang)
-    if cut.startswith("schematic."):
-        cut = "Tejer 1 pieza (cuerpo)"
     note = t("schematic.optional_handles", lang)
     if note.startswith("schematic."):
         note = "Asas opcionales (no incluidas)"
