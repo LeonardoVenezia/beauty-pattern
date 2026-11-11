@@ -21,9 +21,10 @@ make web        # solo web Next.js en :3000
 ## Patron de ejemplo
 
 `make demo` no usa IA: parte de un `GarmentSpec` escrito a mano, genera el
-patron, lo pasa por el simulador y escribe texto, esquema SVG y PDF en
-`data/demo/`. Si el simulador falla, el comando termina con error y no escribe
-el PDF.
+patron, lo pasa por el simulador y escribe texto, un diagrama de piezas SVG y
+PDF en `data/demo/`. Si el simulador falla, el comando termina con error y no
+escribe el PDF. El diagrama y los números se calculan de forma determinista
+desde la IR verificada (la IA no dibuja).
 
 ## IA real
 
@@ -43,11 +44,15 @@ npm run dev      # http://localhost:3000
 La web usa `NEXT_PUBLIC_API_URL` para ubicar la API; por defecto
 `http://localhost:8000`. `make dev` levanta API y web en paralelo. El flujo es:
 subir foto -> revisar atributos detectados -> elegir hilo, muestra y las
-medidas o el talle que correspondan -> ver el patron verificado -> descargar
+medidas o el talle que correspondan -> ver el patron verificado (texto con
+instrucciones abreviadas y glosario, y diagrama de piezas acotado) -> descargar
 PDF o esquema SVG.
 
-Con `FAKE_AI=1` la extraccion es simulada; la web funciona igual y sirve para
-probar todo el flujo sin red ni costo.
+El texto comprime vueltas repetitivas de forma presentacional (rangos/ciclos
+con conteo final) pero los números son los de la IR verificada; el diagrama de
+piezas se deriva del perfil de puntos y las medidas de la IR (mismo SVG en web
+y PDF). Con `FAKE_AI=1` la extraccion es simulada; la web funciona igual y
+sirve para probar todo el flujo sin red ni costo.
 
 ## Familias disponibles
 
@@ -67,10 +72,16 @@ En crochet se generan amigurumis (esfera, cilindro y cono), un granny square
 sólido simplificado, una bufanda plana, un bolso rectangular y una pieza plana
 genérica. Si la foto muestra un cuadrado o módulo de crochet, la categoría es
 **Cuadrado / granny square** y la medida que se pide es el lado; no es un bolso
-salvo que se vean asas, abertura o volumen. Para amigurumi se usan `dimensiones_cm` con `diameter` y `height`; la
-forma se elige con `spec.forma` (`straight`, `boxy`, `a_line` o `curved`). El
-granny square usa `dimensiones_cm["size"]`; el bolso y la pieza plana usan
-`width` y `length`.
+salvo que se vean asas, abertura o volumen.
+
+En crochet, la opción **Manta** también se genera como un módulo granny square
+(se pide el lado del módulo); no calcula una manta completa ni la cantidad y
+unión de módulos.
+
+Para amigurumi se usan `dimensiones_cm` con `diameter` y `height`; la forma se
+elige con `spec.forma` (`straight`, `boxy`, `a_line` o `curved`). El granny
+square usa `dimensiones_cm["size"]`; el bolso y la pieza plana usan `width` y
+`length`.
 
 El bolso y la pieza plana son paneles rectangulares: no incluyen asas, forro,
 cierre ni uniones de módulos. La pieza plana es el recurso para una foto que no

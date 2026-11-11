@@ -174,10 +174,6 @@ permitidos (texto canónico + IR); no detecta un número correcto usado en el
 contexto equivocado. La garantía fuerte sigue siendo la plantilla determinista
 y el simulador, no la IA. No había `AI_API_KEY` para probar el modelo real.
 
-## Hitos 8-11
-
-Pendientes.
-
 ## Hito 8 — Más familias de prenda
 
 Completado con limitaciones declaradas; tests, `ruff`, `mypy` y suite completa
@@ -254,7 +250,9 @@ Completado con limitaciones declaradas; tests, `ruff`, `mypy` y suite completa
 **Limitaciones honestas:** el granny square es un cuadrado sólido simplificado,
 no el motivo clásico de grupos; no hay cambios de color ni uniones de módulos;
 la densidad de crochet usa la tabla de referencia de dos agujas editable. El
-amigurumi no incluye relleno ni detalles de ensamblaje. Ver D017.
+amigurumi no incluye relleno ni detalles de ensamblaje. La categoría **Manta**
+en crochet se despacha como un módulo granny square: no calcula una manta
+completa ni la unión de módulos. Ver D017.
 
 ## Hito 11 — Pulido
 
@@ -320,3 +318,38 @@ navegador; no se ejecutó Playwright e2e en este entorno.
 - [x] El granny square tiene esquema SVG/PDF propio (cuadrado, textura, rondas,
   borde y medidas) y la UI pide el lado del cuadrado.
 - [x] Tests de categoría, prompt, esquema y PDF; suite completa en verde.
+
+## Mejora de presentación: texto comercial y diagramas de piezas (2026-11-10)
+
+Objetivo: que el patrón se lea como uno comprado y que el esquema sea un
+diagrama útil (no una silueta decorativa), sin romper la regla “la IA
+interpreta; el código calcula” (ningún número ni dibujo generado por IA).
+
+- [x] `engine/blocks.py`: capa de bloques tipados (compartida por texto y PDF)
+  que comprime vueltas de forma **solo presentacional** —rangos de vueltas
+  idénticas y ciclos con progresión (relleno enmascarado, nota que se repite),
+  anclados en la vuelta con nota y con conteo final declarado— sin alterar la
+  IR. Glosario automático de las abreviaturas usadas.
+- [x] `engine/text.py`: instrucciones siempre abreviadas con glosario (estilo
+  patrón comercial), independiente del nivel; firma de `render_pattern_text`
+  intacta. Raglán demo: 438 → ~115 líneas.
+- [x] `render/draw.py` + `render/schematic.py`: diagramas de **piezas
+  paramétricos derivados de la IR** (perfil de puntos por sección, medidas y
+  gauge): contorno según la progresión de puntos, cotas y conteos
+  `inicio → fin`, por familia (paneles/accesorios y conjunto de piezas en
+  prendas). Un único SVG para web y PDF; determinista.
+- [x] `render/pdf.py`: formato comercial (portada, esquema embebido vía
+  svglib, tablas de materiales/medidas, glosario, secciones) renderizado desde
+  los mismos bloques. `pyproject.toml` declara `svglib>=1.5` con fallback si
+  no está disponible.
+- [x] Commits: `daf4489` (texto/bloques), `daa06d9` (siluetas, sustituido),
+  `184fe90` (PDF), `cd0fe4d` (diagramas de piezas). Demo regenerada.
+- [x] Verificación: **2136 tests** en verde, `ruff` limpio, `mypy` estricto en
+  `engine/` limpio, `make demo` OK. (3 aserciones de dibujo ajustadas en
+  `tests/test_accessories.py`, `tests/test_flat.py`, `tests/test_crochet.py`).
+
+**Limitaciones:** contornos de prenda simplificados por familia (sin
+escote/sisa/copa finos donde la IR no lo expone); en este entorno `svglib` no
+se instaló en el venv, así que el PDF puede generarse sin el esquema embebido
+(hay fallback; con `svglib` instalado se incrusta). La web aún no refleja la
+misma maquetación jerárquica que el PDF. Ver `DECISIONS.md` D021.

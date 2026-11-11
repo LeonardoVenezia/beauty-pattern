@@ -318,3 +318,38 @@ fuente publica verificada.
 - **Limitación:** el generador produce un cuadrado sólido simplificado; no
   reproduce el motivo floral de la foto. La advertencia se muestra en el texto
   y el esquema se rotula como simplificado.
+
+## D021 — Presentación determinista: instrucciones comerciales y diagramas de piezas (2026-11-10)
+
+- **Problema:** las instrucciones listaban cada vuelta sin comprimir (poco
+  legible) y el esquema era una silueta geométrica genérica de poca utilidad.
+- **Decisión (sin IA en el dibujo):** el esquema se genera por código a partir
+  de la IR verificada, no con un modelo generativo ni con un LLM que “dibuje”.
+  Motivo: los números/forma deben ser verificables y coherentes con el
+  simulador; un modelo de imagen inventa y un LLM que emite SVG no garantiza
+  geometría correcta. La IA ya cumplió su rol al interpretar la foto (extractor);
+  mejorar el dibujo es un problema de render determinista, no de prompt/modelo
+  de imagen.
+- **Decisión:** `engine/blocks.py` introduce bloques tipados compartidos por
+  texto y PDF. La compresión de vueltas es **solo presentacional** (no altera
+  la IR ni los conteos): rangos de vueltas idénticas y ciclos con progresión
+  (repeticiones de relleno enmascaradas, nota que se repite), anclados en la
+  vuelta con nota y declarando siempre el conteo final. Se emiten abreviaturas
+  con glosario automático de las usadas. `render_pattern_text` conserva su
+  firma y la validación de números del redactor IA sigue comparando contra la
+  IR/texto canónico.
+- **Decisión:** `render/schematic.py` dibuja **diagramas de piezas paramétricos**
+  derivados del perfil de puntos por sección (`step.stitch_count_end`/gauge) y
+  de las medidas: contorno según la progresión de puntos, cotas y conteos
+  `inicio → fin`, por familia. Un único SVG sirve a web y PDF.
+- **Decisión:** `render/pdf.py` compone un PDF estilo patrón comercial (portada,
+  esquema embebido, tablas, glosario, instrucciones) desde los mismos bloques.
+  El esquema se embebe con `svglib` (`pyproject.toml`); si no está instalado,
+  el PDF se genera sin el dibujo embebido (fallback explícito, no falla).
+- **Limitaciones:** el contorno de prendas es una representación simplificada
+  por sección/familia (no deriva curvas finas de escote/sisa/copa donde la IR
+  no expone esa geometría); la web no maquetó aún con la jerarquía de
+  bloques/PDF. Afinar contornos y cartas de punto es trabajo determinista
+  posterior.
+- **Verificación:** 2136 tests, `ruff` y `mypy engine` en verde; demo
+  regenerada. Commits `daf4489`, `daa06d9`, `184fe90`, `cd0fe4d`.
