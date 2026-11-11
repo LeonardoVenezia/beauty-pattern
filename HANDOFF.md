@@ -47,13 +47,18 @@ como panel (`engine/garments/panels.py`, D024); se corrigieron jersey plano,
 elásticos planos y la manga encajada (`engine/garments/rows.py` es el
 acumulador de hileras planas LD/LR). 2305 tests.
 
+**Continuación 2:** panel en manga encajada, escote redondo en piezas,
+compensación de trenzas con `panel_motivo_cm`, `make eval-fotos` (ver
+`evals/photos/README.md`). D025. 2320 tests.
+
 **Próximos pasos, en orden:**
 1. *Capa de diseño* para reproducir motivos de la foto (p. ej. el mandala de
    `patron.jpeg`): la IA describe la estructura con vocabulario cerrado
    (vueltas, familias de punto, repeticiones radiales, color por vuelta) y
    el motor calcula y simula. Hoy se entrega un granny clásico y se avisa.
-2. *Evaluación real:* 20–30 fotos con atributos esperados y una rúbrica sobre
-   el PDF. Después, comparar modelos de visión (es un cambio de `.env`).
+2. *Evaluación real:* el armado está (`make eval-fotos`); faltan 20–30
+   fotos con derechos claros en `evals/photos/`. Después, comparar modelos
+   de visión (es un cambio de `.env`).
 3. Jacquard/fair isle como gráfico de color; panel en manga encajada;
    escote con forma (cuello redondo) en piezas planas.
 4. Esquemas con letras para cardigan, chaleco y accesorios.

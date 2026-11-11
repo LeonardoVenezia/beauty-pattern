@@ -393,3 +393,16 @@ muestra el texto de un talle (el PDF ya trae todos).
 
 **Pendiente:** panel en manga encajada; escote con forma en piezas planas;
 evaluación con fotos reales; capa de diseño para motivos complejos.
+
+## Pendientes resueltos (2026-11-11, continuación 2)
+
+- [x] Panel de textura en manga encajada (sisa con cierre y disminuciones).
+- [x] Escote redondo en manga encajada, hombro caído y chaleco.
+- [x] Compensación del ancho de las trenzas con la muestra medida (web, CLI).
+- [x] `make eval-fotos`: IA por campo + rúbrica del patrón; probado con la IA
+  real sobre la imagen de prueba.
+- [x] Verificación: **2320 tests**, `make lint` y `tsc` en verde.
+
+**Pendiente:** cargar 20–30 fotos con derechos claros en `evals/photos/` y
+correr `make eval-fotos`; escote del cárdigan (en V); capa de diseño para
+motivos complejos (p. ej. mandalas de crochet).

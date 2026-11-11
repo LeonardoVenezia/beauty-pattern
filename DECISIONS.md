@@ -435,3 +435,22 @@ fuente publica verificada.
 - **Web:** las texturas detectadas se muestran en español y se pueden quitar
   antes de generar, porque ahora cambian el patrón y la visión fina es el
   punto débil de la IA.
+
+## D025 — Pendientes de texturas, escote y evaluación (2026-11-11)
+
+- **Panel en manga encajada:** `FlatRows` lleva los pts lisos a cada lado del
+  panel, así la sisa cierra y disminuye en los bordes sin moverlo. El texto
+  resume los tramos lisos y escribe las hileras con forma con marcadores.
+- **Escote redondo** en manga encajada, hombro caído y chaleco: cierre
+  central y cada hombro por separado, con uniones verificadas contra la
+  espalda. El cárdigan sigue con escote recto (aviso).
+- **Compensación de trenzas con dato medido**, no con una regla inventada:
+  `panel_motivo_cm` (ancho de una repetición en la muestra). Los pts se
+  agregan junto al panel y se quitan antes del borde, la sisa final o el
+  escote, para no tocar la forma ni las uniones.
+- **Evaluación con fotos (`make eval-fotos`):** mide por separado la IA
+  (precisión por campo) y el patrón que sale de lo que vio (rúbrica
+  determinista). Probado una vez con la IA real sobre la imagen de prueba:
+  categoría y técnica correctas; el modelo describió los pétalos como
+  bodoques y los huecos como calado, lo que es razonable. Falta el conjunto
+  de fotos con derechos claros para medir de verdad.
