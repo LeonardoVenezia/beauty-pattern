@@ -15,6 +15,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
+from typing import Literal
 
 from engine.ir import Item, Op, Repeat
 from engine.spec import GarmentSpec, StitchPatternName, Texture
@@ -161,20 +162,70 @@ def build_panel(motif_id: str, segment: int) -> Panel | None:
     return panel
 
 
+def compensation(panel: Panel, stitches_per_cm: float, unit_cm: float | None) -> int:
+    """Pts a agregar por panel para que mida lo mismo que el jersey.
+
+    El panel de W pts mide (repeticiones x ancho medido + bordes en jersey);
+    eso equivale a E pts de jersey. Faltan W - E pts (redondeado a par). Si el
+    motivo no cierra el tejido (calados), no se compensa.
+    """
+    if unit_cm is None:
+        return 0
+    border = panel.width - panel.repeats * panel.unit_width
+    width_cm = panel.repeats * unit_cm + border / stitches_per_cm
+    extra = panel.width - width_cm * stitches_per_cm
+    if extra <= 0:
+        return 0
+    return min(2 * round(extra / 2), panel.width // 2)
+
+
+Stage = Literal["plain", "increase", "compensated", "decrease"]
+
+
+def _around_panel(left: int, right: int, panel_items: tuple[Item, ...], extra: int, stage: Stage) -> list[Item]:
+    """Pts lisos a los lados del panel, con los aumentos o disminuciones que
+    compensan su ancho (la mitad de cada lado)."""
+    a, b = extra // 2, extra - extra // 2
+    if stage == "increase" and extra:
+        return [
+            Op(StitchKind.KNIT, times=left),
+            *([Op(StitchKind.M1L, times=a)] if a else []),
+            *panel_items,
+            *([Op(StitchKind.M1R, times=b)] if b else []),
+            Op(StitchKind.KNIT, times=right),
+        ]
+    if stage == "compensated":
+        return [Op(StitchKind.KNIT, times=left + a), *panel_items, Op(StitchKind.KNIT, times=right + b)]
+    if stage == "decrease" and extra:
+        return [
+            Op(StitchKind.KNIT, times=left - a),
+            *([Op(StitchKind.K2TOG, times=a)] if a else []),
+            *panel_items,
+            *([Op(StitchKind.SSK, times=b)] if b else []),
+            Op(StitchKind.KNIT, times=right - b),
+        ]
+    return [Op(StitchKind.KNIT, times=left), *panel_items, Op(StitchKind.KNIT, times=right)]
+
+
 def body_round_with_panels(
-    division: Sequence[tuple[str, int]], panel: Panel, row: int
+    division: Sequence[tuple[str, int]],
+    panel: Panel,
+    row: int,
+    *,
+    extra: int = 0,
+    stage: Stage = "plain",
 ) -> tuple[Item, ...]:
     """Vuelta del cuerpo: el panel centrado en los dos tramos tejidos mas
-    largos (espalda y delantero de la vuelta de separacion); el resto al der."""
+    largos (espalda y delantero de la vuelta de separacion); el resto al der.
+    `extra`/`stage`: compensacion del ancho del panel (ver `compensation`)."""
     segments = [n for part, n in division if part in {"knit", "cast_on"}]
     largest = sorted(range(len(segments)), key=lambda i: -segments[i])[:2]
     items: list[Item] = []
     for index, length in enumerate(segments):
         if index in largest:
             left = (length - panel.width) // 2
-            items.append(Op(StitchKind.KNIT, times=left))
-            items.extend(panel.items(row))
-            items.append(Op(StitchKind.KNIT, times=length - left - panel.width))
+            right = length - left - panel.width
+            items.extend(_around_panel(left, right, panel.items(row), extra, stage))
         else:
             items.append(Op(StitchKind.KNIT, times=length))
     merged: list[Item] = []
@@ -184,6 +235,7 @@ def body_round_with_panels(
         last = merged[-1] if merged else None
         if (
             isinstance(item, Op) and isinstance(last, Op) and last.kind is item.kind
+            and item.kind in {StitchKind.KNIT, StitchKind.PURL}
             and item.width is None and last.width is None
         ):
             merged[-1] = Op(item.kind, times=last.times + item.times)

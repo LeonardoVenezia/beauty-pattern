@@ -231,6 +231,9 @@ class PatternParams(BaseModel):
     peso_hilo: YarnWeight = YarnWeight.DK
     aguja_mm: float | None = Field(default=None, gt=0, le=25)
     ganchillo_mm: float | None = Field(default=None, gt=0, le=25)
+    # Ancho (cm) de una repeticion del grafico del panel de textura, medido en
+    # la muestra lavada. Con este dato se compensa lo que cierran las trenzas.
+    panel_motivo_cm: float | None = Field(default=None, gt=0, le=30)
     tecnica: Technique | None = None
 
     @field_validator("medidas_cm", "dimensiones_cm")

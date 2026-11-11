@@ -23,7 +23,7 @@ from datetime import UTC, datetime
 from engine import ENGINE_VERSION
 from engine.distribution import paired_decreases, regular_rows
 from engine.garments.base import ImpossibleProportionsError
-from engine.garments.panels import body_round_with_panels, panel_for, texture_motif
+from engine.garments.panels import body_round_with_panels, compensation, panel_for, texture_motif
 from engine.gauge import Gauge
 from engine.i18n import t
 from engine.ir import (
@@ -501,21 +501,42 @@ def _division(plan: RaglanPlan) -> tuple[tuple[str, int], ...]:
     )
 
 
-def _body_section(plan: RaglanPlan, gauge: Gauge, spec: GarmentSpec) -> Section:
+def _body_section(plan: RaglanPlan, gauge: Gauge, spec: GarmentSpec, params: PatternParams) -> Section:
     division = _division(plan)
     first = build_step(
         1, plan.body_before, division_ops(division), note_key="pattern.note.separation"
     )
     panel = panel_for(spec, division)
+    extra = 0
+    if panel is not None:
+        extra = compensation(panel, resolve_gauge(params).stitches_per_cm, params.panel_motivo_cm)
+        if plan.body_rows < 4:
+            extra = 0
+    last_round = plan.body_rows
     steps: list[Step] = [first]
     for number in range(2, plan.body_rows + 1):
         steps.append(
             build_step(
                 number,
-                plan.body_sts,
-                body_round_with_panels(division, panel, number - 1)
+                plan.body_sts + (2 * extra if number > 2 else 0),
+                body_round_with_panels(
+                    division,
+                    panel,
+                    number - 1,
+                    extra=extra,
+                    stage=(
+                        "increase" if number == 2 else "decrease" if number == last_round else "compensated"
+                    ),
+                )
                 if panel is not None
                 else (Op(StitchKind.KNIT, times=plan.body_sts),),
+                note_key=(
+                    "pattern.note.panel_compensation_inc"
+                    if extra and number == 2
+                    else "pattern.note.panel_compensation_dec"
+                    if extra and number == last_round
+                    else None
+                ),
             )
         )
     return Section(
@@ -678,8 +699,11 @@ def _warnings(
         warnings.append(
             Warning(
                 "texture_panel",
-                "warning.texture_panel",
-                params={"stitch": t(get_stitch(motif).name_key, params.idioma)},
+                "warning.texture_panel_compensated" if params.panel_motivo_cm else "warning.texture_panel",
+                params={
+                    "stitch": t(get_stitch(motif).name_key, params.idioma),
+                    "cm": f"{params.panel_motivo_cm or 0:g}",
+                },
             )
         )
     elif base_id != "stockinette":
@@ -727,7 +751,7 @@ def generate_raglan_top_down(
     sections = (
         _neckband_section(plan, gauge),
         _yoke_section(plan),
-        _body_section(plan, gauge, spec),
+        _body_section(plan, gauge, spec, params),
         _hem_section(plan, gauge),
         _sleeve_section("left", plan),
         _cuff_section("left", plan),

@@ -827,8 +827,8 @@ def _panel_section_blocks(section: Section, lang: str, relative: bool) -> tuple[
     start = meta.get("panel_start", 1)
     if not rows or len(section.steps) <= start:
         return None
-    first = section.steps[start]
-    if not _is_pure_panel_row(first):
+    first = next((step for step in section.steps[start:] if _is_pure_panel_row(step)), None)
+    if first is None:
         return None
     flat = section.mode == "flat"
     width, repeats = meta["panel_width"], meta["panel_repeats"]

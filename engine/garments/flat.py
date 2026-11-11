@@ -13,7 +13,7 @@ from datetime import UTC, datetime
 
 from engine import ENGINE_VERSION
 from engine.garments.base import ImpossibleProportionsError
-from engine.garments.panels import build_panel, texture_motif
+from engine.garments.panels import build_panel, compensation, texture_motif
 from engine.garments.rows import (
     FlatRows,
     hem_rib,
@@ -206,6 +206,7 @@ def _panel_section(
     hem_rows: int = 0,
     spec: GarmentSpec | None = None,
     neck: tuple[int, int, int] | None = None,
+    params: PatternParams | None = None,
 ) -> tuple[Section, ...]:
     """Pieza plana en jersey (reves al reves), con elastico abajo si se pide.
 
@@ -219,10 +220,18 @@ def _panel_section(
     panel = build_panel(motif, stitches) if motif else None
     panel_start = len(flat.steps)
     if panel is not None:
-        flat.start_panel(panel)
-    body_rows = rows - hem - (neck[0] if neck else 0)
-    for index in range(body_rows):
-        flat.row(note=None if panel is not None or index else note_key)
+        comp = 0
+        if params is not None and rows - hem > 6:
+            comp = compensation(panel, resolve_gauge(params).stitches_per_cm, params.panel_motivo_cm)
+        flat.start_panel(panel, comp)
+    target = rows - (neck[0] if neck else 0)  # hileras antes del escote o del cierre
+    while len(flat.steps) - 1 < target:
+        done = len(flat.steps) - 1
+        if flat.extra and not flat.pending_increase and target - done <= 2:
+            # Los pts de compensacion se quitan antes del escote o del cierre.
+            flat.remove_compensation()
+            continue
+        flat.row(note=note_key if done == hem and panel is None else None)
     extra = flat.panel_meta(panel_start, stitches)
     if neck is not None:
         _depth, decs, center_bo = neck
@@ -310,7 +319,7 @@ def _rib_section(
     )
 
 
-def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec) -> tuple[Section, ...]:
+def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec, params: PatternParams) -> tuple[Section, ...]:
     hem = plan.cuff_rows or max(2, plan.neckband_rows)
     sections: list[Section] = [
         *_panel_section(
@@ -322,6 +331,7 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec) -> tuple[Section,
             note_key="pattern.note.flat_panel",
             hem_rows=hem,
             spec=spec,
+            params=params,
         )
     ]
     if plan.neck is not None:
@@ -341,6 +351,7 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec) -> tuple[Section,
                     note_key="pattern.note.flat_panel",
                     hem_rows=hem,
                     spec=spec,
+                    params=params,
                 )
             )
     else:
@@ -355,6 +366,7 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec) -> tuple[Section,
                 hem_rows=hem,
                 spec=spec,
                 neck=plan.neck,
+                params=params,
             )
         )
 
@@ -438,8 +450,11 @@ def _warnings(
         warnings.append(
             Warning(
                 "texture_panel",
-                "warning.texture_panel_flat",
-                params={"stitch": t(get_stitch(motif).name_key, params.idioma)},
+                "warning.texture_panel_compensated" if params.panel_motivo_cm else "warning.texture_panel_flat",
+                params={
+                    "stitch": t(get_stitch(motif).name_key, params.idioma),
+                    "cm": f"{params.panel_motivo_cm or 0:g}",
+                },
             )
         )
     elif base_id != "stockinette":
@@ -562,7 +577,7 @@ def generate_flat(
     base_id = catalog_id_for_name(spec.punto_base or StitchPatternName.STOCKINETTE)
     if base_id == "other":
         base_id = "stockinette"
-    sections = _sections(plan, gauge, spec)
+    sections = _sections(plan, gauge, spec, params)
 
     body_area = (
         gauge.cm_for_stitches(plan.total_sts)

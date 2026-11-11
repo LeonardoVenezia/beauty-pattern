@@ -41,6 +41,8 @@ class FlatRows:
         self.right = 0
         self.chart_row = 1
         self.first_chart_row = 1
+        self.extra = 0  # pts que compensan el ancho del panel
+        self.pending_increase = False
 
     @property
     def right_side(self) -> bool:
@@ -55,7 +57,9 @@ class FlatRows:
         if self.panel is not None:
             self.chart_row = self.chart_row % self.panel.rows + 1
 
-    def start_panel(self, panel: Panel) -> None:
+    def start_panel(self, panel: Panel, extra: int = 0) -> None:
+        self.extra = extra
+        self.pending_increase = extra > 0
         self.panel = panel
         self.left = (self.current - panel.width) // 2
         self.right = self.current - panel.width - self.left
@@ -94,6 +98,20 @@ class FlatRows:
             return
         if dec_start != dec_end:
             raise ValueError("con panel solo se disminuye en los dos bordes")
+        if self.right_side and self.pending_increase and not (bind_off or decrease):
+            a, b = self.extra // 2, self.extra - self.extra // 2
+            items += [Op(StitchKind.KNIT, times=self.left)]
+            if a:
+                items.append(Op(StitchKind.M1L, times=a))
+            items.extend(self.panel.flat_items(self.chart_row))
+            if b:
+                items.append(Op(StitchKind.M1R, times=b))
+            items.append(Op(StitchKind.KNIT, times=self.right))
+            self.left += a
+            self.right += b
+            self.pending_increase = False
+            self.add(items, note or "pattern.note.panel_compensation_inc")
+            return
         if self.right_side:
             self.left -= bind_off
             if decrease:
@@ -134,6 +152,25 @@ class FlatRows:
             ),
             note,
         )
+
+    def remove_compensation(self) -> None:
+        """Hilera del LD que quita junto al panel los pts de compensacion."""
+        if self.panel is None or not self.extra or self.pending_increase:
+            return
+        if not self.right_side:
+            self.plain()
+        a, b = self.extra // 2, self.extra - self.extra // 2
+        items: list[Item] = [Op(StitchKind.KNIT, times=self.left - 2 * a)]
+        if a:
+            items.append(Op(StitchKind.K2TOG, times=a))
+        items.extend(self.panel.flat_items(self.chart_row))
+        if b:
+            items.append(Op(StitchKind.SSK, times=b))
+        items.append(Op(StitchKind.KNIT, times=self.right - 2 * b))
+        self.left -= a
+        self.right -= b
+        self.extra = 0
+        self.add(items, "pattern.note.panel_compensation_dec_top")
 
     def split_for_neck(self, center: int, note: str | None = None) -> tuple[int, int]:
         """Hilera del LD que cierra los `center` pts del medio para el escote.

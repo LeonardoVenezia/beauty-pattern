@@ -368,6 +368,7 @@ export default function HomePage() {
   const [size, setSize] = useState("M");
   const [yarnWeight, setYarnWeight] = useState("dk");
   const [gaugeStitches, setGaugeStitches] = useState("");
+  const [panelUnitCm, setPanelUnitCm] = useState("");
   const [gaugeRows, setGaugeRows] = useState("");
   const [ease, setEase] = useState("");
   const [customDimensions, setCustomDimensions] = useState<Record<string, string>>({});
@@ -505,6 +506,8 @@ export default function HomePage() {
           ? { stitches_per_10cm: stitches, rows_per_10cm: rows }
           : null,
       ease_cm: ease.trim() !== "" && Number.isFinite(easeValue) ? easeValue : null,
+      panel_motivo_cm:
+        Number(panelUnitCm) > 0 && spec.texturas.length > 0 ? Number(panelUnitCm) : null,
       ...(Object.keys(custom).length > 0
         ? garmentCategories.has(spec.categoria)
           ? { medidas_cm: custom }
@@ -1028,6 +1031,27 @@ export default function HomePage() {
             <p className="mt-2 text-xs text-ink/55">
               Si los dejás vacíos, usamos una densidad típica para el grosor elegido.
             </p>
+            {spec && spec.texturas.length > 0 ? (
+              <label className="mt-4 block">
+                <span className="text-sm text-ink/70">
+                  Ancho de una repetición del panel de textura en tu muestra (cm, opcional)
+                </span>
+                <input
+                  type="number"
+                  min="0.5"
+                  max="30"
+                  step="0.1"
+                  value={panelUnitCm}
+                  onChange={(event) => setPanelUnitCm(event.target.value)}
+                  placeholder="Ej. 2.4"
+                  className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
+                />
+                <span className="mt-1 block text-xs text-ink/55">
+                  Las trenzas cierran el tejido. Si medís una repetición del gráfico en tu muestra
+                  lavada, compensamos el ancho para que la prenda mida lo de la tabla.
+                </span>
+              </label>
+            ) : null}
           </fieldset>
 
           {activeDimensionFields.length > 0 ? (

@@ -120,3 +120,38 @@ def test_set_in_armhole_keeps_panel_in_place() -> None:
     text = render_pattern_text(generate(spec, PatternParams(talla="M")))
     assert "1 der, ssk, der hasta el mc, panel (gráfico 1), der hasta quedar 3 pts, 2pjd, 1 der" in text
     assert "Repetir las últimas 2 hileras" in text
+
+
+def test_compensation_uses_measured_swatch() -> None:
+    from engine.garments.panels import build_panel, compensation
+
+    panel = build_panel("cable_2x2_front", 100)
+    assert panel is not None
+    assert compensation(panel, 2.2, None) == 0  # sin dato medido, no se inventa
+    # Una repeticion de 6 pts que mide 2,4 cm (en jersey mediria 2,7): cierra.
+    extra = compensation(panel, 2.2, 2.4)
+    assert extra > 0 and extra % 2 == 0
+    assert compensation(panel, 2.2, 3.5) == 0  # el motivo no cierra: no se compensa
+
+
+@pytest.mark.parametrize(
+    ("category", "construction", "technique"),
+    [
+        (Category.PULLOVER, Construction.RAGLAN_TOP_DOWN, Technique.CIRCULAR),
+        (Category.PULLOVER, Construction.YOKE, Technique.CIRCULAR),
+        (Category.PULLOVER, Construction.DROP_SHOULDER, Technique.NEEDLES),
+        (Category.PULLOVER, Construction.SET_IN_SLEEVE, Technique.NEEDLES),
+        (Category.VEST, None, Technique.NEEDLES),
+    ],
+)
+def test_compensated_panel_restores_counts(category, construction, technique) -> None:  # type: ignore[no-untyped-def]
+    spec = GarmentSpec(categoria=category, tecnica=technique, construccion=construction, texturas=[{"textura": "cables"}])
+    plain = generate(spec, PatternParams(talla="M"))
+    compensated = generate(spec, PatternParams(talla="M", panel_motivo_cm=2.4))
+    assert simulate(compensated).ok
+    piece = "body" if technique is Technique.CIRCULAR else "back"
+    widest = max(step.stitch_count_end for step in compensated.section(piece).steps)
+    assert widest > max(step.stitch_count_end for step in plain.section(piece).steps)
+    # Las piezas terminan igual: la compensacion se quita antes del borde/cierre.
+    assert [s.end_stitches for s in compensated.sections] == [s.end_stitches for s in plain.sections]
+    assert any(w.message_key == "warning.texture_panel_compensated" for w in compensated.warnings)

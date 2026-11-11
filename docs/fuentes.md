@@ -115,9 +115,14 @@ Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.
   de cada parte.
 - **Redondo:** las hileras del revés de la versión plana se tejen con el
   punto contrario y en orden inverso (convención estándar).
-- **ASUNCION:** el panel no agrega puntos para compensar que las trenzas
-  cierran el tejido o que el calado lo abre; el patrón pide tejer la muestra
-  sobre el panel. El canesú y las mangas quedan en jersey.
+- **Compensación del ancho:** no se usa una regla genérica (no hay una fuente
+  confiable de cuánto cierra cada trenza). Si la persona mide el ancho de
+  una repetición del gráfico en su muestra (`params.panel_motivo_cm`), el
+  panel de W pts equivale a E pts de jersey y se agregan W − E pts junto al
+  panel al empezar, que se quitan antes del borde, la sisa recta final o el
+  escote. Sin ese dato no se compensa y el patrón lo avisa. Si el motivo no
+  cierra (calados), no se compensa.
+- El canesú y las mangas quedan en jersey.
 
 ## Elasticos y jersey en plano
 

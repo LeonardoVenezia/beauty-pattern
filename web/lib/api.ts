@@ -43,6 +43,7 @@ export type PatternParams = {
     rows_per_10cm: number;
   } | null;
   ease_cm?: number | null;
+  panel_motivo_cm?: number | null;
   idioma?: "es" | "en";
   nivel?: "principiante" | "experta";
   unidades?: "cm" | "in";
