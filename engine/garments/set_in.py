@@ -1,9 +1,9 @@
 """Pullover con manga encajada, tejido en piezas planas.
 
-La version actual simplifica la sisa y la copa de manga con disminuciones
-parejas en los bordes. Las piezas se cosen; no se modela el escote con
-hileras cortas ni una curva completa de copa. Las limitaciones se declaran en
-las advertencias.
+Construccion clasica de abajo hacia arriba: elastico, jersey, sisa con
+cierre y disminuciones hasta el ancho de espalda, copa de manga estandar.
+El escote es recto (los pts centrales quedan libres al coser los hombros);
+se declara en las advertencias.
 """
 
 from __future__ import annotations
@@ -13,13 +13,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from engine import ENGINE_VERSION
-from engine.distribution import (
-    increase_evenly,
-    paired_decreases,
-    regular_rows,
-    split_even,
-)
+from engine.distribution import regular_rows
 from engine.garments.base import ImpossibleProportionsError
+from engine.garments.rows import FlatRows as _Rows
 from engine.gauge import Gauge
 from engine.i18n import t
 from engine.ir import (
@@ -48,7 +44,6 @@ from engine.spec import (
     resolve_gauge,
 )
 from engine.stitches.catalog import (
-    adjust_stitches,
     catalog_id_for_name,
     expand_row,
     get_stitch,
@@ -65,22 +60,31 @@ MEASUREMENT_TOLERANCE_CM = 2.5
 @dataclass(frozen=True)
 class SetInPlan:
     body_sts: int
-    shoulder_sts: int
-    body_rows: int
-    body_plain_rows: int
-    armhole_dec_rows: int
-    armhole_cm: float
+    hem_rows: int
+    underarm_rows: int  # jersey desde el elastico hasta la sisa
+    armhole_bo: int  # pts cerrados al inicio de cada una de las 2 hileras
+    armhole_decs: int  # disminuciones por lado, en hileras del LD
+    armhole_rows: int
+    cross_sts: int  # ancho de espalda en los hombros
+    neck_center: int  # pts centrales que quedan libres para el escote
     cuff_sts: int
     cuff_rows: int
     sleeve_upper_sts: int
     sleeve_body_rows: int
-    sleeve_cap_rows: int
-    sleeve_cap_top: int
-    neck_sts: int
+    sleeve_incs: int  # aumentos por lado
+    cap_decs: int  # disminuciones por lado en la copa
+    cap_rows: int
+    cap_top: int  # pts que se cierran al final de la copa
+    neck_sts: int  # pts del cuello (tira)
     neckband_rows: int
     body_length_cm: float
     sleeve_length_cm: float
+    armhole_cm: float
     ease: float
+
+    @property
+    def body_rows(self) -> int:
+        return self.hem_rows + self.underarm_rows + self.armhole_rows
 
 
 def _body_length_cm(spec: GarmentSpec, size: BodySize) -> float:
@@ -107,158 +111,156 @@ def _sleeve_length_cm(spec: GarmentSpec, size: BodySize) -> float:
     )
 
 
+def _even(value: float) -> int:
+    return max(2, round_half_up(value / 2.0) * 2)
+
+
 def plan_set_in(
     spec: GarmentSpec, params: PatternParams
 ) -> tuple[SetInPlan, Gauge, BodySize]:
+    """Manga encajada clasica, de abajo hacia arriba en piezas.
+
+    Sisa: se cierran pts al inicio de las 2 hileras siguientes (ASUNCION: 40 %
+    de lo que hay que quitar por lado) y el resto con 1 disminucion por lado
+    en cada hilera del LD, hasta el ancho de espalda de la tabla; despues
+    recto hasta la profundidad de sisa. Copa: mismo cierre que la sisa,
+    disminuciones en hileras del LD, 2 pts cerrados al inicio de las 4
+    hileras siguientes y cierre del resto. Alto de copa: 65 % de la sisa
+    (ASUNCION). Ver docs/fuentes.md.
+    """
     size = resolve_body_size(params.talla, params.medidas_cm)
     gauge = resolve_gauge(params)
     ease = params.ease_cm if params.ease_cm is not None else ease_for_fit(spec.ajuste)
     body_length_cm = _body_length_cm(spec, size)
     sleeve_length_cm = _sleeve_length_cm(spec, size)
-    panel_exact = (size.bust_cm + ease) * gauge.stitches_per_cm / 2.0
-    body_sts = max(4, round_half_up(panel_exact / 2.0) * 2)
-    body_rows = max(3, gauge.rows_for_cm(body_length_cm))
     armhole_cm = size.armhole_cm
-    armhole_rows = max(2, gauge.rows_for_cm(armhole_cm))
-    dec_rows = max(1, armhole_rows // 2)
-    dec_rows = min(dec_rows, max(1, (body_sts - 4) // 2))
-    dec_rows = min(dec_rows, max(1, (body_rows - 2) // 2))
-    body_plain_rows = max(1, body_rows - 2 * dec_rows - 1)
-    shoulder_sts = body_sts - 2 * dec_rows
-    if shoulder_sts <= 0:
-        raise ImpossibleProportionsError(
-            "error.impossible_proportions", yoke=0, body=body_length_cm, sleeve=sleeve_length_cm
-        )
 
-    cuff_sts = max(
-        4,
-        round_half_up((size.wrist_cm + CUFF_EASE_CM) * gauge.stitches_per_cm / 4.0)
-        * 4,
-    )
-    sleeve_exact = (size.upper_arm_cm + SLEEVE_EASE_CM) * gauge.stitches_per_cm
-    sleeve_upper_sts = max(4, round_half_up(sleeve_exact / 2.0) * 2)
-    if sleeve_upper_sts <= cuff_sts:
-        raise ImpossibleProportionsError(
-            "error.impossible_proportions", yoke=0, body=body_length_cm, sleeve=sleeve_length_cm
-        )
-    dec_rows = min(dec_rows, max(1, (sleeve_upper_sts - 2) // 2))
-    shoulder_sts = body_sts - 2 * dec_rows
-    body_plain_rows = max(1, body_rows - 2 * dec_rows - 1)
-    cap_top = sleeve_upper_sts - 2 * dec_rows
-    if cap_top <= 0 or shoulder_sts <= 0:
-        raise ImpossibleProportionsError(
-            "error.impossible_proportions", yoke=0, body=body_length_cm, sleeve=sleeve_length_cm
-        )
-
-    cuff_rows = max(1, gauge.rows_for_cm(CUFF_CM))
-    sleeve_body_cm = sleeve_length_cm - CUFF_CM - armhole_cm
-    if sleeve_body_cm <= 0:
-        raise ImpossibleProportionsError(
+    def fail() -> ImpossibleProportionsError:
+        return ImpossibleProportionsError(
             "error.impossible_proportions",
             yoke=round(armhole_cm, 1),
             body=body_length_cm,
             sleeve=sleeve_length_cm,
         )
-    sleeve_body_rows = max(1, gauge.rows_for_cm(sleeve_body_cm))
-    sleeve_cap_rows = 2 * dec_rows
-    neck_sts = adjust_stitches(
-        max(4, round_half_up(size.neck_cm * gauge.stitches_per_cm / 2.0) * 2),
-        2,
-        mode="nearest",
-    )
-    neckband_rows = max(1, gauge.rows_for_cm(NECKBAND_CM))
+
+    body_sts = max(8, _even((size.bust_cm + ease) * gauge.stitches_per_cm / 2.0))
+    cross_sts = min(_even(size.cross_back_cm * gauge.stitches_per_cm), body_sts - 4)
+    per_side = (body_sts - cross_sts) // 2
+    cross_sts = body_sts - 2 * per_side
+    armhole_bo = max(1, round_half_up(per_side * 0.4)) if per_side else 0
+    armhole_decs = per_side - armhole_bo
+    armhole_rows = max(2 + 2 * armhole_decs, gauge.rows_for_cm(armhole_cm))
+    hem_rows = max(2, gauge.rows_for_cm(CUFF_CM))
+    underarm_rows = gauge.rows_for_cm(body_length_cm) - hem_rows - armhole_rows
+    if underarm_rows < 2:
+        raise fail()
+    neck_sts = _even(size.neck_cm * gauge.stitches_per_cm / 2.0)
+    neck_center = min(neck_sts, cross_sts - 4)
+    if (cross_sts - neck_center) % 2:
+        neck_center -= 1
+
+    cuff_sts = max(4, round_half_up((size.wrist_cm + CUFF_EASE_CM) * gauge.stitches_per_cm / 4.0) * 4)
+    sleeve_upper_sts = _even((size.upper_arm_cm + SLEEVE_EASE_CM) * gauge.stitches_per_cm)
+    if sleeve_upper_sts <= cuff_sts:
+        sleeve_upper_sts = cuff_sts + 2
+    sleeve_incs = (sleeve_upper_sts - cuff_sts) // 2
+    sleeve_upper_sts = cuff_sts + 2 * sleeve_incs
+    cuff_rows = max(2, gauge.rows_for_cm(CUFF_CM))
+    cap_cm = armhole_cm * 0.65
+    cap_rows = max(8, gauge.rows_for_cm(cap_cm))
+    sleeve_body_cm = sleeve_length_cm - CUFF_CM - cap_cm
+    sleeve_body_rows = gauge.rows_for_cm(sleeve_body_cm)
+    if sleeve_body_rows < 2:
+        raise fail()
+    # Copa: 2 hileras de cierre de sisa + disminuciones (LD) + 4 hileras de
+    # cierre de 2 pts; arriba quedan entre 5 y 8 cm.
+    top_target = _even(6.5 * gauge.stitches_per_cm)
+    after_bo = sleeve_upper_sts - 2 * armhole_bo - 8
+    middle_rows = cap_rows - 2 - 4
+    cap_decs = max(0, min((after_bo - top_target) // 2, middle_rows // 2))
+    cap_top = after_bo - 2 * cap_decs
+    if cap_top < 2:
+        raise fail()
+    if 2 * sleeve_incs > sleeve_body_rows:
+        # Manga corta: no hay largo para llegar desde la muneca; el puno se
+        # teje mas ancho, cerca del contorno del brazo.
+        sleeve_incs = sleeve_body_rows // 2
+        cuff_sts = sleeve_upper_sts - 2 * sleeve_incs
+
     plan = SetInPlan(
         body_sts=body_sts,
-        shoulder_sts=shoulder_sts,
-        body_rows=body_rows,
-        body_plain_rows=body_plain_rows,
-        armhole_dec_rows=dec_rows,
-        armhole_cm=armhole_cm,
+        hem_rows=hem_rows,
+        underarm_rows=underarm_rows,
+        armhole_bo=armhole_bo,
+        armhole_decs=armhole_decs,
+        armhole_rows=armhole_rows,
+        cross_sts=cross_sts,
+        neck_center=neck_center,
         cuff_sts=cuff_sts,
         cuff_rows=cuff_rows,
         sleeve_upper_sts=sleeve_upper_sts,
         sleeve_body_rows=sleeve_body_rows,
-        sleeve_cap_rows=sleeve_cap_rows,
-        sleeve_cap_top=cap_top,
-        neck_sts=neck_sts,
-        neckband_rows=neckband_rows,
+        sleeve_incs=sleeve_incs,
+        cap_decs=cap_decs,
+        cap_rows=2 + middle_rows + 4,
+        cap_top=cap_top,
+        neck_sts=2 * neck_center,
+        neckband_rows=max(1, gauge.rows_for_cm(NECKBAND_CM)),
         body_length_cm=body_length_cm,
         sleeve_length_cm=sleeve_length_cm,
+        armhole_cm=armhole_cm,
         ease=ease,
     )
     return plan, gauge, size
 
 
 def _body_panel(section_id: str, name_key: str, plan: SetInPlan) -> Section:
-    steps: list[Step] = [
-        build_step(
-            1,
-            0,
-            (Op(StitchKind.CAST_ON, times=plan.body_sts),),
-            note_key="pattern.note.cast_on_panel",
-        )
-    ]
-    number = 2
-    current = plan.body_sts
-    for _ in range(plan.body_plain_rows):
-        steps.append(
-            build_step(
-                number,
-                current,
-                (Op(StitchKind.KNIT, times=current),),
-                note_key="pattern.note.flat_panel" if number == 2 else None,
-            )
-        )
-        number += 1
-    for _ in range(plan.armhole_dec_rows):
-        ops, new_count = paired_decreases(current, 1, 1)
-        steps.append(
-            build_step(
-                number,
-                current,
-                ops,
-                note_key="pattern.note.armhole_shaping",
-            )
-        )
-        current = new_count
-        number += 1
-        steps.append(
-            build_step(
-                number,
-                current,
-                (Op(StitchKind.KNIT, times=current),),
-            )
-        )
-        number += 1
-    if current != plan.shoulder_sts:
-        raise RuntimeError(
-            f"{section_id}: termina con {current}, se esperaban {plan.shoulder_sts}"
-        )
+    rib = get_stitch("rib_2x2" if plan.body_sts % 4 == 0 else "rib_1x1")
+    rows = _Rows(0)
+    rows.add((Op(StitchKind.CAST_ON, times=plan.body_sts),), "pattern.note.cast_on_panel")
+    for index in range(plan.hem_rows):
+        rows.add(expand_row(rib, plan.body_sts, index + 1), "pattern.note.hem" if index == 0 else None)
+    for index in range(plan.underarm_rows):
+        rows.plain("pattern.note.flat_panel" if index == 0 else None)
+    armhole_start = len(rows.steps)
+    if plan.armhole_bo:
+        if not rows.right_side:
+            rows.plain()
+        rows.bind_off_start(plan.armhole_bo, "pattern.note.armhole_shaping")
+        rows.bind_off_start(plan.armhole_bo)
+    for _ in range(plan.armhole_decs):
+        rows.decrease_edges("pattern.note.armhole_decrease")
+        rows.plain()
+    while len(rows.steps) - armhole_start < plan.armhole_rows:
+        rows.plain()
+    if rows.current != plan.cross_sts:
+        raise RuntimeError(f"{section_id}: termina con {rows.current}, se esperaban {plan.cross_sts}")
     return Section(
         id=section_id,
         name_key=name_key,
         mode="flat",
-        steps=tuple(steps),
+        steps=tuple(rows.steps),
         start_stitches=0,
-        end_stitches=current,
+        end_stitches=rows.current,
         target=SectionTarget(
             measurement_key=f"{section_id}_length",
             target_cm=plan.body_length_cm,
-            tolerance_cm=0.5,
+            tolerance_cm=1.0,
             dimension="length",
         ),
         meta={
-            "row_count": plan.body_rows,
+            "row_count": len(rows.steps) - 1,
             "cast_on": plan.body_sts,
-            "armhole_decreases": 2 * plan.armhole_dec_rows,
-            "shoulder": plan.shoulder_sts,
+            "armhole_bo": plan.armhole_bo,
+            "shoulder": (plan.cross_sts - plan.neck_center) // 2,
+            "neck_center": plan.neck_center,
         },
         bind_off=True,
     )
 
 
 def _cuff(side: str, plan: SetInPlan) -> Section:
-    rib = get_stitch("rib_2x2")
+    rib = get_stitch("rib_2x2" if plan.cuff_sts % 4 == 0 else "rib_1x1")
     steps: list[Step] = [
         build_step(
             1,
@@ -290,94 +292,54 @@ def _cuff(side: str, plan: SetInPlan) -> Section:
             dimension="length",
         ),
         meta={"row_count": plan.cuff_rows, "cast_on": plan.cuff_sts},
-        bind_off=True,
     )
 
 
 def _sleeve(side: str, plan: SetInPlan) -> Section:
-    increases = plan.sleeve_upper_sts - plan.cuff_sts
-    increase_rounds = min(plan.sleeve_body_rows, increases)
-    counts = (
-        split_even(increases, increase_rounds) if increase_rounds else []
-    )
-    positions = (
-        set(regular_rows(plan.sleeve_body_rows, increase_rounds))
-        if increase_rounds
-        else set()
-    )
-    steps: list[Step] = []
-    current = plan.cuff_sts
-    next_count = 0
-    for number in range(1, plan.sleeve_body_rows + 1):
-        if number in positions:
-            count = counts[next_count]
-            next_count += 1
-            items, current = increase_evenly(current, count)
-            steps.append(
-                build_step(
-                    number,
-                    current - count,
-                    items,
-                    note_key="pattern.note.flat_panel" if number == 1 else None,
-                )
-            )
+    """Manga desde el puno: aumentos en los bordes en hileras del LD y copa."""
+    rows = _Rows(plan.cuff_sts)
+    half = plan.sleeve_body_rows // 2
+    increase_at = {2 * r - 1 for r in regular_rows(half, plan.sleeve_incs)} if plan.sleeve_incs else set()
+    for index in range(plan.sleeve_body_rows):
+        note = "pattern.note.flat_panel" if index == 0 else None
+        if index + 1 in increase_at:
+            rows.increase_edges("pattern.note.sleeve_increase")
         else:
-            steps.append(
-                build_step(
-                    number,
-                    current,
-                    (Op(StitchKind.KNIT, times=current),),
-                    note_key="pattern.note.flat_panel" if number == 1 else None,
-                )
-            )
-    if current != plan.sleeve_upper_sts:
-        raise RuntimeError(
-            f"manga {side}: termina el cuerpo con {current}, se esperaban "
-            f"{plan.sleeve_upper_sts}"
-        )
-    number = plan.sleeve_body_rows + 1
-    for _ in range(plan.armhole_dec_rows):
-        ops, new_count = paired_decreases(current, 1, 1)
-        steps.append(
-            build_step(
-                number,
-                current,
-                ops,
-                note_key="pattern.note.sleeve_cap",
-            )
-        )
-        current = new_count
-        number += 1
-        steps.append(
-            build_step(
-                number,
-                current,
-                (Op(StitchKind.KNIT, times=current),),
-            )
-        )
-        number += 1
-    if current != plan.sleeve_cap_top:
-        raise RuntimeError(
-            f"manga {side}: termina con {current}, se esperaban {plan.sleeve_cap_top}"
-        )
+            rows.plain(note)
+    if rows.current != plan.sleeve_upper_sts:
+        raise RuntimeError(f"manga {side}: {rows.current} != {plan.sleeve_upper_sts}")
+    cap_start = len(rows.steps)
+    if not rows.right_side:
+        rows.plain()
+        cap_start = len(rows.steps)
+    rows.bind_off_start(plan.armhole_bo, "pattern.note.sleeve_cap")
+    rows.bind_off_start(plan.armhole_bo)
+    for _ in range(plan.cap_decs):
+        rows.decrease_edges("pattern.note.cap_decrease")
+        rows.plain()
+    while len(rows.steps) - cap_start < plan.cap_rows - 4:
+        rows.plain()
+    for index in range(4):
+        rows.bind_off_start(2, "pattern.note.cap_top" if index == 0 else None)
+    if rows.current != plan.cap_top:
+        raise RuntimeError(f"manga {side}: copa termina con {rows.current}, se esperaban {plan.cap_top}")
     return Section(
         id=f"sleeve_{side}",
         name_key=f"section.sleeve_{side}",
         mode="flat",
-        steps=tuple(steps),
+        steps=tuple(rows.steps),
         start_stitches=plan.cuff_sts,
-        end_stitches=current,
+        end_stitches=rows.current,
         target=SectionTarget(
             measurement_key=f"sleeve_{side}_length",
             target_cm=plan.sleeve_length_cm - CUFF_CM,
-            tolerance_cm=1.0,
+            tolerance_cm=1.5,
             dimension="length",
         ),
         meta={
-            "row_count": plan.sleeve_body_rows + plan.sleeve_cap_rows,
-            "cap_decreases": 2 * plan.armhole_dec_rows,
-            "upper": plan.sleeve_upper_sts,
-            "cap_top": plan.sleeve_cap_top,
+            "row_count": len(rows.steps),
+            "armhole_bo": plan.armhole_bo,
+            "cap_top": plan.cap_top,
         },
         bind_off=True,
     )
@@ -429,7 +391,6 @@ def _warnings(
         Warning("assumption", "warning.assumption", severity="info"),
         Warning("flat_panels", "warning.flat_panels"),
         Warning("no_neck_shaping", "warning.no_neck_shaping"),
-        Warning("set_in_simplified", "warning.set_in_simplified"),
     ]
     if params.medidas_cm:
         warnings.append(
@@ -450,51 +411,27 @@ def _warnings(
 def _measurements(
     plan: SetInPlan, gauge: Gauge, size: BodySize
 ) -> tuple[Measurement, ...]:
+    tol = MEASUREMENT_TOLERANCE_CM
     return (
+        Measurement("bust", gauge.cm_for_stitches(2 * plan.body_sts), size.bust_cm + plan.ease, tol, "circumference"),
+        Measurement("body_length", gauge.cm_for_rows(plan.body_rows), plan.body_length_cm, 1.5, "length"),
         Measurement(
-            key="bust",
-            value_cm=gauge.cm_for_stitches(2 * plan.body_sts),
-            target_cm=size.bust_cm + plan.ease,
-            tolerance_cm=MEASUREMENT_TOLERANCE_CM,
-            kind="circumference",
+            "sleeve_length",
+            gauge.cm_for_rows(plan.cuff_rows + plan.sleeve_body_rows + plan.cap_rows),
+            plan.sleeve_length_cm,
+            2.0,
+            "length",
         ),
+        Measurement("upper_arm", gauge.cm_for_stitches(plan.sleeve_upper_sts), size.upper_arm_cm + SLEEVE_EASE_CM, tol, "circumference"),
         Measurement(
-            key="body_length",
-            value_cm=gauge.cm_for_rows(plan.body_rows),
-            target_cm=plan.body_length_cm,
-            tolerance_cm=1.0,
-            kind="length",
+            "cross_back",
+            gauge.cm_for_stitches(plan.cross_sts),
+            min(size.cross_back_cm, gauge.cm_for_stitches(plan.body_sts - 4)),
+            tol,
+            "width",
         ),
-        Measurement(
-            key="sleeve_length",
-            value_cm=gauge.cm_for_rows(
-                plan.cuff_rows + plan.sleeve_body_rows + plan.sleeve_cap_rows
-            ),
-            target_cm=plan.sleeve_length_cm,
-            tolerance_cm=1.5,
-            kind="length",
-        ),
-        Measurement(
-            key="upper_arm",
-            value_cm=gauge.cm_for_stitches(plan.sleeve_upper_sts),
-            target_cm=size.upper_arm_cm + SLEEVE_EASE_CM,
-            tolerance_cm=MEASUREMENT_TOLERANCE_CM,
-            kind="circumference",
-        ),
-        Measurement(
-            key="armhole",
-            value_cm=gauge.cm_for_rows(plan.sleeve_cap_rows),
-            target_cm=plan.armhole_cm,
-            tolerance_cm=MEASUREMENT_TOLERANCE_CM,
-            kind="length",
-        ),
-        Measurement(
-            key="neck",
-            value_cm=gauge.cm_for_stitches(plan.neck_sts),
-            target_cm=size.neck_cm,
-            tolerance_cm=MEASUREMENT_TOLERANCE_CM,
-            kind="circumference",
-        ),
+        Measurement("armhole", gauge.cm_for_rows(plan.armhole_rows), plan.armhole_cm, 1.5, "length"),
+        Measurement("neck", gauge.cm_for_stitches(plan.neck_sts), size.neck_cm, tol, "circumference"),
     )
 
 
@@ -506,10 +443,10 @@ def generate_set_in(spec: GarmentSpec, params: PatternParams) -> Pattern:
     sections = (
         _body_panel("back", "section.back", plan),
         _body_panel("front", "section.front", plan),
-        _sleeve("left", plan),
         _cuff("left", plan),
-        _sleeve("right", plan),
+        _sleeve("left", plan),
         _cuff("right", plan),
+        _sleeve("right", plan),
         _neckband(plan),
     )
     body_area = (
@@ -520,7 +457,7 @@ def generate_set_in(spec: GarmentSpec, params: PatternParams) -> Pattern:
     sleeve_area = (
         2
         * gauge.cm_for_stitches(plan.sleeve_upper_sts)
-        * gauge.cm_for_rows(plan.sleeve_body_rows + plan.sleeve_cap_rows)
+        * gauge.cm_for_rows(plan.sleeve_body_rows + plan.cap_rows)
     )
     band_area = gauge.cm_for_stitches(plan.neck_sts) * NECKBAND_CM
     meters, grams = estimate_yarn(body_area + sleeve_area + band_area, params.peso_hilo)
@@ -553,25 +490,14 @@ def generate_set_in(spec: GarmentSpec, params: PatternParams) -> Pattern:
     )
     joins = (
         JoinCheck(
-            label_key="join.side_seam",
-            left=(CountRef("back", "end"),),
-            right=(CountRef("front", "end"),),
-        ),
-        JoinCheck(
             label_key="join.shoulder_seam",
             left=(CountRef("back", "end"),),
             right=(CountRef("front", "end"),),
         ),
         JoinCheck(
             label_key="join.armhole",
-            left=(
-                CountRef("back", "meta:armhole_decreases"),
-                CountRef("front", "meta:armhole_decreases"),
-            ),
-            right=(
-                CountRef("sleeve_left", "meta:cap_decreases"),
-                CountRef("sleeve_right", "meta:cap_decreases"),
-            ),
+            left=(CountRef("back", "meta:armhole_bo"),),
+            right=(CountRef("sleeve_left", "meta:armhole_bo"),),
         ),
         JoinCheck(
             label_key="join.cuff_left",

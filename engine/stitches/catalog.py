@@ -103,7 +103,7 @@ STITCH_PATTERNS: dict[str, StitchPattern] = {
         name_key="stitch.rib_1x1",
         technique="needles",
         multiple=2,
-        rows=((K(), P()), (P(), K())),
+        rows=((K(), P()), (K(), P())),
         round_rows=((K(), P()),),
     ),
     "rib_2x2": StitchPattern(
@@ -111,7 +111,7 @@ STITCH_PATTERNS: dict[str, StitchPattern] = {
         name_key="stitch.rib_2x2",
         technique="needles",
         multiple=4,
-        rows=((K(2), P(2)), (P(2), K(2))),
+        rows=((K(2), P(2)), (K(2), P(2))),
         round_rows=((K(2), P(2)),),
     ),
     "rib_3x1": StitchPattern(
@@ -119,7 +119,7 @@ STITCH_PATTERNS: dict[str, StitchPattern] = {
         name_key="stitch.rib_3x1",
         technique="needles",
         multiple=4,
-        rows=((K(3), P()), (P(3), K())),
+        rows=((K(3), P()), (K(), P(3))),
         round_rows=((K(3), P()),),
     ),
     "brioche": StitchPattern(

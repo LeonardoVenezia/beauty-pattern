@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from itertools import product
+from itertools import pairwise, product
 
 import pytest
 
@@ -146,3 +146,37 @@ def test_flat_text_svg_and_pdf() -> None:
     assert "<polygon" in svg
     pdf = render_pattern_pdf(pattern)
     assert pdf.startswith(b"%PDF")
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        GarmentSpec(categoria=Category.PULLOVER, tecnica=Technique.NEEDLES, construccion=Construction.DROP_SHOULDER),
+        GarmentSpec(categoria=Category.CARDIGAN, tecnica=Technique.NEEDLES),
+        GarmentSpec(categoria=Category.VEST, tecnica=Technique.NEEDLES),
+        GarmentSpec(categoria=Category.PULLOVER, tecnica=Technique.NEEDLES, construccion=Construction.SET_IN_SLEEVE),
+    ],
+    ids=["drop_shoulder", "cardigan", "vest", "set_in"],
+)
+def test_flat_stockinette_purls_wrong_side_rows(spec: GarmentSpec) -> None:
+    """Regresion: todas las hileras al derecho en plano es santa clara, no jersey."""
+    from engine.ir import Op
+    from engine.stitches.kinds import StitchKind
+
+    pattern = generate(spec, PatternParams(talla="M"))
+    for section in pattern.sections:
+        if section.mode != "flat" or section.id.startswith(("cuff", "neck", "button")):
+            continue
+        start = next(
+            (i for i, step in enumerate(section.steps) if step.note_key == "pattern.note.flat_panel"), 0
+        )
+        plain = [
+            step.items[0].kind
+            for step in section.steps[start:]
+            if len(step.items) == 1
+            and isinstance(step.items[0], Op)
+            and step.items[0].kind in {StitchKind.KNIT, StitchKind.PURL}
+        ]
+        assert StitchKind.PURL in plain, section.id
+        for a, b in pairwise(plain):
+            assert not (a is b is StitchKind.KNIT), section.id

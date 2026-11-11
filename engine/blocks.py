@@ -246,7 +246,40 @@ class CycleLine:
     final_step: Step
 
 
-type StepLine = SingleLine | RangeLine | CycleLine
+@dataclass(frozen=True)
+class AlternatingLine:
+    """Dos hileras que se alternan sin cambiar el conteo (jersey, elastico)."""
+
+    first: Step
+    second: Step
+    length: int
+    last: Step
+
+
+type StepLine = SingleLine | RangeLine | CycleLine | AlternatingLine
+
+
+_MIN_ALTERNATING = 4
+
+
+def _alternating_end(steps: tuple[Step, ...], start: int) -> int:
+    """Fin exclusivo de una corrida A, B, A, B... desde `start` (la nota de la
+    primera hilera solo la anuncia). Devuelve `start` si no hay corrida."""
+    if start + 1 >= len(steps):
+        return start
+    a, b = steps[start], steps[start + 1]
+    count = a.stitch_count_end
+    if a.items == b.items or b.note_key or b.stitch_count_end != count or b.consumes != count:
+        return start
+    if a.consumes != count:
+        return start
+    end = start + 2
+    while end < len(steps):
+        step, model = steps[end], steps[end - 2]
+        if step.items != model.items or step.note_key or step.stitch_count_end != count:
+            break
+        end += 1
+    return end if end - start >= _MIN_ALTERNATING else start
 
 
 def _item_shape(item: Item) -> tuple[object, ...]:
@@ -432,6 +465,18 @@ def compress_steps(steps: tuple[Step, ...]) -> tuple[StepLine, ...]:
     index = 0
     n = len(steps)
     while index < n:
+        alternating = _alternating_end(steps, index)
+        if alternating > index:
+            result.append(
+                AlternatingLine(
+                    first=steps[index],
+                    second=steps[index + 1],
+                    length=alternating - index,
+                    last=steps[alternating - 1],
+                )
+            )
+            index = alternating
+            continue
         best_lines: tuple[StepLine, ...] | None = None
         best_end = index
         best_savings = 0
@@ -474,7 +519,28 @@ def render_step_lines(
     blocks: list[Block] = []
     rnd = mode == "round"
 
+    def render_alternating(line: AlternatingLine) -> None:
+        note = t(line.first.note_key, lang) + " " if line.first.note_key else ""
+        count = _count_text(line.last, lang)
+        plain = {_is_plain(line.first), _is_plain(line.second)} == {True}
+        first_op = line.first.items[0]
+        if plain and isinstance(first_op, Op):
+            side = "pattern.side_rs" if first_op.kind is StitchKind.KNIT else "pattern.side_ws"
+            text = t("pattern.stockinette_rows", lang, n=line.length, side=t(side, lang))
+        else:
+            text = t(
+                "pattern.alternating_rows",
+                lang,
+                n=line.length,
+                a=_step_body(line.first, lang),
+                b=_step_body(line.second, lang),
+            )
+        blocks.append(Block(BlockKind.STEP, f"{note}{text} {count}"))
+
     def render_one(line: StepLine) -> None:
+        if isinstance(line, AlternatingLine):
+            render_alternating(line)
+            return
         if isinstance(line, SingleLine) and relative and line.step.number > 1 and _is_plain(line.step):
             line = RangeLine(first=line.step, last=line.step)
         if isinstance(line, SingleLine):

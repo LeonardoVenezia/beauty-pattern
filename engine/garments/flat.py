@@ -13,6 +13,7 @@ from datetime import UTC, datetime
 
 from engine import ENGINE_VERSION
 from engine.garments.base import ImpossibleProportionsError
+from engine.garments.rows import FlatRows, hem_rib, rib_rows
 from engine.gauge import Gauge
 from engine.i18n import t
 from engine.ir import (
@@ -174,29 +175,20 @@ def _panel_section(
     target_cm: float,
     *,
     note_key: str | None = None,
+    hem_rows: int = 0,
 ) -> Section:
-    steps: list[Step] = [
-        build_step(
-            1,
-            0,
-            (Op(StitchKind.CAST_ON, times=stitches),),
-            note_key="pattern.note.cast_on_panel",
-        )
-    ]
-    for number in range(2, rows + 2):
-        steps.append(
-            build_step(
-                number,
-                stitches,
-                (Op(StitchKind.KNIT, times=stitches),),
-                note_key=note_key if number == 2 else None,
-            )
-        )
+    """Pieza plana en jersey (reves al reves), con elastico abajo si se pide."""
+    flat = FlatRows(0)
+    flat.add((Op(StitchKind.CAST_ON, times=stitches),), "pattern.note.cast_on_panel")
+    hem = min(hem_rows, max(0, rows - 2))
+    rib_rows(flat, hem_rib(stitches), hem, "pattern.note.hem")
+    for index in range(rows - hem):
+        flat.plain(note_key if index == 0 else None)
     return Section(
         id=section_id,
         name_key=name_key,
         mode="flat",
-        steps=tuple(steps),
+        steps=tuple(flat.steps),
         start_stitches=0,
         end_stitches=stitches,
         target=SectionTarget(
@@ -265,6 +257,7 @@ def _sections(plan: FlatPlan, gauge: Gauge) -> tuple[Section, ...]:
             plan.body_rows,
             plan.body_length_cm,
             note_key="pattern.note.flat_panel",
+            hem_rows=plan.cuff_rows or max(2, plan.neckband_rows),
         )
     ]
     if plan.kind == "cardigan":
@@ -277,6 +270,7 @@ def _sections(plan: FlatPlan, gauge: Gauge) -> tuple[Section, ...]:
                     plan.body_rows,
                     plan.body_length_cm,
                     note_key="pattern.note.flat_panel",
+                    hem_rows=plan.cuff_rows or max(2, plan.neckband_rows),
                 )
             )
     else:
@@ -288,6 +282,7 @@ def _sections(plan: FlatPlan, gauge: Gauge) -> tuple[Section, ...]:
                 plan.body_rows,
                 plan.body_length_cm,
                 note_key="pattern.note.flat_panel",
+                hem_rows=plan.cuff_rows or max(2, plan.neckband_rows),
             )
         )
 

@@ -41,15 +41,21 @@ def test_set_in_golden_size_m() -> None:
         section.id: (section.start_stitches, section.end_stitches)
         for section in pattern.sections
     }
+    # Talle M, DK 22 x 30: 112 pts por pieza (100 cm de contorno), sisa hasta
+    # el ancho de espalda de la tabla (40 cm = 88 pts), copa que termina en
+    # 24 pts. Antes la sisa bajaba a 48 pts (forma de raglan, sin hombros).
     assert counts == {
-        "back": (0, 48),
-        "front": (0, 48),
-        "sleeve_left": (40, 12),
+        "back": (0, 88),
+        "front": (0, 88),
         "cuff_left": (0, 40),
-        "sleeve_right": (40, 12),
+        "sleeve_left": (40, 24),
         "cuff_right": (0, 40),
-        "neck_band": (0, 82),
+        "sleeve_right": (40, 24),
+        "neck_band": (0, 80),
     }
+    measures = {m.key: m.value_cm for m in pattern.measurements}
+    assert measures["cross_back"] == pytest.approx(40.0, abs=1.0)
+    assert measures["armhole"] == pytest.approx(21.0, abs=1.0)
 
 
 @pytest.mark.parametrize(
@@ -97,7 +103,6 @@ def test_set_in_sleeveless_is_rejected() -> None:
 
 def test_set_in_text_svg_and_pdf() -> None:
     pattern = generate(set_in_spec(), PatternParams(talla="M"))
-    assert any(w.code == "set_in_simplified" for w in pattern.warnings)
     text = render_pattern_text(pattern, lang="es")
     assert "Montar" in text
     assert "Copa de manga" in text

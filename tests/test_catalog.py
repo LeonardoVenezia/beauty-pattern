@@ -127,3 +127,31 @@ def test_rib_expands_as_repeat_not_blocks() -> None:
     assert isinstance(items[0], Repeat)
     assert items[0].times == 40
     assert [op.times for op in items[0].ops] == [1, 1]
+
+
+def _rs_face(row):  # type: ignore[no-untyped-def]
+    """Como se ve desde el LD una hilera tejida del LR (der <-> rev, invertida)."""
+    swap = {StitchKind.KNIT: StitchKind.PURL, StitchKind.PURL: StitchKind.KNIT}
+    cells = []
+    for op in reversed(row):
+        cells.extend([swap.get(op.kind, op.kind)] * op.times)
+    return cells
+
+
+def _cells(row):  # type: ignore[no-untyped-def]
+    cells = []
+    for op in row:
+        cells.extend([op.kind] * op.times)
+    return cells
+
+
+def test_flat_ribs_keep_their_columns() -> None:
+    """Regresion: el reves de los elasticos planos tejia arroz o damero."""
+    for pattern_id in ("rib_1x1", "rib_2x2", "rib_3x1"):
+        rs, ws = get_stitch(pattern_id).rows
+        assert _rs_face(ws) == _cells(rs), pattern_id
+
+
+def test_seed_alternates_columns() -> None:
+    rs, ws = get_stitch("seed").rows
+    assert _rs_face(ws) != _cells(rs)

@@ -70,8 +70,14 @@ publica verificada se marca **ASUNCION**.
   proporcion: largo de sisa = 18-24 % del contorno de pecho).
 - Canesu circular: profundidad objetivo = sisa de la tabla + 4 cm; para manga
   corta se reduce para que entren copa y puno (ASUNCION).
-- Manga encajada: sisa y copa simplificadas con una disminucion en cada borde
-  en las mismas vueltas; sin curva completa ni hileras cortas (ASUNCION).
+- Manga encajada (construccion clasica de abajo hacia arriba): la sisa quita
+  por lado la diferencia entre el medio contorno y el ancho de espalda de la
+  tabla; **ASUNCION:** 40 % se cierra al inicio de las 2 hileras siguientes y
+  el resto con 1 disminucion por lado en hileras del LD; luego recto hasta la
+  profundidad de sisa. Copa: mismo cierre, disminuciones en hileras del LD,
+  2 pts cerrados al inicio de 4 hileras y cierre del resto; alto de copa =
+  65 % de la sisa (**ASUNCION**). Escote recto (los pts centrales quedan
+  libres al coser los hombros).
 - Piezas planas: cuerpo, mangas, cuello y tapas de botones rectangulares; sin
   forma de sisa, escote ni ojales en esta version (ASUNCION).
 - Gorro: 10 % de holgura negativa sobre el contorno de cabeza y corona con
@@ -112,3 +118,10 @@ Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.
 - **ASUNCION:** el panel no agrega puntos para compensar que las trenzas
   cierran el tejido o que el calado lo abre; el patrón pide tejer la muestra
   sobre el panel. El canesú y las mangas quedan en jersey.
+
+## Elasticos y jersey en plano
+
+- La hilera del reves se teje "como se presentan los puntos": vista desde el
+  LD (invertida y con der <-> rev) coincide con la del LD. Test:
+  `tests/test_catalog.py::test_flat_ribs_keep_their_columns`. Antes los
+  elasticos 1x1, 2x2 y 3x1 en plano tejian arroz o damero.

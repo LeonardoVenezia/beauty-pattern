@@ -33,6 +33,7 @@ class StitchKind(StrEnum):
     BRIOCHE_PURL = "brioche_purl"
     TURN = "turn"
     CAST_ON = "cast_on"
+    BIND_OFF = "bind_off"  # cerrar puntos en medio de una pieza (sisa, copa)
 
     # Crochet
     SC = "sc"
@@ -80,6 +81,7 @@ _EFFECTS: dict[StitchKind, Effect] = {
     StitchKind.BRIOCHE_PURL: Effect(1, 1),
     StitchKind.TURN: Effect(0, 0),
     StitchKind.CAST_ON: Effect(0, 1),
+    StitchKind.BIND_OFF: Effect(1, 0),
     StitchKind.SC: Effect(1, 1),
     StitchKind.HDC: Effect(1, 1),
     StitchKind.DC: Effect(1, 1),
