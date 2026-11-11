@@ -9,9 +9,8 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from engine.distribution import paired_decreases
 from engine.garments.panels import Panel
-from engine.ir import Item, Op, Step, build_step
+from engine.ir import Item, Op, Section, Step, build_step
 from engine.stitches.catalog import StitchPattern, expand_row, get_stitch
 from engine.stitches.kinds import StitchKind
 
@@ -64,23 +63,37 @@ class FlatRows:
         self.chart_row = 1 if self.right_side else panel.rows
         self.first_chart_row = self.chart_row
 
-    def row(self, *, bind_off: int = 0, decrease: bool = False, note: str | None = None) -> None:
+    def row(
+        self,
+        *,
+        bind_off: int = 0,
+        decrease: bool = False,
+        dec_start: bool = False,
+        dec_end: bool = False,
+        note: str | None = None,
+    ) -> None:
         """Hilera de jersey (con panel si hay): cierre al inicio y/o una
-        disminucion en cada borde (solo en hileras del LD)."""
-        if decrease and not self.right_side:
+        disminucion en cada borde (`decrease`) o en uno (`dec_start`,
+        `dec_end`); las disminuciones van en hileras del LD."""
+        if decrease:
+            dec_start = dec_end = True
+        if (dec_start or dec_end) and not self.right_side:
             raise ValueError("las disminuciones de borde van en hileras del LD")
         knit = StitchKind.KNIT if self.right_side else StitchKind.PURL
         items: list[Item] = []
         if bind_off:
             items.append(Op(StitchKind.BIND_OFF, times=bind_off))
         if self.panel is None:
-            if decrease:
-                ops, _ = paired_decreases(self.current - bind_off, 1, 1)
-                items.extend(ops)
-            else:
-                items.append(Op(knit, times=self.current - bind_off))
+            middle = self.current - bind_off - (3 if dec_start else 0) - (3 if dec_end else 0)
+            if dec_start:
+                items += [Op(StitchKind.KNIT), Op(StitchKind.SSK)]
+            items.append(Op(knit, times=middle))
+            if dec_end:
+                items += [Op(StitchKind.K2TOG), Op(StitchKind.KNIT)]
             self.add(items, note)
             return
+        if dec_start != dec_end:
+            raise ValueError("con panel solo se disminuye en los dos bordes")
         if self.right_side:
             self.left -= bind_off
             if decrease:
@@ -122,6 +135,27 @@ class FlatRows:
             note,
         )
 
+    def split_for_neck(self, center: int, note: str | None = None) -> tuple[int, int]:
+        """Hilera del LD que cierra los `center` pts del medio para el escote.
+
+        Devuelve (pts antes del cierre, pts despues). El panel termina aca:
+        sus pts centrales se cierran y el resto sigue en jersey.
+        """
+        if not self.right_side:
+            self.plain()
+        self.panel = None
+        before = (self.current - center) // 2
+        after = self.current - center - before
+        self.add(
+            (
+                Op(StitchKind.KNIT, times=before),
+                Op(StitchKind.BIND_OFF, times=center),
+                Op(StitchKind.KNIT, times=after),
+            ),
+            note,
+        )
+        return before, after
+
     def panel_meta(self, start: int, segment: int) -> dict[str, int]:
         if self.panel is None:
             return {}
@@ -138,3 +172,75 @@ class FlatRows:
 def rib_rows(rows: FlatRows, pattern: StitchPattern, count: int, note: str | None) -> None:
     for index in range(count):
         rows.add(expand_row(pattern, rows.current, index + 1), note if index == 0 else None)
+
+
+def neck_side(stitches: int, decreases: int, rows: int, *, neck_at_start: bool) -> list[Step]:
+    """Un hombro del escote redondo, despues de cerrar el centro.
+
+    Empieza con una hilera del LR. Disminuye 1 pt en el borde del escote en
+    las primeras `decreases` hileras del LD y sigue recto hasta `rows`.
+    """
+    side = FlatRows(stitches, first_number=2)
+    done = 0
+    for _ in range(rows):
+        if side.right_side and done < decreases:
+            side.row(dec_start=neck_at_start, dec_end=not neck_at_start, note="pattern.note.neck_decrease" if done == 0 else None)
+            done += 1
+        else:
+            side.plain()
+    if done < decreases:
+        raise ValueError("no entran las disminuciones del escote")
+    return side.steps
+
+
+NECK_DEPTH_CM = 7.0
+
+
+def plan_crew_neck(neck_center: int, rows_available: int, rows_per_cm: float) -> tuple[int, int, int]:
+    """(hileras de escote, disminuciones por lado, pts centrales a cerrar).
+
+    ASUNCION: 7 cm de profundidad; 20 % del ancho del escote se disminuye por
+    lado (1 pt por hilera del LD) y el resto se cierra de una vez.
+    """
+    depth = min(max(1, round(NECK_DEPTH_CM * rows_per_cm)), rows_available)
+    if depth < 4 or neck_center < 4:
+        raise ValueError("no hay lugar para el escote")
+    decs = max(1, min(round(neck_center * 0.2), (depth - 2) // 2, (neck_center - 2) // 2))
+    return depth, decs, neck_center - 2 * decs
+
+
+def neckband_stitches(neck_center: int, center_bo: int, depth: int) -> int:
+    """Pts a levantar para la tira: espalda + centro + 3 de cada 4 hileras."""
+    total = neck_center + center_bo + 2 * round(0.75 * depth)
+    return total + total % 2
+
+
+def neck_sections(before: int, after: int, decreases: int, rows: int, shoulder: int) -> tuple[Section, Section]:
+    """Los dos hombros del escote redondo, cada uno tejido por separado.
+
+    Primero los pts del final de la hilera de cierre (hombro derecho, con el
+    escote al comienzo de las hileras del LD); despues los que quedaron en
+    espera (hombro izquierdo).
+    """
+    sections = []
+    for side_id, name, sts, at_start, intro in (
+        ("neck_right", "section.neck_right", after, True, "pattern.note.neck_side_first"),
+        ("neck_left", "section.neck_left", before, False, "pattern.note.neck_side_second"),
+    ):
+        steps = neck_side(sts, decreases, rows, neck_at_start=at_start)
+        if steps[-1].stitch_count_end != shoulder:
+            raise RuntimeError(f"{side_id}: termina con {steps[-1].stitch_count_end}, se esperaban {shoulder}")
+        sections.append(
+            Section(
+                id=side_id,
+                name_key=name,
+                mode="flat",
+                steps=tuple(steps),
+                start_stitches=sts,
+                end_stitches=shoulder,
+                meta={"row_count": rows},
+                bind_off=True,
+                note_keys=(intro,),
+            )
+        )
+    return sections[0], sections[1]

@@ -8,13 +8,20 @@ patron. El simulador verifica cada pieza y las costuras que se declaran.
 from __future__ import annotations
 
 import hashlib
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 
 from engine import ENGINE_VERSION
 from engine.garments.base import ImpossibleProportionsError
 from engine.garments.panels import build_panel, texture_motif
-from engine.garments.rows import FlatRows, hem_rib, rib_rows
+from engine.garments.rows import (
+    FlatRows,
+    hem_rib,
+    neck_sections,
+    neckband_stitches,
+    plan_crew_neck,
+    rib_rows,
+)
 from engine.gauge import Gauge
 from engine.i18n import t
 from engine.ir import (
@@ -69,6 +76,9 @@ class FlatPlan:
     sleeve_rows: int
     cuff_rows: int
     neck_sts: int
+    neck_center: int
+    neck: tuple[int, int, int] | None  # (hileras, disminuciones, cierre central)
+    neckband_sts: int
     neckband_rows: int
     band_sts: int
     band_rows: int
@@ -144,6 +154,20 @@ def plan_flat(spec: GarmentSpec, params: PatternParams, kind: str) -> tuple[Flat
         max(4, gauge.stitches_for_cm(size.neck_cm + 2.0)), 4, mode="nearest"
     )
     neckband_rows = max(1, gauge.rows_for_cm(NECKBAND_CM))
+    # Escote redondo en el delantero (pullover y chaleco); el cardigan sigue
+    # con el escote recto de los delanteros.
+    neck_center = min(adjust_stitches(max(4, neck_sts // 2), 2, mode="nearest"), front_sts - 8)
+    neck_center -= (front_sts - neck_center) % 2
+    neck_plan: tuple[int, int, int] | None = None
+    neckband_sts = neck_sts
+    if kind != "cardigan":
+        hem = cuff_rows or max(2, neckband_rows)
+        try:
+            neck_plan = plan_crew_neck(neck_center, body_rows - hem - 2, gauge.rows_per_cm)
+        except ValueError:
+            neck_plan = None
+        if neck_plan is not None:
+            neckband_sts = neckband_stitches(neck_center, neck_plan[2], neck_plan[0])
     band_sts = adjust_stitches(
         max(4, gauge.stitches_for_cm(BUTTON_BAND_CM)), 2, mode="nearest"
     )
@@ -158,6 +182,9 @@ def plan_flat(spec: GarmentSpec, params: PatternParams, kind: str) -> tuple[Flat
         sleeve_rows=sleeve_rows,
         cuff_rows=cuff_rows,
         neck_sts=neck_sts,
+        neck_center=neck_center,
+        neck=neck_plan,
+        neckband_sts=neckband_sts,
         neckband_rows=neckband_rows,
         band_sts=band_sts,
         band_rows=body_rows,
@@ -178,7 +205,8 @@ def _panel_section(
     note_key: str | None = None,
     hem_rows: int = 0,
     spec: GarmentSpec | None = None,
-) -> Section:
+    neck: tuple[int, int, int] | None = None,
+) -> tuple[Section, ...]:
     """Pieza plana en jersey (reves al reves), con elastico abajo si se pide.
 
     Si la foto tiene textura, el cuerpo lleva un panel centrado (`panels`).
@@ -192,10 +220,33 @@ def _panel_section(
     panel_start = len(flat.steps)
     if panel is not None:
         flat.start_panel(panel)
-    for index in range(rows - hem):
+    body_rows = rows - hem - (neck[0] if neck else 0)
+    for index in range(body_rows):
         flat.row(note=None if panel is not None or index else note_key)
     extra = flat.panel_meta(panel_start, stitches)
-    return Section(
+    if neck is not None:
+        _depth, decs, center_bo = neck
+        before, after = flat.split_for_neck(center_bo, "pattern.note.neck_split")
+        side_rows = rows - (len(flat.steps) - 1)
+        shoulder = (stitches - center_bo) // 2 - decs
+        sides = neck_sections(before, after, decs, side_rows, shoulder)
+        front = Section(
+            id=section_id,
+            name_key=name_key,
+            mode="flat",
+            steps=tuple(flat.steps),
+            start_stitches=0,
+            end_stitches=flat.current,
+            target=SectionTarget(
+                measurement_key=f"{section_id}_length",
+                target_cm=target_cm * (len(flat.steps) - 1) / rows,
+                tolerance_cm=0.5,
+                dimension="length",
+            ),
+            meta={"row_count": len(flat.steps) - 1, "cast_on": stitches, **extra},
+        )
+        return (front, *sides)
+    return (Section(
         id=section_id,
         name_key=name_key,
         mode="flat",
@@ -210,7 +261,7 @@ def _panel_section(
         ),
         meta={"row_count": rows, "cast_on": stitches, **extra},
         bind_off=True,
-    )
+    ),)
 
 
 def _rib_section(
@@ -260,21 +311,27 @@ def _rib_section(
 
 
 def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec) -> tuple[Section, ...]:
+    hem = plan.cuff_rows or max(2, plan.neckband_rows)
     sections: list[Section] = [
-        _panel_section(
+        *_panel_section(
             "back",
             "section.back",
             plan.back_sts,
             plan.body_rows,
             plan.body_length_cm,
             note_key="pattern.note.flat_panel",
-            hem_rows=plan.cuff_rows or max(2, plan.neckband_rows),
+            hem_rows=hem,
             spec=spec,
         )
     ]
+    if plan.neck is not None:
+        # Costura de hombro: la espalda deja libres los pts del escote.
+        back = sections[0]
+        shoulder = (plan.back_sts - plan.neck_center) // 2
+        sections[0] = replace(back, meta={**back.meta, "shoulder": shoulder})
     if plan.kind == "cardigan":
         for side, name in (("left", "section.left_front"), ("right", "section.right_front")):
-            sections.append(
+            sections.extend(
                 _panel_section(
                     f"{side}_front",
                     name,
@@ -282,12 +339,12 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec) -> tuple[Section,
                     plan.body_rows,
                     plan.body_length_cm,
                     note_key="pattern.note.flat_panel",
-                    hem_rows=plan.cuff_rows or max(2, plan.neckband_rows),
-            spec=spec,
+                    hem_rows=hem,
+                    spec=spec,
                 )
             )
     else:
-        sections.append(
+        sections.extend(
             _panel_section(
                 "front",
                 "section.front",
@@ -295,14 +352,15 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec) -> tuple[Section,
                 plan.body_rows,
                 plan.body_length_cm,
                 note_key="pattern.note.flat_panel",
-                hem_rows=plan.cuff_rows or max(2, plan.neckband_rows),
-            spec=spec,
+                hem_rows=hem,
+                spec=spec,
+                neck=plan.neck,
             )
         )
 
     if plan.sleeve_sts is not None:
         for side in ("left", "right"):
-            sections.append(
+            sections.extend(
                 _panel_section(
                     f"sleeve_{side}",
                     f"section.sleeve_{side}",
@@ -328,7 +386,7 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec) -> tuple[Section,
         _rib_section(
             "neckband",
             "section.neckband",
-            plan.neck_sts,
+            plan.neckband_sts,
             plan.neckband_rows,
             "rib_1x1",
             NECKBAND_CM,
@@ -362,8 +420,9 @@ def _warnings(
         Warning("estimated_yardage", "warning.estimated_yardage", severity="info"),
         Warning("assumption", "warning.assumption", severity="info"),
         Warning("flat_panels", "warning.flat_panels"),
-        Warning("no_neck_shaping", "warning.no_neck_shaping"),
     ]
+    if plan.neck is None:
+        warnings.append(Warning("no_neck_shaping", "warning.no_neck_shaping"))
     if plan.kind == "cardigan":
         warnings.append(Warning("no_buttonholes", "warning.no_buttonholes"))
     if plan.kind == "vest":
@@ -451,6 +510,29 @@ def _joins(plan: FlatPlan) -> tuple[JoinCheck, ...]:
                 label_key="join.side_seam",
                 left=(CountRef("back", "end"),),
                 right=(CountRef("left_front", "end"), CountRef("right_front", "end")),
+            )
+        )
+    elif plan.neck is not None:
+        joins.append(
+            JoinCheck(
+                label_key="join.side_seam",
+                left=(CountRef("back", "meta:cast_on"),),
+                right=(CountRef("front", "meta:cast_on"),),
+            )
+        )
+        for side in ("neck_right", "neck_left"):
+            joins.append(
+                JoinCheck(
+                    label_key="join.shoulder_seam",
+                    left=(CountRef("back", "meta:shoulder"),),
+                    right=(CountRef(side, "end"),),
+                )
+            )
+        joins.append(
+            JoinCheck(
+                label_key="join.neck_split",
+                left=(CountRef("front", "end"),),
+                right=(CountRef("neck_right", "start"), CountRef("neck_left", "start")),
             )
         )
     else:

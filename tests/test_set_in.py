@@ -44,14 +44,18 @@ def test_set_in_golden_size_m() -> None:
     # Talle M, DK 22 x 30: 112 pts por pieza (100 cm de contorno), sisa hasta
     # el ancho de espalda de la tabla (40 cm = 88 pts), copa que termina en
     # 24 pts. Antes la sisa bajaba a 48 pts (forma de raglan, sin hombros).
+    # Delantero con escote redondo: se cierran 24 pts centrales y cada hombro
+    # disminuye 8 pts hasta los 24 de la espalda ((88 - 40) / 2).
     assert counts == {
         "back": (0, 88),
-        "front": (0, 88),
+        "front": (0, 64),
+        "neck_right": (32, 24),
+        "neck_left": (32, 24),
         "cuff_left": (0, 40),
         "sleeve_left": (40, 24),
         "cuff_right": (0, 40),
         "sleeve_right": (40, 24),
-        "neck_band": (0, 80),
+        "neck_band": (0, 96),
     }
     measures = {m.key: m.value_cm for m in pattern.measurements}
     assert measures["cross_back"] == pytest.approx(40.0, abs=1.0)

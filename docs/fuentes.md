@@ -125,3 +125,15 @@ Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.
   LD (invertida y con der <-> rev) coincide con la del LD. Test:
   `tests/test_catalog.py::test_flat_ribs_keep_their_columns`. Antes los
   elasticos 1x1, 2x2 y 3x1 en plano tejian arroz o damero.
+
+## Escote redondo en piezas planas
+
+- **Uso:** `engine/garments/rows.py` (`plan_crew_neck`, `neck_sections`) en
+  manga encajada, hombro caído y chaleco. Se cierran los pts centrales del
+  delantero y cada hombro se teje por separado, disminuyendo 1 pt del lado
+  del escote en las hileras del LD hasta los pts de hombro de la espalda (el
+  simulador verifica la unión).
+- **ASUNCION:** 7 cm de profundidad; 20 % del ancho del escote se disminuye
+  por lado; la tira levanta todos los pts cerrados y 3 de cada 4 hileras de
+  los costados del escote. La espalda termina recta. Si hay panel de
+  textura, termina en el escote (los pts centrales se cierran).

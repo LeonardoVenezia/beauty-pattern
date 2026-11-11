@@ -2,8 +2,8 @@
 
 Construccion clasica de abajo hacia arriba: elastico, jersey, sisa con
 cierre y disminuciones hasta el ancho de espalda, copa de manga estandar.
-El escote es recto (los pts centrales quedan libres al coser los hombros);
-se declara en las advertencias.
+Escote redondo en el delantero (cierre central y cada hombro por separado);
+la espalda termina recta.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from engine.distribution import regular_rows
 from engine.garments.base import ImpossibleProportionsError
 from engine.garments.panels import build_panel, texture_motif
 from engine.garments.rows import FlatRows as _Rows
+from engine.garments.rows import neck_sections, neckband_stitches, plan_crew_neck
 from engine.gauge import Gauge
 from engine.i18n import t
 from engine.ir import (
@@ -76,6 +77,9 @@ class SetInPlan:
     cap_decs: int  # disminuciones por lado en la copa
     cap_rows: int
     cap_top: int  # pts que se cierran al final de la copa
+    neck_depth_rows: int  # hileras desde el cierre del escote hasta el hombro
+    neck_decs: int  # disminuciones por lado en el escote
+    neck_center_bo: int  # pts centrales que se cierran en el delantero
     neck_sts: int  # pts del cuello (tira)
     neckband_rows: int
     body_length_cm: float
@@ -160,6 +164,15 @@ def plan_set_in(
     if (cross_sts - neck_center) % 2:
         neck_center -= 1
 
+    shaping_rows = 3 + 2 * armhole_decs
+    try:
+        neck_depth_rows, neck_decs, _ = plan_crew_neck(
+            neck_center, armhole_rows - shaping_rows - 2, gauge.rows_per_cm
+        )
+    except ValueError:
+        raise fail() from None
+    neckband_sts = neckband_stitches(neck_center, neck_center - 2 * neck_decs, neck_depth_rows)
+
     cuff_sts = max(4, round_half_up((size.wrist_cm + CUFF_EASE_CM) * gauge.stitches_per_cm / 4.0) * 4)
     sleeve_upper_sts = _even((size.upper_arm_cm + SLEEVE_EASE_CM) * gauge.stitches_per_cm)
     if sleeve_upper_sts <= cuff_sts:
@@ -205,7 +218,10 @@ def plan_set_in(
         cap_decs=cap_decs,
         cap_rows=2 + middle_rows + 4,
         cap_top=cap_top,
-        neck_sts=2 * neck_center,
+        neck_depth_rows=neck_depth_rows,
+        neck_decs=neck_decs,
+        neck_center_bo=neck_center - 2 * neck_decs,
+        neck_sts=neckband_sts,
         neckband_rows=max(1, gauge.rows_for_cm(NECKBAND_CM)),
         body_length_cm=body_length_cm,
         sleeve_length_cm=sleeve_length_cm,
@@ -215,7 +231,9 @@ def plan_set_in(
     return plan, gauge, size
 
 
-def _body_panel(section_id: str, name_key: str, plan: SetInPlan, spec: GarmentSpec) -> Section:
+def _body_panel(
+    section_id: str, name_key: str, plan: SetInPlan, spec: GarmentSpec, *, neck: bool = False
+) -> tuple[Section, ...]:
     rib = get_stitch("rib_2x2" if plan.body_sts % 4 == 0 else "rib_1x1")
     rows = _Rows(0)
     rows.add((Op(StitchKind.CAST_ON, times=plan.body_sts),), "pattern.note.cast_on_panel")
@@ -238,11 +256,38 @@ def _body_panel(section_id: str, name_key: str, plan: SetInPlan, spec: GarmentSp
     for _ in range(plan.armhole_decs):
         rows.decrease_edges("pattern.note.armhole_decrease")
         rows.plain()
-    while len(rows.steps) - armhole_start < plan.armhole_rows:
+    target = plan.armhole_rows - (plan.neck_depth_rows if neck else 0)
+    while len(rows.steps) - armhole_start < target:
         rows.plain()
     if rows.current != plan.cross_sts:
         raise RuntimeError(f"{section_id}: termina con {rows.current}, se esperaban {plan.cross_sts}")
-    return Section(
+    shoulder = (plan.cross_sts - plan.neck_center) // 2
+    if neck:
+        before, after = rows.split_for_neck(plan.neck_center_bo, "pattern.note.neck_split")
+        side_rows = plan.armhole_rows - (len(rows.steps) - armhole_start)
+        sides = neck_sections(before, after, plan.neck_decs, side_rows, shoulder)
+        front = Section(
+            id=section_id,
+            name_key=name_key,
+            mode="flat",
+            steps=tuple(rows.steps),
+            start_stitches=0,
+            end_stitches=rows.current,
+            target=SectionTarget(
+                measurement_key=f"{section_id}_length",
+                target_cm=plan.body_length_cm * (len(rows.steps) - 1) / plan.body_rows,
+                tolerance_cm=1.0,
+                dimension="length",
+            ),
+            meta={
+                "row_count": len(rows.steps) - 1,
+                "cast_on": plan.body_sts,
+                "armhole_bo": plan.armhole_bo,
+                **rows.panel_meta(panel_start, plan.cross_sts),
+            },
+        )
+        return (front, *sides)
+    return (Section(
         id=section_id,
         name_key=name_key,
         mode="flat",
@@ -259,12 +304,12 @@ def _body_panel(section_id: str, name_key: str, plan: SetInPlan, spec: GarmentSp
             "row_count": len(rows.steps) - 1,
             "cast_on": plan.body_sts,
             "armhole_bo": plan.armhole_bo,
-            "shoulder": (plan.cross_sts - plan.neck_center) // 2,
+            "shoulder": shoulder,
             "neck_center": plan.neck_center,
             **rows.panel_meta(panel_start, plan.cross_sts),
         },
         bind_off=True,
-    )
+    ),)
 
 
 def _cuff(side: str, plan: SetInPlan) -> Section:
@@ -398,7 +443,6 @@ def _warnings(
         Warning("estimated_yardage", "warning.estimated_yardage", severity="info"),
         Warning("assumption", "warning.assumption", severity="info"),
         Warning("flat_panels", "warning.flat_panels"),
-        Warning("no_neck_shaping", "warning.no_neck_shaping"),
     ]
     if params.medidas_cm:
         warnings.append(
@@ -448,7 +492,7 @@ def _measurements(
             "width",
         ),
         Measurement("armhole", gauge.cm_for_rows(plan.armhole_rows), plan.armhole_cm, 1.5, "length"),
-        Measurement("neck", gauge.cm_for_stitches(plan.neck_sts), size.neck_cm, tol, "circumference"),
+        Measurement("neck", gauge.cm_for_stitches(2 * plan.neck_center), size.neck_cm, tol, "circumference"),
     )
 
 
@@ -458,8 +502,8 @@ def generate_set_in(spec: GarmentSpec, params: PatternParams) -> Pattern:
     if base_id == "other":
         base_id = "stockinette"
     sections = (
-        _body_panel("back", "section.back", plan, spec),
-        _body_panel("front", "section.front", plan, spec),
+        *_body_panel("back", "section.back", plan, spec),
+        *_body_panel("front", "section.front", plan, spec, neck=True),
         _cuff("left", plan),
         _sleeve("left", plan),
         _cuff("right", plan),
@@ -508,8 +552,18 @@ def generate_set_in(spec: GarmentSpec, params: PatternParams) -> Pattern:
     joins = (
         JoinCheck(
             label_key="join.shoulder_seam",
-            left=(CountRef("back", "end"),),
-            right=(CountRef("front", "end"),),
+            left=(CountRef("back", "meta:shoulder"),),
+            right=(CountRef("neck_right", "end"),),
+        ),
+        JoinCheck(
+            label_key="join.shoulder_seam",
+            left=(CountRef("back", "meta:shoulder"),),
+            right=(CountRef("neck_left", "end"),),
+        ),
+        JoinCheck(
+            label_key="join.neck_split",
+            left=(CountRef("front", "end"),),
+            right=(CountRef("neck_right", "start"), CountRef("neck_left", "start")),
         ),
         JoinCheck(
             label_key="join.armhole",

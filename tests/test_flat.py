@@ -45,14 +45,18 @@ def test_drop_shoulder_golden_size_m() -> None:
     )
     assert simulate(pattern).ok
     assert pattern.meta.family == "drop_shoulder"
+    # Escote redondo: el delantero cierra el centro y cada hombro queda con
+    # los mismos 33 pts que la espalda deja a cada lado ((110 - 44) / 2).
     assert counts(pattern) == {
         "back": (0, 110),
-        "front": (0, 110),
+        "front": (0, 84),
+        "neck_right": (42, 33),
+        "neck_left": (42, 33),
         "sleeve_left": (0, 76),
         "cuff_left": (0, 76),
         "sleeve_right": (0, 76),
         "cuff_right": (0, 76),
-        "neckband": (0, 88),
+        "neckband": (0, 102),
     }
 
 
