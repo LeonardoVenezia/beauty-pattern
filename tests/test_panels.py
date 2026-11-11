@@ -76,7 +76,12 @@ def test_plain_photo_has_no_panel() -> None:
 @pytest.mark.parametrize("texture", TEXTURES)
 @pytest.mark.parametrize(
     ("category", "construction"),
-    [(Category.PULLOVER, Construction.DROP_SHOULDER), (Category.CARDIGAN, None), (Category.VEST, None)],
+    [
+        (Category.PULLOVER, Construction.DROP_SHOULDER),
+        (Category.PULLOVER, Construction.SET_IN_SLEEVE),
+        (Category.CARDIGAN, None),
+        (Category.VEST, None),
+    ],
 )
 def test_flat_pieces_get_panel(texture: str, category: Category, construction: Construction | None) -> None:
     spec = GarmentSpec(
@@ -102,3 +107,16 @@ def test_flat_wrong_side_panel_row_is_mirrored() -> None:
     assert isinstance(repeat, Repeat) and isinstance(border, Op)
     assert [op.kind for op in repeat.ops] == [StitchKind.KNIT, StitchKind.PURL]
     assert border.kind is StitchKind.KNIT and border.times == 2  # 2 rev vistos del LR
+
+
+def test_set_in_armhole_keeps_panel_in_place() -> None:
+    """La sisa cierra y disminuye en los bordes sin mover el panel."""
+    spec = GarmentSpec(
+        categoria=Category.PULLOVER,
+        tecnica=Technique.NEEDLES,
+        construccion=Construction.SET_IN_SLEEVE,
+        texturas=[{"textura": "cables"}],
+    )
+    text = render_pattern_text(generate(spec, PatternParams(talla="M")))
+    assert "1 der, ssk, der hasta el mc, panel (gráfico 1), der hasta quedar 3 pts, 2pjd, 1 der" in text
+    assert "Repetir las últimas 2 hileras" in text

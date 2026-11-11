@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from engine import ENGINE_VERSION
 from engine.distribution import regular_rows
 from engine.garments.base import ImpossibleProportionsError
+from engine.garments.panels import build_panel, texture_motif
 from engine.garments.rows import FlatRows as _Rows
 from engine.gauge import Gauge
 from engine.i18n import t
@@ -214,14 +215,20 @@ def plan_set_in(
     return plan, gauge, size
 
 
-def _body_panel(section_id: str, name_key: str, plan: SetInPlan) -> Section:
+def _body_panel(section_id: str, name_key: str, plan: SetInPlan, spec: GarmentSpec) -> Section:
     rib = get_stitch("rib_2x2" if plan.body_sts % 4 == 0 else "rib_1x1")
     rows = _Rows(0)
     rows.add((Op(StitchKind.CAST_ON, times=plan.body_sts),), "pattern.note.cast_on_panel")
     for index in range(plan.hem_rows):
         rows.add(expand_row(rib, plan.body_sts, index + 1), "pattern.note.hem" if index == 0 else None)
+    motif = texture_motif(spec)
+    # El panel tiene que entrar en el ancho de espalda (lo mas angosto).
+    panel = build_panel(motif, plan.cross_sts) if motif else None
+    panel_start = len(rows.steps)
+    if panel is not None:
+        rows.start_panel(panel)
     for index in range(plan.underarm_rows):
-        rows.plain("pattern.note.flat_panel" if index == 0 else None)
+        rows.plain("pattern.note.flat_panel" if index == 0 and panel is None else None)
     armhole_start = len(rows.steps)
     if plan.armhole_bo:
         if not rows.right_side:
@@ -254,6 +261,7 @@ def _body_panel(section_id: str, name_key: str, plan: SetInPlan) -> Section:
             "armhole_bo": plan.armhole_bo,
             "shoulder": (plan.cross_sts - plan.neck_center) // 2,
             "neck_center": plan.neck_center,
+            **rows.panel_meta(panel_start, plan.cross_sts),
         },
         bind_off=True,
     )
@@ -396,7 +404,16 @@ def _warnings(
         warnings.append(
             Warning("custom_measurements", "warning.custom_measurements", severity="info")
         )
-    if base_id != "stockinette":
+    motif = texture_motif(spec)
+    if motif is not None:
+        warnings.append(
+            Warning(
+                "texture_panel",
+                "warning.texture_panel_flat",
+                params={"stitch": t(get_stitch(motif).name_key, params.idioma)},
+            )
+        )
+    elif base_id != "stockinette":
         stitch_name = t(get_stitch(base_id).name_key, params.idioma)
         warnings.append(
             Warning(
@@ -441,8 +458,8 @@ def generate_set_in(spec: GarmentSpec, params: PatternParams) -> Pattern:
     if base_id == "other":
         base_id = "stockinette"
     sections = (
-        _body_panel("back", "section.back", plan),
-        _body_panel("front", "section.front", plan),
+        _body_panel("back", "section.back", plan, spec),
+        _body_panel("front", "section.front", plan, spec),
         _cuff("left", plan),
         _sleeve("left", plan),
         _cuff("right", plan),

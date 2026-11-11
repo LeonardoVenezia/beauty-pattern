@@ -102,9 +102,7 @@ class Panel:
     def items(self, row: int) -> tuple[Item, ...]:
         unit = self.unit_rows[(row - 1) % self.rows]
         items: list[Item] = [Op(StitchKind.PURL, times=_BORDER)]
-        items.append(Repeat(self.repeats, unit) if self.repeats > 1 else unit[0])
-        if self.repeats == 1 and len(unit) > 1:
-            items[-1:] = list(unit)
+        items.append(Repeat(self.repeats, unit))
         if not self.cable:
             items.append(Op(StitchKind.PURL, times=_BORDER))
         return tuple(items)

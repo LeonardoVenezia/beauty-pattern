@@ -746,47 +746,165 @@ def _panel_layout(step: Step, lang: str, width: int) -> str | None:
     return ", ".join(parts) if parts else None
 
 
-def _panel_lines(section: Section, lang: str) -> tuple[Block, ...] | None:
-    """Tramo con panel de textura: marcadores + referencia al grafico.
+def _plain_kind(step: Step) -> StitchKind | None:
+    """Punto liso de la hilera (der en LD, rev en LR): el Op K/P mas largo."""
+    plain = [i for i in step.items if isinstance(i, Op) and i.kind in {StitchKind.KNIT, StitchKind.PURL}]
+    return max(plain, key=lambda op: op.times).kind if plain else None
 
-    Las vueltas de la IR siguen explicitas (y simuladas); el texto las resume
-    como en un patron impreso.
-    """
-    rows = section.meta.get("panel_rows")
-    start = section.meta.get("panel_start", 1)
+
+def _panel_spans(step: Step) -> list[tuple[int, int]]:
+    """Indices [a, b) de cada panel de la hilera: bordes de 2 pts + repeticion."""
+    plain = _plain_kind(step)
+
+    def border(i: int) -> bool:
+        item = step.items[i] if 0 <= i < len(step.items) else None
+        return (
+            isinstance(item, Op)
+            and item.times == 2
+            and item.kind is not plain
+            and item.kind in {StitchKind.KNIT, StitchKind.PURL}
+        )
+
+    spans = []
+    for index, item in enumerate(step.items):
+        if isinstance(item, Repeat):
+            start = index - 1 if border(index - 1) else index
+            end = index + 2 if border(index + 1) else index + 1
+            spans.append((start, end))
+    return spans
+
+
+def _panel_step_body(step: Step, lang: str) -> str:
+    """Hilera con panel escrita con marcadores: `1 der, ssk, der hasta el mc,
+    panel (grafico 1), der hasta quedar 3 pts, 2pjd, 1 der`."""
+    spans = _panel_spans(step)
+    if not spans:
+        return _step_body(step, lang)
+    items = list(step.items)
+    tail_edge = len(items) >= 3 and isinstance(items[-2], Op) and items[-2].kind is StitchKind.K2TOG
+    parts: list[str] = []
+    position = 0
+    for number, (a, b) in enumerate([*spans, (len(items), len(items))]):
+        segment = items[position:a]
+        last_segment = number == len(spans)
+        for index, item in enumerate(segment):
+            is_plain = isinstance(item, Op) and item.kind in {StitchKind.KNIT, StitchKind.PURL}
+            if is_plain and isinstance(item, Op) and (index == len(segment) - 1 or last_segment):
+                knit = item.kind is StitchKind.KNIT
+                if last_segment and index == 0 and tail_edge:
+                    parts.append(t("pattern.paired_decrease_tail", lang))
+                    break
+                if last_segment:
+                    parts.append(t("pattern.plain_to_end_k" if knit else "pattern.plain_to_end_p", lang))
+                else:
+                    parts.append(t("pattern.plain_to_marker_k" if knit else "pattern.plain_to_marker_p", lang))
+            else:
+                parts.append(_item_text(item, lang))
+        if not last_segment:
+            parts.append(t("pattern.panel_inline", lang))
+        position = b
+    return ", ".join(parts)
+
+
+def _is_pure_panel_row(step: Step) -> bool:
+    spans = _panel_spans(step)
+    if not spans or step.stitch_count_end != step.consumes:
+        return False
+    inside = {i for a, b in spans for i in range(a, b)}
+    return all(
+        isinstance(item, Op) and item.kind in {StitchKind.KNIT, StitchKind.PURL}
+        for index, item in enumerate(step.items)
+        if index not in inside
+    )
+
+
+def _panel_section_blocks(section: Section, lang: str, relative: bool) -> tuple[Block, ...] | None:
+    """Seccion con panel de textura. Las vueltas de la IR siguen explicitas y
+    simuladas; el texto resume los tramos lisos con panel (marcadores +
+    grafico) y escribe explicitas las hileras con forma."""
+    meta = section.meta
+    rows = meta.get("panel_rows")
+    start = meta.get("panel_start", 1)
     if not rows or len(section.steps) <= start:
         return None
-    panel_steps = section.steps[start:]
-    first = panel_steps[0]
-    width = section.meta["panel_width"]
-    layout = _panel_layout(first, lang, width)
-    if layout is None:
+    first = section.steps[start]
+    if not _is_pure_panel_row(first):
         return None
     flat = section.mode == "flat"
-    repeats = section.meta["panel_repeats"]
+    width, repeats = meta["panel_width"], meta["panel_repeats"]
     cable = any(
-        isinstance(item, Repeat) and any(op.kind in {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK} for op in item.ops)
-        for step in panel_steps[:rows]
+        op.kind in {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK}
+        for step in section.steps[start : start + rows]
         for item in step.items
+        if isinstance(item, Repeat)
+        for op in item.ops
     )
-    count = len(panel_steps)
-    last = count % rows or rows
-    if flat:
-        side_key = "pattern.side_rs" if any(
-            isinstance(i, Op) and i.kind is StitchKind.KNIT and i.times > 4 for i in first.items
-        ) else "pattern.side_ws"
-        body = t("pattern.panel_rows_flat", lang, n=count, rows=rows, side=t(side_key, lang), sts=section.end_stitches)
-    else:
-        body = t("pattern.panel_rounds", lang, n=count, rows=rows, sts=section.end_stitches)
-    return (
-        Block(BlockKind.LINE, t("pattern.panel_markers", lang, layout=layout)),
+    blocks: list[Block] = []
+    before = section.steps[1:start] if section.division else section.steps[:start]
+    blocks.extend(render_step_lines(compress_steps(before), section.mode, lang, relative=relative))
+    blocks.append(Block(BlockKind.LINE, t("pattern.panel_markers", lang, layout=_panel_layout(first, lang, width) or "")))
+    blocks.append(
         Block(
             BlockKind.LINE,
             t("pattern.panel_cable" if cable else "pattern.panel_contiguous", lang, w=width, r=repeats),
-        ),
-        Block(BlockKind.STEP, body),
-        Block(BlockKind.LINE, t("pattern.panel_end_flat" if flat else "pattern.panel_end", lang, k=last)),
+        )
     )
+    steps = section.steps[start:]
+    index = 0
+    first_run = True
+    while index < len(steps):
+        end = index
+        while end < len(steps) and _is_pure_panel_row(steps[end]):
+            end += 1
+        if end - index >= 2:
+            count = end - index
+            run_first = steps[index]
+            if flat:
+                side = "pattern.side_rs" if _plain_kind(run_first) is StitchKind.KNIT else "pattern.side_ws"
+                key = "pattern.panel_rows_flat" if first_run else "pattern.panel_rows_more"
+                text = t(key, lang, n=count, rows=rows, side=t(side, lang), sts=steps[end - 1].stitch_count_end)
+            else:
+                key = "pattern.panel_rounds" if first_run else "pattern.panel_rounds_more"
+                text = t(key, lang, n=count, rows=rows, sts=steps[end - 1].stitch_count_end)
+            note = t(run_first.note_key, lang) + " " if run_first.note_key else ""
+            blocks.append(Block(BlockKind.STEP, note + text))
+            first_run = False
+            index = end
+            continue
+        label = t("pattern.next_row" if flat else "pattern.next_round", lang)
+
+        def text_of(step: Step) -> tuple[str | None, str]:
+            return step.note_key, _panel_step_body(step, lang)
+
+        # Hileras con forma: si se repiten de a 2 (disminucion + hilera lisa)
+        # se escriben una vez y "Repetir las ultimas 2 hileras N veces mas".
+        repeats_found = 0
+        if index + 3 < len(steps):
+            pair = (text_of(steps[index]), text_of(steps[index + 1]))
+            j = index + 2
+            while j + 1 < len(steps) and (
+                (steps[j].note_key is None or steps[j].note_key == pair[0][0])
+                and _panel_step_body(steps[j], lang) == pair[0][1]
+                and text_of(steps[j + 1]) == pair[1]
+            ):
+                repeats_found += 1
+                j += 2
+        for step in steps[index : index + 2] if repeats_found else steps[index : index + 1]:
+            note = t(step.note_key, lang) + " " if step.note_key else ""
+            blocks.append(
+                Block(BlockKind.STEP, f"{note}{label}: {_panel_step_body(step, lang)} {_count_text(step, lang)}")
+            )
+        if repeats_found:
+            last_step = steps[index + 1 + 2 * repeats_found]
+            key = "pattern.repeat_last_rows" if flat else "pattern.repeat_last_rounds"
+            blocks.append(Block(BlockKind.REPEAT, t(key, lang, l=2, n=repeats_found, sts=last_step.stitch_count_end)))
+            index += 2 + 2 * repeats_found
+        else:
+            index += 1
+    first_chart = meta.get("panel_first_chart_row", 1)
+    last = (first_chart - 1 + len(steps) - 1) % rows + 1
+    blocks.append(Block(BlockKind.LINE, t("pattern.panel_end_flat" if flat else "pattern.panel_end", lang, k=last)))
+    return tuple(blocks)
 
 
 def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
@@ -800,13 +918,8 @@ def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
         for note_key in section.note_keys:
             blocks.append(Block(BlockKind.LINE, t(note_key, language)))
         steps = section.steps[1:] if section.division else section.steps
-        panel = _panel_lines(section, language)
+        panel = _panel_section_blocks(section, language, pattern.spec.tecnica.value != "crochet")
         if panel is not None:
-            start = section.meta.get("panel_start", 1)
-            before = section.steps[1:start] if section.division else section.steps[:start]
-            blocks.extend(
-                render_step_lines(compress_steps(before), section.mode, language, relative=True)
-            )
             blocks.extend(panel)
         else:
             blocks.extend(

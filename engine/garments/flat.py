@@ -190,23 +190,11 @@ def _panel_section(
     motif = texture_motif(spec) if spec is not None else None
     panel = build_panel(motif, stitches) if motif else None
     panel_start = len(flat.steps)
-    first_rs = flat.number if flat.right_side else flat.number + 1
+    if panel is not None:
+        flat.start_panel(panel)
     for index in range(rows - hem):
-        if panel is not None:
-            flat.panel_row(panel, (flat.number - first_rs) % panel.rows + 1)
-        else:
-            flat.plain(note_key if index == 0 else None)
-    extra = (
-        {
-            "panel_rows": panel.rows,
-            "panel_repeats": panel.repeats,
-            "panel_width": panel.width,
-            "panel_start": panel_start,
-            "panel_segment": stitches,
-        }
-        if panel is not None
-        else {}
-    )
+        flat.row(note=None if panel is not None or index else note_key)
+    extra = flat.panel_meta(panel_start, stitches)
     return Section(
         id=section_id,
         name_key=name_key,
