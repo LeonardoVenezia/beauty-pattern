@@ -413,3 +413,25 @@ fuente publica verificada.
   `spec` + `params`, no el YAML de diseño libre de la especificación. Motivo:
   el producto parte de una foto y el motor necesita `GarmentSpec`, no texto
   de instrucciones escrito a mano. Ver próximos pasos en `HANDOFF.md`.
+
+## D024 — Las texturas de la foto llegan al patrón; correcciones en prendas en piezas (2026-11-11)
+
+- **Panel de textura (`engine/garments/panels.py`):** trenzas, calados,
+  bodoques y nido de abeja se tejen como un panel centrado (2 rev de borde)
+  en espalda y delantero: raglán y canesú circular en redondo; hombro caído,
+  cárdigan y chaleco en plano. Los motivos no cambian el conteo, así que el
+  simulador verifica cada vuelta igual; en la IR el panel es un `Repeat`.
+  El texto usa marcadores y remite al gráfico (sección Gráficos del PDF).
+  *Alternativa descartada:* textura en toda la prenda, que obliga a ajustar
+  todos los conteos al múltiplo del motivo y rompe aumentos y disminuciones.
+  *Pendiente:* manga encajada (la sisa corta el panel) y compensar el ancho
+  que las trenzas quitan (hoy se avisa: muestra sobre el panel).
+- **Revisar familias en piezas encontró errores de tela y de forma**, no de
+  presentación: jersey plano tejido todo al derecho (santa clara), elásticos
+  planos que tejían arroz o damero, y manga encajada con sisa de raglán (sin
+  hombros). Se corrigieron en el motor y en el catálogo, con tests que
+  verifican la tela (columnas del elástico, revés al revés) y la forma (ancho
+  de espalda y sisa de la tabla).
+- **Web:** las texturas detectadas se muestran en español y se pueden quitar
+  antes de generar, porque ahora cambian el patrón y la visión fina es el
+  punto débil de la IA.

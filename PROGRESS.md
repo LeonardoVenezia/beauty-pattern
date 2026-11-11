@@ -378,3 +378,18 @@ Diagnóstico y rumbo en `DECISIONS.md` D022 y D023.
 diseño); evaluaciones con fotos reales; gráficos de calado/jacquard en el
 PDF; esquemas con letras para cardigan, chaleco y accesorios; la web todavía
 muestra el texto de un talle (el PDF ya trae todos).
+
+## Texturas y prendas en piezas (2026-11-11, continuación)
+
+- [x] Paneles de textura (trenzas, calados, bodoques, nido de abeja) en
+  raglán, canesú circular, hombro caído, cárdigan y chaleco, con gráfico en
+  el PDF (recuadro de repetición y numeración de puntos).
+- [x] Manga encajada reescrita con construcción clásica (sisa al ancho de
+  espalda, copa estándar, operación "cerrar pts" simulada).
+- [x] Jersey plano real (revés al revés) y elástico en el borde inferior de
+  las piezas; elásticos planos del catálogo corregidos.
+- [x] Web: texturas en español, con botón para quitarlas.
+- [x] Verificación: **2305 tests**, `make lint` y `tsc` en verde.
+
+**Pendiente:** panel en manga encajada; escote con forma en piezas planas;
+evaluación con fotos reales; capa de diseño para motivos complejos.

@@ -42,6 +42,11 @@ era de concepto y de motor, no de IA. Lo hecho está en D023 y en `PROGRESS.md`.
 - **Verificación:** 2255 tests, `make lint` y `tsc` de la web en verde.
   `svglib` sí está instalado y el esquema se incrusta.
 
+**Continuación (misma fecha):** las texturas de la foto ya llegan al patrón
+como panel (`engine/garments/panels.py`, D024); se corrigieron jersey plano,
+elásticos planos y la manga encajada (`engine/garments/rows.py` es el
+acumulador de hileras planas LD/LR). 2305 tests.
+
 **Próximos pasos, en orden:**
 1. *Capa de diseño* para reproducir motivos de la foto (p. ej. el mandala de
    `patron.jpeg`): la IA describe la estructura con vocabulario cerrado
@@ -49,7 +54,8 @@ era de concepto y de motor, no de IA. Lo hecho está en D023 y en `PROGRESS.md`.
    el motor calcula y simula. Hoy se entrega un granny clásico y se avisa.
 2. *Evaluación real:* 20–30 fotos con atributos esperados y una rúbrica sobre
    el PDF. Después, comparar modelos de visión (es un cambio de `.env`).
-3. Gráficos de calado/jacquard en el PDF (`render/chart.py` ya existe).
+3. Jacquard/fair isle como gráfico de color; panel en manga encajada;
+   escote con forma (cuello redondo) en piezas planas.
 4. Esquemas con letras para cardigan, chaleco y accesorios.
 5. La web muestra el texto de un talle; pasar a mostrar el documento.
 
