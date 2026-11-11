@@ -353,3 +353,27 @@ fuente publica verificada.
   posterior.
 - **Verificación:** 2136 tests, `ruff` y `mypy engine` en verde; demo
   regenerada. Commits `daf4489`, `daa06d9`, `184fe90`, `cd0fe4d`.
+
+## D022 — Diagnóstico de calidad y rumbo: estándar de mercado primero (2026-11-11)
+
+- **Diagnóstico:** el resultado decepcionaba por causas de concepto y de motor,
+  no por la IA. (1) El motor usa solo categoría y medidas: lo que la IA ve
+  (`texturas`, motivo) no se usa en ningún generador, así que mejorar el
+  modelo o el prompt no cambia el PDF. (2) Había errores de corrección que los
+  tests no veían: elástico como `40 d, 40 r`, densidad de dos agujas en
+  crochet (medidas falsas), separación de mangas incompleta, claves i18n
+  crudas en el PDF, granny "square" tejido como rectángulo de hileras.
+  (3) El PDF está lejos de la especificación de mercado (un talle, faltan
+  secciones). (4) No hay evaluación de calidad de salida, solo coherencia.
+- **Decisión de producto:** el objetivo de esta etapa es un **patrón base de
+  calidad comercial inspirado en la foto**, que declara con claridad lo que no
+  reproduce. Reproducir motivos complejos (pétalos, puffs, relieves) requiere
+  una capa de diseño (IA describe estructura con vocabulario cerrado, el
+  código calcula y verifica); queda como etapa posterior, después de que el
+  estándar de salida esté resuelto.
+- **Orden:** correcciones (hecho, commits `4a170ff`..`6810406`) → todos los
+  talles en un solo patrón con notación `a (b, c)` → PDF con las 14 secciones
+  de la especificación → evaluación de salida → capa de diseño.
+- **Alternativas descartadas:** cambiar de modelo de visión primero (no
+  cambia la salida mientras el motor ignore los atributos); generar texto o
+  números con LLM (viola "la IA interpreta, el código calcula").
