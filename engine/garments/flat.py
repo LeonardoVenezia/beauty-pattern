@@ -17,7 +17,6 @@ from engine.garments.panels import build_panel, compensation, texture_motif
 from engine.garments.rows import (
     FlatRows,
     front_neck_rows,
-    hem_rib,
     neck_sections,
     neckband_stitches,
     plan_crew_neck,
@@ -258,7 +257,7 @@ def _panel_section(
     flat = FlatRows(0)
     flat.add((Op(StitchKind.CAST_ON, times=stitches),), "pattern.note.cast_on_panel")
     hem = min(hem_rows, max(0, rows - 2))
-    rib_rows(flat, hem_rib(stitches), hem, "pattern.note.hem")
+    rib_rows(flat, hem, "pattern.note.hem")
     motif = texture_motif(spec) if spec is not None else None
     # En un delantero con escote, el panel va centrado en la parte del hombro
     # para que las disminuciones del escote nunca lo alcancen.
@@ -483,7 +482,7 @@ def _sections(plan: FlatPlan, gauge: Gauge, spec: GarmentSpec, params: PatternPa
             sections.append(
                 _rib_section(
                     f"button_band_{side}",
-                    "section.button_band",
+                    f"section.button_band_{side}",
                     plan.band_sts,
                     plan.band_rows,
                     "garter",

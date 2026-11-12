@@ -532,7 +532,7 @@ def render_raglan_schematic_svg(pattern: Pattern, *, lang: str | None = None) ->
 
 _SWEATERS = {
     "raglan_top_down", "yoke", "set_in", "set_in_sleeve", "drop_shoulder",
-    "crochet_pullover", "crochet_cardigan",
+    "crochet_pullover", "crochet_cardigan", "cardigan", "vest", "crochet_vest",
 }
 
 
@@ -544,7 +544,8 @@ def render_schematic_svg(
     language = lang or pattern.params.idioma
     fam = pattern.meta.family
     try:
-        if fam in _SWEATERS and any(m.key == "sleeve_length" for m in pattern.measurements):
+        keys = {m.key for m in pattern.measurements}
+        if fam in _SWEATERS and ("sleeve_length" in keys or fam.endswith("vest")) and "bust" in keys:
             from render.sweater import render_sweater_svg
 
             return render_sweater_svg(pattern, language, values=not letters_only)

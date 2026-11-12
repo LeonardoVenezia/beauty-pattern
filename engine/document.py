@@ -327,7 +327,7 @@ def build_document(
             blocks.append(Block(BlockKind.CHART, "0"))
             line(
                 t(
-                    "doc.chart_note",
+                    "doc.chart_note_flat" if body.mode == "flat" else "doc.chart_note",
                     language,
                     n=1,
                     name=t(charts[0].name_key, language),

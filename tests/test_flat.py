@@ -146,12 +146,12 @@ def test_flat_text_svg_and_pdf() -> None:
     )
     text = render_pattern_text(pattern, lang="es")
     assert "Montar" in text
-    assert "Tapa de botones" in text
+    assert "Tapa de botones izquierda" in text and "Tapa de botones derecha" in text
     svg = render_schematic_svg(pattern)
     assert "<svg" in svg
-    # El esquema incluye cotas con valor en cm.
+    # Esquema de prenda con cotas (letra + medida) y la abertura del frente.
     assert "cm" in svg
-    assert "<polygon" in svg
+    assert "stroke-dasharray" in svg
     pdf = render_pattern_pdf(pattern)
     assert pdf.startswith(b"%PDF")
 
@@ -214,3 +214,33 @@ def test_cardigan_cable_panel_stays_clear_of_the_v_neck() -> None:
     for size in ("XS", "M", "3XL"):
         pattern = generate(spec, PatternParams(talla=size, peso_hilo=YarnWeight.BULKY))
         assert simulate(pattern).ok
+
+
+def test_cardigan_v_neck_text_repeats_the_shaping_cycle() -> None:
+    """Las disminuciones del escote se escriben una vez con su "Repetir"."""
+    spec = spec_for(Category.CARDIGAN).model_copy(update={"texturas": [TextureObservation(textura=Texture.CABLES)]})
+    text = render_pattern_text(generate(spec, PatternParams(talla="M")), lang="es")
+    front = text[text.index("Delantero izquierdo") : text.index("Delantero derecho")]
+    assert "Repetir las últimas 4 hileras" in front
+    assert front.count("2pjd") <= 4
+
+
+@pytest.mark.parametrize("stitches", range(1, 30))
+def test_hem_rib_is_2x2_for_any_count(stitches: int) -> None:
+    from engine.garments.rows import hem_rib_row
+    from engine.ir import Op, Repeat
+
+    def flat(row: int) -> list[StitchKind]:
+        out: list[StitchKind] = []
+        for item in hem_rib_row(stitches, row):
+            ops = item.ops * item.times if isinstance(item, Repeat) else (item,)
+            for op in ops:
+                assert isinstance(op, Op)
+                out += [op.kind] * op.times
+        return out
+
+    rs, ws = flat(1), flat(2)
+    assert len(rs) == len(ws) == stitches
+    # LR = los pts como se presentan: el espejo del LD con der/rev invertidos.
+    assert ws == [StitchKind.PURL if k is StitchKind.KNIT else StitchKind.KNIT for k in reversed(rs)]
+    assert rs[: min(4, stitches)] == [StitchKind.KNIT, StitchKind.KNIT, StitchKind.PURL, StitchKind.PURL][: min(4, stitches)]

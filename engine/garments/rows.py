@@ -8,20 +8,31 @@ siempre el reves al reves.
 from __future__ import annotations
 
 from collections.abc import Sequence
+from itertools import groupby
 
 from engine.garments.panels import Panel
-from engine.ir import Item, Op, Section, Step, build_step
-from engine.stitches.catalog import StitchPattern, expand_row, get_stitch
+from engine.ir import Item, Op, Repeat, Section, Step, build_step
 from engine.stitches.kinds import StitchKind
 
 
-def hem_rib(stitches: int) -> StitchPattern:
-    """Elastico que entra justo: 2x2, 1x1 o santa clara si el numero es impar."""
-    if stitches % 4 == 0:
-        return get_stitch("rib_2x2")
-    if stitches % 2 == 0:
-        return get_stitch("rib_1x1")
-    return get_stitch("garter")
+def hem_rib_row(stitches: int, row_number: int) -> tuple[Item, ...]:
+    """Una hilera de elastico 2x2 plano para cualquier cantidad de pts.
+
+    LD: *2 der, 2 rev* y los pts que sobran siguen la secuencia (2 der, 1 rev).
+    LR: los pts como se presentan, o sea el espejo del LD invertido. Asi todos
+    los talles llevan el mismo elastico, sin caer en 1x1 ni en santa clara.
+    """
+    n, rest = divmod(stitches, 4)
+    K, P = StitchKind.KNIT, StitchKind.PURL
+    tail = [K, K, P][:rest]
+    if row_number % 2 == 0:  # LR: espejo, der <-> rev
+        tail = [P if kind is K else K for kind in reversed(tail)]
+    tail_ops: list[Item] = [Op(kind, times=len(list(group))) for kind, group in groupby(tail)]
+    if n == 0:
+        return tuple(tail_ops)
+    pair = (Op(K, times=2), Op(P, times=2))
+    rib: list[Item] = [Repeat(times=n, ops=pair)] if n > 1 else list(pair)
+    return tuple(rib + tail_ops if row_number % 2 == 1 else tail_ops + rib)
 
 
 class FlatRows:
@@ -210,9 +221,9 @@ class FlatRows:
         }
 
 
-def rib_rows(rows: FlatRows, pattern: StitchPattern, count: int, note: str | None) -> None:
+def rib_rows(rows: FlatRows, count: int, note: str | None) -> None:
     for index in range(count):
-        rows.add(expand_row(pattern, rows.current, index + 1), note if index == 0 else None)
+        rows.add(hem_rib_row(rows.current, rows.number), note if index == 0 else None)
 
 
 def neck_side(stitches: int, decreases: int, rows: int, *, neck_at_start: bool) -> list[Step]:

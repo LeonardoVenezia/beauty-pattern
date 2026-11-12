@@ -189,6 +189,19 @@ def _step_body(step: Step, lang: str, *, markers: bool = False) -> str:
         if _granny_clusters(step):
             return t("pattern.repeat_more", lang, ops=ops, n=repeat.times - 1)
         return t("pattern.repeat_row", lang, ops=ops)
+    repeats = [i for i, item in enumerate(step.items) if isinstance(item, Repeat)]
+    if len(repeats) == 1 and repeats[0] in {0, len(step.items) - 1}:
+        # Una sola repeticion en un extremo: "*2 der, 2 rev; rep desde * hasta
+        # quedar 3 pts, 2 der, 1 rev" en vez de "Repetir 13 veces: ...".
+        index = repeats[0]
+        edge = step.items[index]
+        assert isinstance(edge, Repeat)
+        ops = ", ".join(_op_text(op, lang) for op in edge.ops)
+        rest = step.items[1:] if index == 0 else step.items[:-1]
+        rest_text = ", ".join(_item_text(item, lang) for item in rest)
+        if index == 0:
+            return t("pattern.repeat_to_last", lang, ops=ops, k=sum(i.consumes for i in rest), tail=rest_text)
+        return f"{rest_text}, {t('pattern.repeat_row', lang, ops=ops)}"
     return ", ".join(_item_text(item, lang) for item in step.items)
 
 
@@ -883,6 +896,55 @@ def _panel_section_blocks(section: Section, lang: str, relative: bool) -> tuple[
 
         def text_of(step: Step) -> tuple[str | None, str]:
             return step.note_key, _panel_step_body(step, lang)
+
+        def plain_run(at: int) -> int:
+            n = 0
+            while at + n < len(steps) and _is_pure_panel_row(steps[at + n]):
+                n += 1
+            return n
+
+        # Hilera con forma + k hileras lisas con panel, repetida (escote en V,
+        # disminuciones cada 4 hileras...): se escribe un ciclo y "Repetir".
+        plain = plain_run(index + 1)
+        cycles = 0
+        if plain >= 2:
+            shaped = _panel_step_body(steps[index], lang)
+            j = index + 1 + plain
+            while (
+                j < len(steps)
+                and not _is_pure_panel_row(steps[j])
+                and _panel_step_body(steps[j], lang) == shaped
+                and steps[j].note_key in {None, steps[index].note_key}
+                and plain_run(j + 1) >= plain
+            ):
+                cycles += 1
+                j += 1 + plain
+        if cycles:
+            step = steps[index]
+            note = _note_text(step, lang) + " " if step.note_key else ""
+            blocks.append(Block(BlockKind.STEP, f"{note}{label}: {shaped} {_count_text(step, lang)}"))
+            run_first = steps[index + 1]
+            side = "pattern.side_rs" if _plain_kind(run_first) is StitchKind.KNIT else "pattern.side_ws"
+            blocks.append(
+                Block(
+                    BlockKind.STEP,
+                    t(
+                        "pattern.panel_rows_more",
+                        lang,
+                        n=plain,
+                        rows=rows,
+                        side=t(side, lang),
+                        sts=steps[index + plain].stitch_count_end,
+                    ),
+                )
+            )
+            index += (1 + plain) * (cycles + 1)
+            key = "pattern.repeat_last_rows" if flat else "pattern.repeat_last_rounds"
+            blocks.append(
+                Block(BlockKind.REPEAT, t(key, lang, l=1 + plain, n=cycles, sts=steps[index - 1].stitch_count_end))
+            )
+            first_run = False
+            continue
 
         # Hileras con forma: si se repiten de a 2 (disminucion + hilera lisa)
         # se escriben una vez y "Repetir las ultimas 2 hileras N veces mas".
