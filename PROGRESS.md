@@ -419,3 +419,12 @@ fotos con derechos claros en `evals/photos/` y correr `make eval-fotos`.
 **Pendiente:** fotos reales para `make eval-fotos`; escote en V de pullover;
 guantes con dedos; jacquard como gráfico de color; formas de pétalo
 (picos, arcos de cadenas) en los motivos.
+
+## Formato comparado con patrones comerciales (2026-11-12)
+
+- Hecho: gráfico de símbolos de crochet (motivos, granny), esquema por
+  letras del cárdigan y del chaleco, texto del escote en V en ciclos,
+  elástico 2x2 en todos los talles, tapas de botones izquierda/derecha,
+  lectura del gráfico en plano. Ver D029.
+- Verificado: suite completa, `make lint` en verde.
+- Pendiente: retícula de colores (jacquard), fotos reales para `make eval-fotos`.

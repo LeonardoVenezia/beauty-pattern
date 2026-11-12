@@ -506,3 +506,27 @@ fuente publica verificada.
   bandas con 4 colores, 3 muestras coincidentes.
 - *Límite:* no reproduce la forma exacta de cada pétalo (picos, arcos de
   cadenas); reproduce bandas, punto, color y simetría.
+
+## D029 — Formato contra PDFs comerciales de referencia (2026-11-12)
+
+- **Contexto:** se compararon nuestros PDFs con 20 patrones gratuitos de
+  marcas (crochet y dos agujas, en `patrones-crochet/` y
+  `patrones-dos-agujas/`, solo como referencia de formato: no se copian
+  diseños ni se commitean).
+- **Decisiones:**
+  - Gráfico de símbolos de crochet (convención Craft Yarn Council) para
+    motivos y granny square, siempre con leyenda propia. Se dibuja desde la
+    IR verificada: un símbolo por punto producido. Motivos con más de 170
+    pts en la vuelta mayor: se dibuja ampliado un sector de la simetría
+    (≥ 1/4), como hacen los impresos.
+  - Esquema por letras (sirve para todos los talles) también para cárdigan
+    (V o redondo, abertura con tapa) y chaleco.
+  - Texto: ciclos de forma ("Repetir las últimas 4 hileras N veces"),
+    "*2 der, 2 rev; rep desde * hasta quedar 3 pts, ..." y unidades repetidas
+    agrupadas "(cl, cad, saltar 1) 9 veces".
+  - Elástico plano 2x2 para cualquier cantidad de puntos (antes 1x1 o santa
+    clara según el talle: un talle salía sin elástico).
+- *ASUNCIÓN:* proporciones de altura de los símbolos (pb 1, mpa 1,4,
+  pa 1,9, pad 2,5) son de dibujo, no de tejido.
+- *Pendiente:* retícula de colores para jacquard/fair isle (familia 2 de los
+  gráficos de referencia).
