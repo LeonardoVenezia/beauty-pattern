@@ -12,6 +12,7 @@ de la web sigue leyendo los pasos reales de la IR.
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass
 from enum import Enum, auto
 
@@ -86,10 +87,34 @@ def _op_text(op: Op, lang: str) -> str:
     return t(expert_key, lang, **params)
 
 
+def _ops_text(ops: Sequence[Op], lang: str) -> str:
+    """Ops separados por coma; un grupo de 2-4 ops que se repite seguido se
+    escribe una vez: "(cl, cad, saltar 1) 5 veces" en vez de 5 copias."""
+    texts = [_op_text(op, lang) for op in ops]
+    out: list[str] = []
+    i = 0
+    while i < len(texts):
+        best_len, best_times = 1, 1
+        for size in (2, 3, 4):
+            times = 1
+            while texts[i : i + size] == texts[i + times * size : i + (times + 1) * size]:
+                times += 1
+            if times >= 3 and size * times > best_len * best_times:
+                best_len, best_times = size, times
+        if best_times > 1:
+            group = ", ".join(texts[i : i + best_len])
+            out.append(t("pattern.group_times", lang, ops=group, n=best_times))
+            i += best_len * best_times
+        else:
+            out.append(texts[i])
+            i += 1
+    return ", ".join(out)
+
+
 def _item_text(item: Item, lang: str) -> str:
     if isinstance(item, Op):
         return _op_text(item, lang)
-    ops = ", ".join(_op_text(op, lang) for op in item.ops)
+    ops = _ops_text(item.ops, lang)
     return t("pattern.repeat_group", lang, n=item.times, ops=ops)
 
 
@@ -185,7 +210,7 @@ def _step_body(step: Step, lang: str, *, markers: bool = False) -> str:
                 return t("pattern.all_purl", lang)
     if len(step.items) == 1 and isinstance(step.items[0], Repeat):
         repeat = step.items[0]
-        ops = ", ".join(_op_text(op, lang) for op in repeat.ops)
+        ops = _ops_text(repeat.ops, lang)
         if _granny_clusters(step):
             return t("pattern.repeat_more", lang, ops=ops, n=repeat.times - 1)
         return t("pattern.repeat_row", lang, ops=ops)
@@ -196,7 +221,7 @@ def _step_body(step: Step, lang: str, *, markers: bool = False) -> str:
         index = repeats[0]
         edge = step.items[index]
         assert isinstance(edge, Repeat)
-        ops = ", ".join(_op_text(op, lang) for op in edge.ops)
+        ops = _ops_text(edge.ops, lang)
         rest = step.items[1:] if index == 0 else step.items[:-1]
         rest_text = ", ".join(_item_text(item, lang) for item in rest)
         if index == 0:

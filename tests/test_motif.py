@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 
+import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
@@ -125,3 +126,47 @@ def test_any_described_motif_gives_a_verified_pattern(
     measured = pattern.measurements[0]
     resized = "motif_resized" in {w.code for w in pattern.warnings}
     assert resized or abs(measured.value_cm - size) <= measured.tolerance_cm
+
+
+@pytest.mark.parametrize("shape", ["circle", "square"])
+def test_symbol_chart_draws_one_symbol_per_stitch(shape: str) -> None:
+    """El grafico sale de la IR verificada: cada vuelta dibuja tantos simbolos
+    como puntos produce (cadenas incluidas)."""
+    from engine.garments.motif import _SOLID, _SPACED
+    from render.crochet_chart import expand
+
+    bands = [MotifBand(punto=p) for p in ("mesh", "dc", "cluster", "sc", "puff", "hdc", "tr")]
+    design = MotifDesign(forma=shape, simetria=6, bandas=bands, cuadrar_en_banda=5 if shape == "square" else None)
+    pattern = generate(
+        GarmentSpec(categoria=Category.OTHER, tecnica=Technique.CROCHET, motivo=design),
+        PatternParams(dimensiones_cm={"size": 25}),
+    )
+    assert simulate(pattern).ok
+    for step in pattern.sections[0].steps:
+        base = _SOLID.get(bands[0].punto) or _SPACED[bands[0].punto]
+        glyphs = [k for item in step.items for k in expand(item, base, spaced=step.number == 1)]
+        assert len(glyphs) == step.stitch_count_end, step.number
+    svg = render_schematic_svg(pattern, lang="es")
+    assert "Referencias" in svg and "punto alto" in svg
+
+
+def test_granny_chart_symbols_match_rounds() -> None:
+    from render.crochet_chart import expand
+
+    pattern = generate(GarmentSpec(categoria=Category.GRANNY_SQUARE, tecnica=Technique.CROCHET), PatternParams())
+    for step in pattern.sections[0].steps:
+        assert sum(len(expand(item, StitchKind.DC)) for item in step.items) == step.stitch_count_end
+
+
+def test_large_motif_text_groups_repeated_units_and_chart_shows_a_sector() -> None:
+    from engine.text import render_pattern_text
+
+    design = MotifDesign(simetria=6, bandas=[MotifBand(punto=p) for p in ("dc", "mesh", "cluster", "hdc")])
+    pattern = generate(
+        GarmentSpec(categoria=Category.OTHER, tecnica=Technique.CROCHET, motivo=design),
+        PatternParams(dimensiones_cm={"size": 80}),
+    )
+    text = render_pattern_text(pattern, lang="es")
+    assert re.search(r"\(cl, cad, saltar 1\) \d+ veces", text)
+    assert "cl, cad, saltar 1, cl, cad, saltar 1, cl, cad, saltar 1" not in text
+    assert "sector ampliado" in render_schematic_svg(pattern, lang="es")

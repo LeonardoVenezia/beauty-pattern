@@ -1,4 +1,4 @@
-"""Diagrama del granny square: una franja por vuelta, con su color y sus grupos.
+"""Grafico de simbolos del granny square: una franja por vuelta, con su color.
 
 Se dibuja desde la IR: cantidad de vueltas y grupos por lado salen de las
 vueltas verificadas. Los colores siguen la paleta (A, B, C...) por vuelta.
@@ -8,9 +8,12 @@ from __future__ import annotations
 
 from engine.i18n import t
 from engine.ir import Pattern
-from render.draw import STROKE, TEXT, TEXT_SOFT, _f, caption, label, svg_document, title_block
+from engine.stitches.kinds import StitchKind
+from render.crochet_chart import draw_rounds
+from render.crochet_chart import legend as chart_legend
+from render.draw import STROKE, TEXT_SOFT, _f, caption, label, svg_document, title_block
 
-WIDTH, HEIGHT = 900.0, 720.0
+WIDTH, HEIGHT = 900.0, 760.0
 
 # Nombres de color frecuentes (es/en) -> tono de muestra. Lo desconocido usa
 # una escala neutra; el texto siempre nombra el color.
@@ -45,33 +48,13 @@ def render_granny_svg(pattern: Pattern, lang: str) -> str:
     colors = list(pattern.materials.colors) or [""]
     side_cm = next((m.value_cm for m in pattern.measurements if m.key == "width"), 20.0)
     size = 420.0
-    x0, y0 = (WIDTH - size) / 2, 130.0
-    band = size / 2 / (rounds + 0.6)
-    parts: list[str] = []
-    for n in range(rounds, 0, -1):
-        inset = (rounds - n) * band
-        x, y, w = x0 + inset, y0 + inset, size - 2 * inset
-        color = _hex(colors[(n - 1) % len(colors)], n - 1)
-        parts.append(
-            f'<rect x="{_f(x)}" y="{_f(y)}" width="{_f(w)}" height="{_f(w)}" '
-            f'fill="{color}" stroke="{STROKE}" stroke-width="0.8"/>'
-        )
-        # Grupos de 3 pa: n + 1 por lado (2 de esquina + n - 1 laterales).
-        per_side = n + 1
-        mid = band / 2
-        for k in range(per_side):
-            t_pos = (k + 0.5) / per_side
-            for sx, sy in (
-                (x + t_pos * w, y + mid),
-                (x + t_pos * w, y + w - mid),
-                (x + mid, y + t_pos * w),
-                (x + w - mid, y + t_pos * w),
-            ):
-                parts.append(f'<circle cx="{_f(sx)}" cy="{_f(sy)}" r="{_f(min(3.2, band / 5))}" fill="{STROKE}" opacity="0.55"/>')
-        if n <= 9 or n == rounds:
-            parts.append(label(x + band * 0.5, y + band * 0.5 + 4, str(n), size=10, color=TEXT))
+    x0, y0 = (WIDTH - size) / 2, 118.0
+    steps = section.steps
+    fills = [_hex(colors[n % len(colors)], n) for n in range(rounds)]
+    parts, used = draw_rounds(
+        steps, [StitchKind.DC] * rounds, [True] * rounds, fills, x0 + size / 2, y0 + size / 2, size / 2
+    )
     centre = x0 + size / 2
-    parts.append(f'<circle cx="{_f(centre)}" cy="{_f(y0 + size / 2)}" r="{_f(band * 0.35)}" fill="#ffffff" stroke="{STROKE}"/>')
     y_dim = y0 + size + 24
     parts.append(
         f'<line x1="{_f(x0)}" y1="{_f(y_dim)}" x2="{_f(x0 + size)}" y2="{_f(y_dim)}" stroke="{STROKE}"/>'
@@ -85,7 +68,8 @@ def render_granny_svg(pattern: Pattern, lang: str) -> str:
         legend = "   ".join(
             f"{chr(65 + i)}: {name}" for i, name in enumerate(pattern.materials.colors)
         )
-        parts.append(label(centre, HEIGHT - 52, legend, size=11, color=TEXT_SOFT))
+        parts.append(label(centre, y_dim + 36, legend, size=11, color=TEXT_SOFT))
+    parts += chart_legend(used, lang, 90, y_dim + 74, WIDTH - 180)
     title = t(pattern.meta.title_key, lang)
     head = title_block(WIDTH, 42, title, t("schematic.granny_note", lang, n=rounds))
     tail = [caption(WIDTH, HEIGHT - 20, t("schematic.caption", lang))]
