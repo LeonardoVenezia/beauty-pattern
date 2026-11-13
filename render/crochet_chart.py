@@ -25,6 +25,8 @@ _HEIGHT = {
     K.PUFF: 1.9, K.CH: 0.8, K.SLST: 0.6,
 }
 _CORNER_CH = 2  # las esquinas llevan 2 cad
+# Direccion hacia afuera de cada lado del cuadrado (arriba, izq, abajo, der).
+_SIDE_NORMAL = (-math.pi / 2, math.pi, math.pi / 2, 0.0)
 
 
 def expand(item: Item, base: StitchKind, spaced: bool = False) -> list[StitchKind]:
@@ -111,6 +113,30 @@ def glyph(kind: StitchKind, x: float, y: float, angle: float, h: float, w: float
     return f'<g transform="translate({_f(x)} {_f(y)}) rotate({_f(deg)})">{"".join(body)}</g>'
 
 
+def _anchors(step: Step, base: StitchKind) -> list[float]:
+    """Para cada simbolo de la vuelta, donde se teje: posicion (en puntos de
+    la vuelta anterior, fraccionaria) dentro del tramo que consume su grupo.
+    Las cadenas sueltas no consumen: quedan entre dos puntos."""
+    out: list[float] = []
+    position = 0.0
+
+    def walk(items: Sequence[Item]) -> None:
+        nonlocal position
+        for item in items:
+            if isinstance(item, Repeat):
+                for _ in range(item.times):
+                    walk(item.ops)
+                continue
+            consumed = item.consumes / item.times
+            produced = len(expand(item, base)) // item.times
+            for _ in range(item.times):
+                out.extend(position + consumed * (j + 0.5) / produced for j in range(produced))
+                position += consumed
+
+    walk(step.items)
+    return out
+
+
 def _square_point(u: float, half: float) -> tuple[float, float]:
     """Punto del perimetro de un cuadrado; `u` en lados desde la esquina
     superior derecha, en sentido antihorario (en pantalla)."""
@@ -140,6 +166,23 @@ def draw_rounds(
     antihorario): para motivos grandes alcanza con un sector de la simetria.
     """
     fraction = span / (2 * math.pi)
+    # Las vueltas redondas se giran para que la esquina de la vuelta que
+    # cuadra quede justo sobre el punto donde se teje (las redondas son
+    # simetricas: girarlas no cambia nada del tejido).
+    phi = 0.0
+    for index in range(1, len(steps)):
+        if squares[index] and not squares[index - 1]:
+            anchors = _anchors(steps[index], bases[index])
+            offset = corner_offset(steps[index], bases[index])
+            worked = anchors[min(int(offset), len(anchors) - 1)]
+            prev = len([k for item in steps[index - 1].items for k in expand(item, bases[index - 1], spaced_ring and index == 1)])
+            phi = -math.pi / 4 - (-math.pi / 2 - 2 * math.pi * worked / prev)
+            break
+    start = -math.pi / 2 + phi
+
+    def turn(position: float, count: int) -> float:
+        return start - 2 * math.pi * position / count
+
     rows = [
         [k for item in step.items for k in expand(item, base, spaced_ring and index == 0)]
         for index, (step, base) in enumerate(zip(steps, bases, strict=True))
@@ -168,7 +211,7 @@ def draw_rounds(
             )
     if fraction < 1:
         reach = 1.5 * radius
-        arc = [(-math.pi / 2 - span * k / 24) for k in range(25)]
+        arc = [(start - span * k / 24) for k in range(25)]
         wedge = " ".join(f"{_f(cx + reach * math.cos(a))},{_f(cy + reach * math.sin(a))}" for a in arc)
         bands = clip_group("crochet-wedge", f'<polygon points="{_f(cx)},{_f(cy)} {wedge}"/>', bands)
     parts += bands
@@ -178,32 +221,59 @@ def draw_rounds(
             continue
         base_r = inner[index] + 0.12 * unit
         count = len(row)
-        if squares[index]:
-            offset = corner_offset(steps[index], bases[index])
+        offset = corner_offset(steps[index], bases[index]) if squares[index] else 0.0
+        # Vuelta tejida sobre una redonda: cada simbolo nace del punto donde se
+        # teje (su base) y llega a su lugar en el borde de la vuelta (su cabeza).
+        linked = index > 0 and not squares[index - 1]
+        anchors = _anchors(steps[index], bases[index]) if linked else []
+        prev = len(rows[index - 1]) if linked else count
+        if squares[index] and not linked:  # cuadrado sobre cuadrado (granny)
             slot = 8 * base_r / count
             for i, kind in enumerate(row):
-                px, py = _square_point((i + 0.5 - offset) / (count / 4), base_r)
-                angle = math.atan2(py, px)
-                if (-math.pi / 2 - angle) % (2 * math.pi) > span:
+                u = (i + 0.5 - offset) / (count / 4)
+                px, py = _square_point(u, base_r)
+                if (start - math.atan2(py, px)) % (2 * math.pi) > span:
                     continue
+                # De pie sobre el lado (perpendicular al borde), no hacia el centro.
+                angle = _SIDE_NORMAL[math.floor(u) % 4]
                 parts.append(glyph(kind, cx + px, cy + py, angle, _HEIGHT.get(kind, 1.0) * unit, min(slot, 1.6 * unit)))
                 used.add(kind)
         else:
-            slot = 2 * math.pi * base_r / count
+            half = inner[index + 1] - 0.15 * unit
+            slot = 8 * half / count if squares[index] else 2 * math.pi * base_r / count
             for i, kind in enumerate(row):
-                if (i + 0.5) / count > fraction:
+                h = _HEIGHT.get(kind, 1.0) * unit
+                if squares[index]:
+                    tx, ty = _square_point((i + 0.5 - offset) / (count / 4), half)
+                else:
+                    a = turn(i + 0.5, count)
+                    tx, ty = (base_r + h) * math.cos(a), (base_r + h) * math.sin(a)
+                if (start - math.atan2(ty, tx)) % (2 * math.pi) > span:
                     continue
-                angle = -math.pi / 2 - 2 * math.pi * (i + 0.5) / count
-                x, y = cx + base_r * math.cos(angle), cy + base_r * math.sin(angle)
-                parts.append(glyph(kind, x, y, angle, _HEIGHT.get(kind, 1.0) * unit, min(slot, 1.6 * unit)))
+                a0 = turn(anchors[i], prev) if linked else turn(i + 0.5, count)
+                bx, by = base_r * math.cos(a0), base_r * math.sin(a0)
+                direction = math.atan2(ty - by, tx - bx)
+                reach = math.hypot(tx - bx, ty - by)
+                if reach > 1.25 * h:  # simbolo de tamano normal en el borde y una guia fina hasta donde se teje
+                    gx, gy = tx - h * math.cos(direction), ty - h * math.sin(direction)
+                    parts.append(
+                        f'<line x1="{_f(cx + bx)}" y1="{_f(cy + by)}" x2="{_f(cx + gx)}" y2="{_f(cy + gy)}" '
+                        f'stroke="{STROKE}" stroke-width="0.6" stroke-opacity="0.55" stroke-dasharray="2 1.5"/>'
+                    )
+                    bx, by = gx, gy
+                else:
+                    h = max(h, reach)
+                parts.append(glyph(kind, cx + bx, cy + by, direction, h, min(slot, 1.6 * unit)))
                 used.add(kind)
-        # Numero de vuelta, sobre el eje vertical (donde empieza la vuelta).
+        # Numero de vuelta, sobre el eje donde empieza la vuelta.
         if len(rows) <= 12 or (index + 1) % 5 == 0 or index == 0:
             mid = (inner[index] + inner[index + 1]) / 2
+            nx = cx + mid * math.cos(start) - 0.9 * unit * math.sin(start)
+            ny = cy + mid * math.sin(start) + 0.9 * unit * math.cos(start)
             parts.append(
-                f'<text x="{_f(cx + 0.9 * unit)}" y="{_f(cy - mid + 3)}" font-size="{_f(min(11, max(7, 0.9 * unit)))}" '
+                f'<text x="{_f(nx)}" y="{_f(ny + 3)}" font-size="{_f(min(11, max(7, 0.9 * unit)))}" '
                 f'font-weight="700" fill="#b0452f" stroke="#ffffff" stroke-width="2.5" paint-order="stroke" '
-                f'font-family="Helvetica, Arial, sans-serif">{index + 1}</text>'
+                f'text-anchor="middle" font-family="Helvetica, Arial, sans-serif">{index + 1}</text>'
             )
     return parts, used
 

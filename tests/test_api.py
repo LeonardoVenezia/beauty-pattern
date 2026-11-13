@@ -194,3 +194,30 @@ def test_analyze_accepts_several_photos_and_reports_quality(
     quality = response.json()["photo_quality"]
     assert [item["photo"] for item in quality] == [1, 2, 3]
     assert too_many.status_code == 422
+
+
+def test_analyze_hints_from_the_person_win_over_the_model(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Lo que la persona sabe de antemano (crochet, que es) se le dice al
+    modelo y ademas manda sobre su respuesta; un valor fuera de lista es 422."""
+    _fake_env(monkeypatch, tmp_path)
+    photo = [("files", ("f.png", _png(), "image/png"))]
+    with TestClient(app) as client:
+        response = client.post("/analyze", files=photo, data={"tejido": "crochet", "categoria": "blanket"})
+        invalid = client.post("/analyze", files=photo, data={"tejido": "telar"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["spec"]["tecnica"] == "crochet"
+    assert body["spec"]["categoria"] == "blanket"
+    assert body["confidence"]["tecnica"] == 1.0
+    assert invalid.status_code == 422
+
+
+def test_hints_are_told_to_the_model() -> None:
+    from ai.extractor import Hints, build_messages
+    from vision.preprocess import prepare_image
+
+    messages = build_messages(prepare_image(_png()), Hints("crochet", None))
+    prompt = " ".join(part.text for part in messages[1].parts if hasattr(part, "text"))
+    assert "crochet" in prompt and "Tomalo como cierto" in prompt

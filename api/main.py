@@ -7,7 +7,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from fastapi import FastAPI, File, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import Response
@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from ai.config import AIConfig
 from ai.critic import critique_pattern
 from ai.errors import AIConfigError, AIError
-from ai.extractor import MAX_PHOTOS, extract_garment
+from ai.extractor import MAX_PHOTOS, Hints, extract_garment
 from ai.probe import CapabilityProbe
 from ai.writer import write_pattern_text
 from api.ratelimit import limiter_from_env
@@ -25,7 +25,7 @@ from engine import ENGINE_VERSION
 from engine.garments import GarmentError, generate
 from engine.serialization import pattern_from_dict, pattern_to_dict
 from engine.simulator import simulate
-from engine.spec import GarmentSpec, PatternParams
+from engine.spec import Category, GarmentSpec, PatternParams
 from engine.stitches.catalog import STITCH_PATTERNS
 from engine.text import render_pattern_text
 from render.pdf import render_pattern_pdf
@@ -125,6 +125,8 @@ async def analyze(
     request: Request,
     file: Annotated[UploadFile | None, File()] = None,
     files: Annotated[list[UploadFile] | None, File()] = None,
+    tejido: Annotated[Literal["knit", "crochet"] | None, Form()] = None,
+    categoria: Annotated[Category | None, Form()] = None,
 ) -> dict[str, object]:
     """Una o varias fotos de la misma pieza (campo `files`, hasta 4; `file`
     sigue aceptado). Cada foto se valida y se le mide la calidad."""
@@ -153,7 +155,7 @@ async def analyze(
     except AIConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     try:
-        result = await extract_garment(prepared_photos, config)
+        result = await extract_garment(prepared_photos, config, hints=Hints(tejido, categoria))
     except AIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     database = database_from_env()

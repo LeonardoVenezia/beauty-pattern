@@ -530,3 +530,26 @@ fuente publica verificada.
   pa 1,9, pad 2,5) son de dibujo, no de tejido.
 - *Pendiente:* retícula de colores para jacquard/fair isle (familia 2 de los
   gráficos de referencia).
+
+## D030 — Principios del dibujo de crochet y pistas antes del análisis (2026-11-13)
+
+Revisión de una tejedora con experiencia sobre un motivo generado: los puntos
+del borde no mostraban dónde se tejían y los bordes del cuadrado se veían
+desparejos.
+
+- **Principios del gráfico** (`render/crochet_chart.py`):
+  1. Cada símbolo sale del punto de la vuelta anterior donde se teje
+     (`_anchors`, a partir de lo que consume cada operación de la IR). Si la
+     cabeza queda lejos (vuelta que cuadra), el símbolo va en tamaño normal en
+     el borde y una guía punteada lo une con su base: nada se calcula a ojo.
+  2. En un lado recto los puntos van de pie, perpendiculares al lado, no
+     apuntando al centro.
+  3. Las vueltas redondas se giran para que la esquina caiga sobre el punto
+     donde se teje (las redondas son simétricas; girarlas no cambia el tejido).
+  Test: `test_every_chart_symbol_is_anchored_on_the_stitch_it_is_worked_into`.
+- **Pistas previas**: en la subida, dos preguntas opcionales ("¿con qué está
+  tejido?", "¿qué es?"), con "No sé" por defecto. Se le dicen al modelo y
+  además mandan sobre su respuesta (confianza 1). Alternativa descartada:
+  pedir más datos antes; la mayoría se los salta y la foto ya los da.
+- **Defaults**: medida del motivo según las vueltas de la foto y el hilo;
+  grosor preseleccionado con el estimado de la foto (commit 993a164).

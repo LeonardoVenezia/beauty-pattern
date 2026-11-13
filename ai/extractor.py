@@ -26,7 +26,7 @@ from ai.prompts.extractor_v3 import (
     extractor_response_format,
 )
 from ai.types import AIResponse, ImagePart, Message, TextPart, Usage
-from engine.spec import GarmentSpec
+from engine.spec import Category, GarmentSpec, Technique
 from vision.preprocess import PreparedImage
 
 VOTED_FIELDS = (
@@ -47,6 +47,36 @@ VOTED_FIELDS = (
     "observaciones",
 )
 UNION_FIELDS = ("incertidumbres", "no_visible")
+
+
+@dataclass(frozen=True)
+class Hints:
+    """Lo que la persona ya sabe de la pieza, dicho antes del analisis.
+    `knit` = cualquier tejido con agujas (dos agujas, circular, maquina)."""
+
+    knit_or_crochet: str | None = None  # "knit" | "crochet"
+    categoria: Category | None = None
+
+    def text(self) -> str:
+        said = []
+        if self.knit_or_crochet == "crochet":
+            said.append("está tejida al crochet (ganchillo)")
+        elif self.knit_or_crochet == "knit":
+            said.append("está tejida con agujas, no al crochet")
+        if self.categoria is not None:
+            said.append(f"la categoria es {self.categoria.value}")
+        return ("La persona que sube la foto indica que la pieza " + " y ".join(said) + ". Tomalo como cierto.\n") if said else ""
+
+    def apply(self, spec: GarmentSpec) -> GarmentSpec:
+        """Lo que dijo la persona manda sobre lo que vio el modelo."""
+        update: dict[str, Any] = {}
+        if self.knit_or_crochet == "crochet":
+            update["tecnica"] = Technique.CROCHET
+        elif self.knit_or_crochet == "knit" and spec.tecnica in {Technique.CROCHET, None}:
+            update["tecnica"] = Technique.NEEDLES
+        if self.categoria is not None:
+            update["categoria"] = self.categoria
+        return spec.model_copy(update=update) if update else spec
 
 
 @dataclass(frozen=True)
@@ -132,7 +162,7 @@ _QUALITY_TEXT = {
 MAX_PHOTOS = 4
 
 
-def build_messages(prepared: PreparedImage | Sequence[PreparedImage]) -> list[Message]:
+def build_messages(prepared: PreparedImage | Sequence[PreparedImage], hints: Hints | None = None) -> list[Message]:
     """Mensajes del extractor: todas las fotos y los recortes de la foto 1.
 
     Los recortes solo salen de la primera foto (la vista general); las demas
@@ -159,7 +189,7 @@ def build_messages(prepared: PreparedImage | Sequence[PreparedImage]) -> list[Me
         TextPart(
             EXTRACTOR_USER_PROMPT.format(
                 photos=f"{len(photos)} foto" + ("s" if len(photos) > 1 else ""),
-                quality=quality_text,
+                quality=(hints.text() if hints else "") + quality_text,
                 crops=crop_names,
             )
         ),
@@ -271,6 +301,7 @@ async def extract_garment(
     *,
     client: AIClient | None = None,
     samples: int | None = None,
+    hints: Hints | None = None,
 ) -> ExtractionResult:
     """Ejecuta N muestras, valida y consolida campo por campo."""
     own_client = client is None
@@ -281,7 +312,7 @@ async def extract_garment(
             else OpenAICompatibleClient(config)
         )
     count = max(1, samples or config.extractor_samples)
-    messages = build_messages(prepared)
+    messages = build_messages(prepared, hints)
     valid: list[GarmentSpec] = []
     errors: list[str] = []
     usage = Usage()
@@ -310,10 +341,16 @@ async def extract_garment(
             "ninguna muestra del extractor fue valida: " + "; ".join(errors[:3])
         )
     result = consolidate(valid)
+    spec = hints.apply(result.spec) if hints else result.spec
+    confidence = dict(result.confidence)
+    if hints and hints.knit_or_crochet:
+        confidence["tecnica"] = 1.0
+    if hints and hints.categoria:
+        confidence["categoria"] = 1.0
     return ExtractionResult(
-        spec=result.spec,
+        spec=spec,
         samples=result.samples,
-        confidence=result.confidence,
+        confidence=confidence,
         disagreements=result.disagreements,
         prompt_version=result.prompt_version,
         usage=usage,

@@ -169,9 +169,14 @@ async function parseError(response: Response): Promise<string> {
   }
 }
 
-export async function analyzeImage(files: File[]): Promise<AnalysisResponse> {
+export async function analyzeImage(
+  files: File[],
+  hints: { tejido?: string; categoria?: string } = {},
+): Promise<AnalysisResponse> {
   const form = new FormData();
   for (const file of files) form.append("files", file);
+  // Lo que la persona ya sabe de la pieza; vacío = "no sé".
+  for (const [key, value] of Object.entries(hints)) if (value) form.append(key, value);
   const response = await fetch(`${API_URL}/analyze`, {
     method: "POST",
     body: form,

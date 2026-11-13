@@ -185,3 +185,20 @@ def test_default_size_follows_the_photo_rounds_and_the_yarn() -> None:
         assert "en punto bajo con ganchillo" in text  # muestra de crochet, no de dos agujas
         assert "ASUNCIÓN" not in text
     assert sizes[YarnWeight.BULKY] > sizes[YarnWeight.DK]
+
+
+@pytest.mark.parametrize("square_at", [None, 5])
+def test_every_chart_symbol_is_anchored_on_the_stitch_it_is_worked_into(square_at: int | None) -> None:
+    """Principio del dibujo: cada simbolo sale del punto de la vuelta anterior
+    donde se teje (en orden y dentro de esa vuelta), asi no hay que adivinar."""
+    from render.crochet_chart import _anchors, expand
+
+    design = MANDALA.model_copy(update={"cuadrar_en_banda": square_at})
+    steps = generate(motif_spec(design), PatternParams(dimensiones_cm={"size": 25})).sections[0].steps
+    for step, previous in zip(steps[1:], steps, strict=False):
+        base = StitchKind.DC  # el conteo de simbolos no depende del punto base
+        anchors = _anchors(step, base)
+        glyphs = [k for item in step.items for k in expand(item, base)]
+        assert len(anchors) == len(glyphs) == step.stitch_count_end
+        assert anchors == sorted(anchors)
+        assert anchors[0] >= 0 and anchors[-1] <= previous.stitch_count_end
