@@ -7,16 +7,26 @@ import math
 
 from engine.garments.motif import _SOLID, _SPACED
 from engine.i18n import t
-from engine.ir import Pattern
+from engine.ir import Pattern, Step
 from engine.spec import MotifStitch
 from engine.stitches.kinds import StitchKind
-from render.crochet_chart import draw_rounds
+from render.crochet_chart import draw_rounds, start_angle
 from render.crochet_chart import legend as chart_legend
 from render.draw import STROKE, TEXT_SOFT, _f, caption, label, svg_document, title_block
 from render.granny import _hex
 
 WIDTH, HEIGHT = 900.0, 800.0
-_DENSE = 170  # pts en la vuelta mas grande para pasar a dibujar un sector
+# Legibilidad (mucha gente que teje es mayor): si un simbolo quedaria de menos
+# de _MIN_PX, se dibuja ampliado un sector en vez del motivo entero.
+_MIN_PX = 9.0
+
+
+def _too_small(steps: tuple[Step, ...], radius: float) -> bool:
+    # ponytail: estimacion con un alto medio de 2.2 pb por vuelta; medir el
+    # dibujo real si hace falta mas precision.
+    unit = radius / (1.2 + 2.2 * len(steps))
+    slot = 2 * math.pi * 0.9 * radius / max(s.stitch_count_end for s in steps)
+    return min(unit, slot) < _MIN_PX
 
 
 def render_motif_svg(pattern: Pattern, lang: str) -> str:
@@ -50,12 +60,21 @@ def render_motif_svg(pattern: Pattern, lang: str) -> str:
     spaced_ring = bool(design) and design.bandas[0].punto in _SPACED
     symmetry = design.simetria if design else 8
     radius, span = size / 2, 2 * math.pi
-    if max(s.stitch_count_end for s in steps) > _DENSE:
+    if _too_small(steps, radius):
         # Motivo grande: se dibuja ampliado un sector (>= 1/4) y se repite.
         span = 2 * math.pi * math.ceil(symmetry / 4) / symmetry
-        below = max(0.0, math.sin(span - math.pi / 2))
-        radius = size / (1 + below)
-        cx, cy = cx + size / 2, cy + size / 2 - radius * below
+        # Encuadre: caja del sector (centro + borde exterior) con radio 1.
+        start = start_angle(steps, bases, squares, spaced_ring)
+        square = any(squares)
+        points = [(0.0, 0.0)]
+        for k in range(49):
+            a = start - span * k / 48
+            reach = 1 / max(abs(math.cos(a)), abs(math.sin(a))) if square else 1.0
+            points.append((reach * math.cos(a), reach * math.sin(a)))
+        xs, ys = [x for x, _ in points], [y for _, y in points]
+        radius = min((WIDTH - 140) / (max(xs) - min(xs)), size / (max(ys) - min(ys)))
+        cx = WIDTH / 2 - radius * (max(xs) + min(xs)) / 2
+        cy = 118.0 - radius * min(ys)
     parts, used = draw_rounds(steps, bases, squares, fills, cx, cy, radius, spaced_ring=spaced_ring, span=span)
     if span < 2 * math.pi:
         parts.append(label(WIDTH / 2, 104, t("schematic.motif_partial", lang), size=11, color=TEXT_SOFT))

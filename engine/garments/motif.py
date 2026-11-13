@@ -217,6 +217,8 @@ def motif_steps(
             if index == 0 and rnd.stitch in _SPACED:
                 note_key = "pattern.note.motif_ring_spaced"
             params = _note(design, rnd.band, lang, colors)
+            if rnd.square and rnd.stitch not in _SOLID:  # en la parte cuadrada los calados van en pa
+                params = tuple((k, t("motif.stitch.dc", lang) if k == "stitch" else v) for k, v in params)
         spaced = rnd.stitch in _SPACED
         if not rnd.square:
             multiple = _multiple(rounds, index, sectors)

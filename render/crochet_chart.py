@@ -43,10 +43,10 @@ def expand(item: Item, base: StitchKind, spaced: bool = False) -> list[StitchKin
         one = []
     elif op.kind is K.CROCHET_INC:
         one = [base, base]
-    elif op.kind is K.CORNER_SC:
-        one = [base, K.CH, K.CH, base]
-    elif op.kind is K.CORNER_DC:
-        one = [base, base, K.CH, K.CH, base, base]
+    elif op.kind is K.CORNER_SC:  # (1 pb, 2 cad, 1 pb)
+        one = [K.SC, K.CH, K.CH, K.SC]
+    elif op.kind is K.CORNER_DC:  # (2 pa, 2 cad, 2 pa)
+        one = [K.DC, K.DC, K.CH, K.CH, K.DC, K.DC]
     elif op.kind is K.SQUARE_TURN:
         one = [K.TR, K.TR, K.CH, K.CH, K.TR, K.TR]
     elif op.kind is K.GRANNY_START:
@@ -147,6 +147,22 @@ def _square_point(u: float, half: float) -> tuple[float, float]:
     return x0 + (x1 - x0) * f, y0 + (y1 - y0) * f
 
 
+def start_angle(
+    steps: Sequence[Step], bases: Sequence[StitchKind], squares: Sequence[bool], spaced_ring: bool = False
+) -> float:
+    """Angulo (en pantalla) donde empieza cada vuelta. Las vueltas redondas se
+    giran para que la esquina de la vuelta que cuadra quede justo sobre el
+    punto donde se teje (son simetricas: girarlas no cambia el tejido)."""
+    for index in range(1, len(steps)):
+        if squares[index] and not squares[index - 1]:
+            anchors = _anchors(steps[index], bases[index])
+            offset = corner_offset(steps[index], bases[index])
+            worked = anchors[min(int(offset), len(anchors) - 1)]
+            prev = len([k for item in steps[index - 1].items for k in expand(item, bases[index - 1], spaced_ring and index == 1)])
+            return -math.pi / 4 + 2 * math.pi * worked / prev
+    return -math.pi / 2
+
+
 def draw_rounds(
     steps: Sequence[Step],
     bases: Sequence[StitchKind],
@@ -166,19 +182,7 @@ def draw_rounds(
     antihorario): para motivos grandes alcanza con un sector de la simetria.
     """
     fraction = span / (2 * math.pi)
-    # Las vueltas redondas se giran para que la esquina de la vuelta que
-    # cuadra quede justo sobre el punto donde se teje (las redondas son
-    # simetricas: girarlas no cambia nada del tejido).
-    phi = 0.0
-    for index in range(1, len(steps)):
-        if squares[index] and not squares[index - 1]:
-            anchors = _anchors(steps[index], bases[index])
-            offset = corner_offset(steps[index], bases[index])
-            worked = anchors[min(int(offset), len(anchors) - 1)]
-            prev = len([k for item in steps[index - 1].items for k in expand(item, bases[index - 1], spaced_ring and index == 1)])
-            phi = -math.pi / 4 - (-math.pi / 2 - 2 * math.pi * worked / prev)
-            break
-    start = -math.pi / 2 + phi
+    start = start_angle(steps, bases, squares, spaced_ring)
 
     def turn(position: float, count: int) -> float:
         return start - 2 * math.pi * position / count
