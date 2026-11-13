@@ -748,6 +748,7 @@ EN: dict[str, str] = {
     "warning.motif_colors": "Colors: {colors}. Each band states its color when it starts.",
     "error.motif_symmetry": "A symmetry of {symmetry} does not fit the first rounds of the motif.",
     "warning.approx.blanket_motif": "One motif is given; for the blanket, make and join as many as needed.",
+    "schematic.motif_drawn_part": "In red, the part drawn",
     "schematic.motif_partial": "One enlarged sector is shown: repeat it all the way around.",
     "schematic.motif_total": "Total size: {size}",
     "schematic.motif_note": "{n} rounds from the center · {s}-fold symmetry · one symbol per stitch, read counterclockwise",

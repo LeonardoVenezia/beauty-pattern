@@ -29,6 +29,32 @@ def _too_small(steps: tuple[Step, ...], radius: float) -> bool:
     return min(unit, slot) < _MIN_PX
 
 
+def _overview(
+    steps: tuple[Step, ...], squares: list[bool], fills: list[str], start: float, span: float, lang: str
+) -> list[str]:
+    """Miniatura del motivo entero (solo colores) con la porcion dibujada
+    marcada, para que se entienda que el triangulo es una parte que se repite."""
+    ox, oy, r = 175.0, 450.0, 70.0
+    parts = [f'<rect x="{_f(ox - r - 10)}" y="{_f(oy - r - 10)}" width="{_f(2 * r + 20)}" height="{_f(2 * r + 20)}" fill="#ffffff" stroke="{STROKE}" stroke-opacity="0.3" rx="6"/>']
+    n = len(steps)
+    # Con esquinas el cuadrado exterior debe entrar en la caja: radio / sqrt(2).
+    outer = r / math.sqrt(2) if any(squares) else r
+    for index in range(n - 1, -1, -1):
+        rr = outer * (index + 1) / n
+        if squares[index]:
+            parts.append(f'<rect x="{_f(ox - rr)}" y="{_f(oy - rr)}" width="{_f(2 * rr)}" height="{_f(2 * rr)}" fill="{fills[index]}"/>')
+        else:
+            parts.append(f'<circle cx="{_f(ox)}" cy="{_f(oy)}" r="{_f(rr)}" fill="{fills[index]}"/>')
+    def reach(a: float) -> float:  # hasta el borde exterior (cuadrado o circulo)
+        return outer / max(abs(math.cos(a)), abs(math.sin(a))) if squares[-1] else outer
+
+    angles = [start - span * k / 48 for k in range(49)]
+    arc = " ".join(f"{_f(ox + reach(a) * math.cos(a))},{_f(oy + reach(a) * math.sin(a))}" for a in angles)
+    parts.append(f'<polygon points="{_f(ox)},{_f(oy)} {arc}" fill="#b0452f" fill-opacity="0.25" stroke="#b0452f" stroke-width="2"/>')
+    parts.append(label(ox, oy + r + 30, t("schematic.motif_drawn_part", lang), size=10, color=TEXT_SOFT))
+    return parts
+
+
 def render_motif_svg(pattern: Pattern, lang: str) -> str:
     design = pattern.spec.motivo
     steps = pattern.sections[0].steps
@@ -59,7 +85,7 @@ def render_motif_svg(pattern: Pattern, lang: str) -> str:
     cx, cy = WIDTH / 2, 118.0 + size / 2
     spaced_ring = bool(design) and design.bandas[0].punto in _SPACED
     symmetry = design.simetria if design else 8
-    radius, span = size / 2, 2 * math.pi
+    radius, span, start = size / 2, 2 * math.pi, -math.pi / 2
     if _too_small(steps, radius):
         # Motivo grande: se dibuja ampliado un sector (>= 1/4) y se repite.
         span = 2 * math.pi * math.ceil(symmetry / 4) / symmetry
@@ -78,6 +104,7 @@ def render_motif_svg(pattern: Pattern, lang: str) -> str:
     parts, used = draw_rounds(steps, bases, squares, fills, cx, cy, radius, spaced_ring=spaced_ring, span=span)
     if span < 2 * math.pi:
         parts.append(label(WIDTH / 2, 104, t("schematic.motif_partial", lang), size=11, color=TEXT_SOFT))
+        parts += _overview(steps, squares, fills, start, span, lang)
     measure = pattern.measurements[0]
     unit = t(f"unit.{pattern.params.unidades}", lang)
     shown = measure.value_cm / 2.54 if pattern.params.unidades == "in" else measure.value_cm

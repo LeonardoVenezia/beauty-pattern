@@ -750,6 +750,7 @@ ES: dict[str, str] = {
     "warning.motif_colors": "Colores: {colors}. Cada banda indica su color al empezar.",
     "error.motif_symmetry": "La simetría de {symmetry} no entra en las primeras vueltas del motivo.",
     "warning.approx.blanket_motif": "Se entrega un motivo; para la manta, tejer y unir los que hagan falta.",
+    "schematic.motif_drawn_part": "En rojo, la parte dibujada",
     "schematic.motif_partial": "Se dibuja un sector ampliado: repetir lo mismo en todo el contorno.",
     "schematic.motif_total": "Medida total: {size}",
     "schematic.motif_note": "{n} vueltas desde el centro · simetría de {s} · un símbolo por punto, en sentido antihorario",
