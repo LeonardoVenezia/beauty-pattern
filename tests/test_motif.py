@@ -170,3 +170,18 @@ def test_large_motif_text_groups_repeated_units_and_chart_shows_a_sector() -> No
     assert re.search(r"\(cl, cad, saltar 1\) \d+ veces", text)
     assert "cl, cad, saltar 1, cl, cad, saltar 1, cl, cad, saltar 1" not in text
     assert "sector ampliado" in render_schematic_svg(pattern, lang="es")
+
+
+def test_default_size_follows_the_photo_rounds_and_the_yarn() -> None:
+    """Sin medida pedida no hay un numero fijo: cada banda lleva las vueltas
+    de la foto (peso 1 = 1 vuelta) y la medida sale del hilo."""
+    sizes = {}
+    for weight in (YarnWeight.DK, YarnWeight.BULKY):
+        pattern = generate(motif_spec(MANDALA), PatternParams(peso_hilo=weight))
+        simulate(pattern)
+        assert len(pattern.sections[0].steps) == 7  # 6 bandas, una de peso 2
+        sizes[weight] = pattern.measurements[0].value_cm
+        text = render_document_text(build_document([pattern]))
+        assert "en punto bajo con ganchillo" in text  # muestra de crochet, no de dos agujas
+        assert "ASUNCIÓN" not in text
+    assert sizes[YarnWeight.BULKY] > sizes[YarnWeight.DK]

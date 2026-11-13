@@ -25,7 +25,7 @@ from dataclasses import dataclass
 
 from engine.distribution import split_even
 from engine.garments.base import ImpossibleProportionsError
-from engine.gauge import CROCHET_SC_PER_10CM
+from engine.gauge import crochet_gauge
 from engine.i18n import t
 from engine.ir import Item, Measurement, Op, Pattern, Repeat, Section, Step, Warning, build_step
 from engine.spec import GarmentSpec, MotifDesign, MotifShape, MotifStitch, PatternParams
@@ -54,7 +54,6 @@ _SPACED: dict[MotifStitch, StitchKind] = {
     MotifStitch.POPCORN: StitchKind.POPCORN,
     MotifStitch.PUFF: StitchKind.PUFF,
 }
-DEFAULT_SIZE_CM = 20.0
 
 
 @dataclass(frozen=True)
@@ -68,6 +67,14 @@ def _sizes(sc_per_cm: float, stitch: MotifStitch) -> tuple[float, float]:
     """(ancho de un punto, alto de una vuelta) en cm."""
     width, height = _SHAPE[stitch]
     return 1.0 / (sc_per_cm * width), 1.0 / (sc_per_cm * height)
+
+
+def natural_size_cm(design: MotifDesign, sc_per_cm: float) -> float:
+    """Medida sin pedido de la usuaria: la banda mas fina con 1 vuelta y las
+    demas en proporcion, como en la foto. Asi el default depende del motivo y
+    del hilo, no de un numero fijo."""
+    thinnest = min(band.peso for band in design.bandas)
+    return 2 * sum(band.peso / thinnest * _sizes(sc_per_cm, band.punto)[1] for band in design.bandas)
 
 
 def _rounds_per_band(design: MotifDesign, radius: float, sc_per_cm: float) -> list[int]:
@@ -264,10 +271,11 @@ def generate_crochet_motif(spec: GarmentSpec, params: PatternParams) -> Pattern:
     design = spec.motivo
     if design is None:
         raise ValueError("generate_crochet_motif requiere spec.motivo")
-    size = params.dimensiones_cm.get("size", params.medidas_cm.get("size", DEFAULT_SIZE_CM))
-    sc_per_cm = CROCHET_SC_PER_10CM.get(params.peso_hilo.value, CROCHET_SC_PER_10CM["dk"]) / 10
-    if params.densidad is not None:  # muestra medida en pb
-        sc_per_cm = params.densidad.stitches_per_cm
+    if params.densidad is None:  # la muestra del documento va en pb, no la de dos agujas
+        params = params.model_copy(update={"densidad": crochet_gauge(params.peso_hilo.value, "crochet_sc")})
+    assert params.densidad is not None
+    sc_per_cm = params.densidad.stitches_per_cm  # muestra medida en pb
+    size = params.dimensiones_cm.get("size", params.medidas_cm.get("size", natural_size_cm(design, sc_per_cm)))
     colors = tuple(spec.colorwork.paleta) if spec.colorwork else ()
     steps, actual, simplified = motif_steps(design, size, sc_per_cm, params.idioma, colors)
     tallest = max(_sizes(sc_per_cm, band.punto)[1] for band in design.bandas)

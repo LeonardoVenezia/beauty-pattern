@@ -314,7 +314,7 @@ ES: dict[str, str] = {
     # Advertencias
     "warning.gauge_sample": "La densidad es una referencia. Tejer una muestra y ajustar las agujas antes de empezar.",
     "warning.estimated_yardage": "El metraje es una estimación con margen; comprar un 10-15 % extra.",
-    "warning.assumption": "Este patrón usa una convención de diseño marcada como ASUNCIÓN en la documentación.",
+    "warning.assumption": "Algunas proporciones siguen convenciones de diseño habituales, no medidas tomadas de la foto.",
     "warning.no_short_rows": "El escote no incluye hileras cortas: puede quedar más alto que en la foto.",
     "warning.unsupported_variant": "La variante pedida no esta soportada; se generó la más cercana ({variant}).",
     "warning.ai_unavailable": "La IA no esta disponible; se muestra un patrón generado con datos de ejemplo.",
@@ -460,6 +460,7 @@ ES: dict[str, str] = {
     "doc.colors": "Colores: {colors}",
     "doc.gauge_line": "{sts} pts y {rows} vtas = 10 x 10 cm en {stitch} con {tool}, después del bloqueo.",
     "doc.gauge_stitch_knit": "punto jersey",
+    "doc.gauge_stitch_sc": "punto bajo",
     "doc.gauge_stitch_crochet": "el punto base del patrón",
     "doc.needle": "aguja de {mm} mm",
     "doc.hook": "ganchillo de {mm} mm",

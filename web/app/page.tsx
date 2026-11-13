@@ -465,6 +465,9 @@ export default function HomePage() {
       const data = await analyzeImage(files);
       setAnalysis(data);
       setSpec(normalizeSpec(data.spec));
+      // El grosor que se ve en la foto es mejor default que uno fijo.
+      const seen = data.spec.hilo_aparente?.grosor_estimado;
+      setYarnWeight(yarnWeights.some(([value]) => value === seen) ? (seen as string) : "dk");
       setImageId(data.image_id);
       setStep("confirm");
     } catch (caught) {
@@ -1026,6 +1029,11 @@ export default function HomePage() {
                   </option>
                 ))}
               </select>
+              {spec?.hilo_aparente?.grosor_estimado === yarnWeight ? (
+                <span className="mt-1 block text-xs text-ink/55">
+                  Estimado a partir de la foto. Cambialo por el hilo que vas a usar.
+                </span>
+              ) : null}
             </label>
           </div>
 
@@ -1095,7 +1103,9 @@ export default function HomePage() {
               <p className="mt-1 text-xs text-ink/55">
                 {isGarment
                   ? "Si no las completás, usamos las medidas típicas del talle y de la categoría."
-                  : "Si no las completás, usamos medidas típicas de la categoría."}
+                  : spec?.motivo && spec.tecnica === "crochet"
+                    ? "Si no la completás, el motivo sale con las vueltas que se ven en la foto y mide lo que dé tu hilo."
+                    : "Si no las completás, usamos medidas típicas de la categoría."}
               </p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 {activeDimensionFields.map(([key, label, placeholder]) => (

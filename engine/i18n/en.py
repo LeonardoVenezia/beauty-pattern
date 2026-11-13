@@ -314,7 +314,7 @@ EN: dict[str, str] = {
     # Warnings
     "warning.gauge_sample": "Gauge is a reference. Knit a swatch and adjust your needles before you start.",
     "warning.estimated_yardage": "Yardage is an estimate with margin; buy 10-15% extra.",
-    "warning.assumption": "This pattern uses a design convention marked as an ASSUMPTION in the documentation.",
+    "warning.assumption": "Some proportions follow common design conventions, not measurements taken from the photo.",
     "warning.no_short_rows": "The neckline does not include short rows: it may sit higher than in the photo.",
     "warning.unsupported_variant": "The requested variant is not supported; the closest one was generated ({variant}).",
     "warning.ai_unavailable": "AI is unavailable; a pattern generated from sample data is shown.",
@@ -458,6 +458,7 @@ EN: dict[str, str] = {
     "doc.colors": "Colours: {colors}",
     "doc.gauge_line": "{sts} sts and {rows} rows = 10 x 10 cm in {stitch} with a {tool}, after blocking.",
     "doc.gauge_stitch_knit": "stockinette stitch",
+    "doc.gauge_stitch_sc": "single crochet",
     "doc.gauge_stitch_crochet": "the pattern's main stitch",
     "doc.needle": "{mm} mm needle",
     "doc.hook": "{mm} mm hook",

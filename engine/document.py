@@ -257,7 +257,10 @@ def build_document(
     heading("doc.gauge")
     gauge = resolve_gauge(base.params)
     tool = base.materials.hook_mm if is_crochet else base.materials.needle_mm
-    stitch = t("doc.gauge_stitch_crochet" if is_crochet else "doc.gauge_stitch_knit", language)
+    stitch_key = "doc.gauge_stitch_crochet" if is_crochet else "doc.gauge_stitch_knit"
+    if base.meta.family == "crochet_motif":  # el motor mide el motivo en pb
+        stitch_key = "doc.gauge_stitch_sc"
+    stitch = t(stitch_key, language)
     line(
         t(
             "doc.gauge_line",
