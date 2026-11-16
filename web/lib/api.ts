@@ -149,24 +149,21 @@ export type PatternResponse = {
   simulation: { ok: boolean; issues: unknown[] };
 };
 
-const FRIENDLY_ERRORS: Record<string, string> = {
-  "error.unsupported_technique":
-    "Esa técnica no está disponible para esta categoría. Probá con dos agujas/circular o elegí otra categoría.",
-  "error.unsupported_garment":
-    "Esa combinación de categoría y construcción no está disponible todavía. Probá una construcción simple o elegí otra categoría.",
-  "error.unsupported_sleeve":
-    "Ese largo de manga no está soportado por esta construcción. Probá manga larga, tres cuartos o corta.",
-  "error.impossible_proportions":
-    "Las medidas no cierran para esta construcción. Revisá las medidas o la densidad e intentá de nuevo.",
-};
+// Errores conocidos del motor: se devuelve el codigo y la interfaz lo
+// traduce (web/lib/i18n.ts, claves "error.*").
+const FRIENDLY_ERRORS = new Set([
+  "error.unsupported_technique",
+  "error.unsupported_garment",
+  "error.unsupported_sleeve",
+  "error.impossible_proportions",
+]);
 
 async function parseError(response: Response): Promise<string> {
   try {
     const data = await response.json();
     if (typeof data?.detail === "string") return data.detail;
     if (data?.detail?.error) {
-      const friendly = FRIENDLY_ERRORS[data.detail.error];
-      if (friendly) return friendly;
+      if (FRIENDLY_ERRORS.has(data.detail.error)) return data.detail.error;
       const params = data.detail.params
         ? ` ${JSON.stringify(data.detail.params)}`
         : "";
@@ -232,7 +229,7 @@ export function patternPdfUrl(id: string, options: PdfOptions = {}): string {
 /** El texto del patron en otro idioma (mismos numeros, sin IA). */
 export async function fetchPatternText(id: string, lang: Language): Promise<string> {
   const response = await fetch(`${API_URL}/pattern/${id}?lang=${lang}`);
-  if (!response.ok) throw new Error("No se pudo cambiar el idioma.");
+  if (!response.ok) throw new Error("err.change_language"); // clave de i18n
   const data = (await response.json()) as PatternResponse;
   return data.text[lang] ?? data.text.es;
 }

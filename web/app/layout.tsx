@@ -2,16 +2,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Tejedora — de la foto al patrón",
+  title: "Tejedora — from photo to pattern",
   description:
-    "Subí una foto de una prenda tejida y obtené un patrón calculado y verificado.",
+    "Upload a photo of any knitted or crocheted piece and get a calculated, verified pattern.",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es">
+    // El idioma real lo fija I18nProvider (web/lib/i18n.ts) en el cliente.
+    <html lang="en">
       <body>{children}</body>
     </html>
   );

@@ -17,291 +17,187 @@ import {
   type Language,
   type PatternResponse,
 } from "@/lib/api";
+import { I18nProvider, LOCALES, UI_LANGUAGES, useT, type TKey } from "@/lib/i18n";
 
 type Step = "upload" | "confirm" | "params" | "pattern";
 
-const categories = [
-  ["pullover", "Pullover / suéter"],
-  ["cardigan", "Cardigan"],
-  ["vest", "Chaleco"],
-  ["hat", "Gorro"],
-  ["scarf", "Bufanda"],
-  ["cowl", "Cuello"],
-  ["mittens", "Mitones"],
-  ["gloves", "Guantes"],
-  ["socks", "Medias"],
-  ["shawl", "Chal"],
-  ["blanket", "Manta"],
-  ["granny_square", "Cuadrado / granny square"],
-  ["bag", "Bolso"],
-  ["amigurumi", "Amigurumi"],
-  ["other", "Pieza plana / otra"],
-] as const;
+// [valor de la API, clave de texto en web/lib/i18n.ts]
+type Options = readonly (readonly [string, TKey])[];
 
-const techniques = [
-  ["needles", "Dos agujas"],
-  ["circular", "Circular"],
-  ["crochet", "Crochet"],
-  ["machine", "Máquina"],
-] as const;
+const categories: Options = [
+  ["pullover", "cat.pullover"],
+  ["cardigan", "cat.cardigan"],
+  ["vest", "cat.vest"],
+  ["hat", "cat.hat"],
+  ["scarf", "cat.scarf"],
+  ["cowl", "cat.cowl"],
+  ["mittens", "cat.mittens"],
+  ["gloves", "cat.gloves"],
+  ["socks", "cat.socks"],
+  ["shawl", "cat.shawl"],
+  ["blanket", "cat.blanket"],
+  ["granny_square", "cat.granny_square"],
+  ["bag", "cat.bag"],
+  ["amigurumi", "cat.amigurumi"],
+  ["other", "cat.other"],
+];
+
+const techniques: Options = [
+  ["needles", "tech.needles"],
+  ["circular", "tech.circular"],
+  ["crochet", "tech.crochet"],
+  ["machine", "tech.machine"],
+];
 
 // Toda categoria acepta toda tecnica: el servidor elige la familia mas
 // cercana y lo avisa en las advertencias del patron (engine/garments/routing.py).
 const supportedTechniques: Record<string, readonly string[]> = {};
 
-const constructions = [
-  ["raglan_top_down", "Raglán de arriba hacia abajo"],
-  ["drop_shoulder", "Hombro caído"],
-  ["set_in_sleeve", "Manga encajada"],
-  ["yoke", "Canesú circular"],
-  ["bottom_up", "De abajo hacia arriba"],
-  ["in_one_piece", "En una pieza"],
-  ["flat_panels", "Piezas planas"],
-  ["round_tube", "Tubo en redondo"],
-  ["modules", "Módulos"],
-  ["other", "Otra"],
-] as const;
+const constructions: Options = [
+  ["raglan_top_down", "cons.raglan_top_down"],
+  ["drop_shoulder", "cons.drop_shoulder"],
+  ["set_in_sleeve", "cons.set_in_sleeve"],
+  ["yoke", "cons.yoke"],
+  ["bottom_up", "cons.bottom_up"],
+  ["in_one_piece", "cons.in_one_piece"],
+  ["flat_panels", "cons.flat_panels"],
+  ["round_tube", "cons.round_tube"],
+  ["modules", "cons.modules"],
+  ["other", "cons.other"],
+];
 
-const necklines = [
-  ["crew", "Redondo"],
-  ["v_neck", "En V"],
-  ["boat", "Barco"],
-  ["turtleneck", "Cuello alto"],
-  ["funnel", "Cuello embudo"],
-  ["hood", "Capucha"],
-  ["square", "Cuadrado"],
-  ["none", "Sin escote definido"],
-] as const;
+const necklines: Options = [
+  ["crew", "neck.crew"],
+  ["v_neck", "neck.v_neck"],
+  ["boat", "neck.boat"],
+  ["turtleneck", "neck.turtleneck"],
+  ["funnel", "neck.funnel"],
+  ["hood", "neck.hood"],
+  ["square", "neck.square"],
+  ["none", "neck.none"],
+];
 
-const bodyLengths = [
-  ["cropped", "Corto"],
-  ["hip", "A la cadera"],
-  ["tunic", "Túnica"],
-  ["long", "Largo"],
-] as const;
+const bodyLengths: Options = [
+  ["cropped", "blen.cropped"],
+  ["hip", "blen.hip"],
+  ["tunic", "blen.tunic"],
+  ["long", "blen.long"],
+];
 
-const sleeveLengths = [
-  ["sleeveless", "Sin mangas"],
-  ["short", "Manga corta"],
-  ["three_quarter", "Tres cuartos"],
-  ["long", "Manga larga"],
-] as const;
+const sleeveLengths: Options = [
+  ["sleeveless", "slen.sleeveless"],
+  ["short", "slen.short"],
+  ["three_quarter", "slen.three_quarter"],
+  ["long", "slen.long"],
+];
 
-const fits = [
-  ["very_loose", "Muy holgado"],
-  ["loose", "Holgado"],
-  ["regular", "Regular"],
-  ["fitted", "Entallado"],
-] as const;
+const fits: Options = [
+  ["very_loose", "fit.very_loose"],
+  ["loose", "fit.loose"],
+  ["regular", "fit.regular"],
+  ["fitted", "fit.fitted"],
+];
 
-const crochetStitches = [
-  ["crochet_sc", "Punto bajo"],
-  ["crochet_hdc", "Medio punto alto"],
-  ["crochet_dc", "Punto alto"],
-] as const;
+const crochetStitches: Options = [
+  ["crochet_sc", "cst.crochet_sc"],
+  ["crochet_hdc", "cst.crochet_hdc"],
+  ["crochet_dc", "cst.crochet_dc"],
+];
 
-const toyFigures = [
-  ["generic", "Muñeco (sin orejas)"],
-  ["bear", "Oso"],
-  ["bunny", "Conejo"],
-  ["cat", "Gato"],
-] as const;
+const toyFigures: Options = [
+  ["generic", "fig.generic"],
+  ["bear", "fig.bear"],
+  ["bunny", "fig.bunny"],
+  ["cat", "fig.cat"],
+];
 
-const baseStitches = [
-  ["stockinette", "Jersey"],
-  ["garter", "Musgo"],
-  ["seed", "Arroz"],
-  ["rib_1x1", "Elástico 1x1"],
-  ["rib_2x2", "Elástico 2x2"],
-  ["rib_3x1", "Elástico 3x1"],
-  ["moss", "Punto musgo doble"],
-  ["brioche", "Canalé inglés"],
-  ["cables", "Trenzas"],
-  ["lace", "Calados"],
-  ["bobbles", "Bobos"],
-  ["honeycomb", "Nido de abeja"],
-] as const;
+const baseStitches: Options = [
+  ["stockinette", "st.stockinette"],
+  ["garter", "st.garter"],
+  ["seed", "st.seed"],
+  ["rib_1x1", "st.rib_1x1"],
+  ["rib_2x2", "st.rib_2x2"],
+  ["rib_3x1", "st.rib_3x1"],
+  ["moss", "st.moss"],
+  ["brioche", "st.brioche"],
+  ["cables", "st.cables"],
+  ["lace", "st.lace"],
+  ["bobbles", "st.bobbles"],
+  ["honeycomb", "st.honeycomb"],
+];
 
-const yarnWeights = [
-  ["lace", "Lace / hilo muy fino"],
-  ["fingering", "Fingering"],
-  ["sport", "Sport"],
-  ["dk", "DK"],
-  ["worsted", "Worsted"],
-  ["bulky", "Bulky"],
-  ["super_bulky", "Súper bulky"],
-] as const;
+const yarnWeights: Options = [
+  ["lace", "yarn.lace"],
+  ["fingering", "yarn.fingering"],
+  ["sport", "yarn.sport"],
+  ["dk", "yarn.dk"],
+  ["worsted", "yarn.worsted"],
+  ["bulky", "yarn.bulky"],
+  ["super_bulky", "yarn.super_bulky"],
+];
 
 const sizes = ["XS", "S", "M", "L", "XL", "2XL", "3XL"] as const;
 
-type DimensionField = readonly [key: string, label: string, placeholder: string];
+type DimensionField = readonly [key: string, label: TKey, placeholder: string];
 
 const garmentCategories = new Set(["pullover", "cardigan", "vest"]);
 
 const dimensionFields: Record<string, readonly DimensionField[]> = {
   pullover: [
-    ["bust", "Contorno de busto", "Ej. 100"],
-    ["body_length", "Largo del cuerpo", "Ej. 58"],
-    ["sleeve_length", "Largo de manga", "Ej. 58"],
+    ["bust", "m.bust", "100"],
+    ["body_length", "m.body_length", "58"],
+    ["sleeve_length", "m.sleeve_length", "58"],
   ],
   cardigan: [
-    ["bust", "Contorno de busto", "Ej. 100"],
-    ["body_length", "Largo del cuerpo", "Ej. 58"],
-    ["sleeve_length", "Largo de manga", "Ej. 58"],
+    ["bust", "m.bust", "100"],
+    ["body_length", "m.body_length", "58"],
+    ["sleeve_length", "m.sleeve_length", "58"],
   ],
   vest: [
-    ["bust", "Contorno de busto", "Ej. 100"],
-    ["body_length", "Largo del cuerpo", "Ej. 58"],
+    ["bust", "m.bust", "100"],
+    ["body_length", "m.body_length", "58"],
   ],
   hat: [
-    ["head", "Contorno de cabeza", "Ej. 56"],
-    ["length", "Alto del gorro", "Ej. 22"],
+    ["head", "m.head", "56"],
+    ["length", "dim.hat_height", "22"],
   ],
   scarf: [
-    ["width", "Ancho", "Ej. 25"],
-    ["length", "Largo", "Ej. 180"],
+    ["width", "m.width", "25"],
+    ["length", "m.length", "180"],
   ],
   cowl: [
-    ["circumference", "Contorno", "Ej. 60"],
-    ["length", "Largo", "Ej. 30"],
+    ["circumference", "m.circumference", "60"],
+    ["length", "m.length", "30"],
   ],
   mittens: [
-    ["palm", "Contorno de palma", "Ej. 20"],
-    ["length", "Largo de mano", "Ej. 18"],
-    ["thumb", "Largo de pulgar", "Ej. 6"],
+    ["palm", "m.palm", "20"],
+    ["length", "dim.hand_length", "18"],
+    ["thumb", "m.thumb", "6"],
   ],
   socks: [
-    ["circumference", "Contorno", "Ej. 22"],
-    ["foot_length", "Largo del pie", "Ej. 24"],
-    ["leg", "Largo de pierna", "Ej. 10"],
+    ["circumference", "m.circumference", "22"],
+    ["foot_length", "m.foot_length", "24"],
+    ["leg", "dim.leg_length", "10"],
   ],
   shawl: [
-    ["width", "Ancho", "Ej. 60"],
-    ["length", "Largo", "Ej. 180"],
+    ["width", "m.width", "60"],
+    ["length", "m.length", "180"],
   ],
   blanket: [
-    ["width", "Ancho", "Ej. 100"],
-    ["length", "Largo", "Ej. 120"],
+    ["width", "m.width", "100"],
+    ["length", "m.length", "120"],
   ],
-  granny_square: [["size", "Lado del cuadrado", "Ej. 20"]],
+  granny_square: [["size", "dim.square_side", "20"]],
   bag: [
-    ["width", "Ancho", "Ej. 30"],
-    ["length", "Alto", "Ej. 30"],
+    ["width", "m.width", "30"],
+    ["length", "dim.height", "30"],
   ],
   other: [
-    ["width", "Ancho", "Ej. 20"],
-    ["length", "Alto", "Ej. 20"],
+    ["width", "m.width", "20"],
+    ["length", "dim.height", "20"],
   ],
-  amigurumi: [["height", "Altura sentado", "Ej. 22"]],
+  amigurumi: [["height", "dim.toy_height", "22"]],
 };
-
-const sectionLabels: Record<string, string> = {
-  "section.body": "Cuerpo",
-  "section.yoke": "Canesú",
-  "section.sleeve": "Manga",
-  "section.sleeve_left": "Manga izquierda",
-  "section.sleeve_right": "Manga derecha",
-  "section.neckband": "Cuello",
-  "section.hem": "Borde inferior",
-  "section.cuff": "Puño",
-  "section.crown": "Corona",
-  "section.brim": "Borde",
-  "section.foot": "Pie",
-  "section.toe": "Puntera",
-  "section.thumb": "Pulgar",
-  "section.hand": "Mano",
-  "section.scarf": "Bufanda",
-  "section.cowl": "Cuello circular",
-  "section.shawl": "Chal",
-  "section.blanket": "Manta",
-  "section.front": "Delantero",
-  "section.back": "Espalda",
-  "section.left_front": "Delantero izquierdo",
-  "section.right_front": "Delantero derecho",
-  "section.button_band": "Tapa de botones",
-  "section.amigurumi": "Amigurumi",
-  "section.toy_head": "Cabeza",
-  "section.toy_body": "Cuerpo",
-  "section.toy_arms": "Brazos (tejer 2)",
-  "section.toy_legs": "Piernas (tejer 2)",
-  "section.toy_ears": "Orejas (tejer 2)",
-  "section.toy_muzzle": "Hocico",
-  "section.toy_tail": "Cola",
-  "section.granny_square": "Granny square",
-  "section.bag": "Bolso",
-  "section.flat_piece": "Pieza plana",
-  "section.leg": "Pierna",
-  "section.sphere": "Esfera",
-  "section.cylinder": "Cilindro",
-  "section.cone": "Cono",
-};
-
-const noteLabels: Record<string, string> = {
-  "pattern.note.cast_on_panel": "Montá los puntos y tejé en plano.",
-  "pattern.note.cuff": "Puño en elástico.",
-  "pattern.note.hat_crown": "Disminuí 1 punto en cada gajo.",
-  "pattern.note.toe": "Disminuí 4 puntos repartidos por vuelta.",
-  "pattern.note.flat_panel": "Tejé en jersey, de ida y vuelta.",
-  "pattern.note.crochet_foundation": "Hacé la cadena inicial.",
-  "pattern.note.crochet_flat": "Tejé en crochet, de ida y vuelta.",
-  "pattern.note.amigurumi_increase": "Aumentá 6 puntos repartidos.",
-  "pattern.note.amigurumi_decrease": "Disminuí 6 puntos repartidos.",
-  "pattern.note.toy_stuff": "Rellená firme y seguí rellenando mientras cerrás.",
-  "pattern.note.plain": "Vuelta sin aumentos.",
-  "pattern.magic_ring": "Anillo mágico con 6 puntos bajos.",
-  "pattern.note.mittens_hand": "Hacé 2 piezas iguales para las manos y coselas.",
-  "pattern.note.mittens_thumb": "Hacé 2 piezas iguales para los pulgares y coselos.",
-};
-
-const measurementLabels: Record<string, string> = {
-  bust: "Contorno de busto",
-  body_length: "Largo del cuerpo",
-  sleeve_length: "Largo de manga",
-  upper_arm: "Contorno de brazo",
-  neck: "Contorno de cuello",
-  wrist: "Contorno de puño",
-  yoke_depth: "Profundidad del canesú",
-  hem: "Contorno de ruedo",
-  diameter: "Diámetro",
-  height: "Altura",
-  width: "Ancho",
-  length: "Largo",
-  circumference: "Contorno",
-  palm: "Contorno de palma",
-  foot_length: "Largo del pie",
-  head: "Contorno de cabeza",
-  thumb: "Largo del pulgar",
-  toy_height: "Altura sentado (aprox.)",
-  toy_head: "Contorno de la cabeza",
-  toy_body: "Contorno del cuerpo",
-};
-
-const textureLabels: Record<string, string> = {
-  cables: "Trenzas",
-  lace: "Calados",
-  bobbles: "Bodoques",
-  honeycomb: "Nido de abeja",
-  ribbing: "Elástico",
-  cabled_ribbing: "Elástico con trenzas",
-  other: "Otra textura",
-};
-
-const warningLabels: Record<string, string> = {
-  "warning.gauge_sample": "Tejé una muestra antes de empezar.",
-  "warning.estimated_yardage": "El metraje es una estimación con margen.",
-  "warning.assumption": "Hay supuestos de construcción en este patrón.",
-  "warning.no_short_rows": "No se usan vueltas cortas en este diseño.",
-  "warning.unsupported_variant": "La variante pedida no está soportada por completo.",
-  "warning.fast_increases": "Los aumentos van en todas las vueltas para que el canesú cierre.",
-  "warning.unsupported_stitch": "El punto base se simplificó a jersey.",
-  "warning.bag_flat": "El bolso es un panel rectangular simplificado; no incluye asas, forro ni cierre.",
-  "warning.flat_piece": "No se reconoció la prenda; se genera una pieza plana rectangular. Revisá si corresponde a una categoría más específica.",
-  "warning.mittens_flat": "Los mitones son piezas planas simplificadas; el pulgar se cose aparte y el calce debe probarse.",
-};
-
-const numberFormat = new Intl.NumberFormat("es-AR", {
-  maximumFractionDigits: 1,
-});
 
 type SavedProject = {
   id: string;
@@ -320,15 +216,8 @@ type WakeLockSentinelLike = {
 
 const STORAGE_KEY = "tejedora:projects:v1";
 
-function formatCm(value: number): string {
-  return `${numberFormat.format(value)} cm`;
-}
-
-function optionLabel(
-  options: readonly (readonly [string, string])[],
-  value: string | null,
-): string {
-  return options.find(([key]) => key === value)?.[1] ?? "Sin definir";
+function optionKey(options: Options, value: string | null): TKey {
+  return options.find(([key]) => key === value)?.[1] ?? "field.undefined";
 }
 
 function normalizeSpec(spec: GarmentSpec): GarmentSpec {
@@ -336,14 +225,17 @@ function normalizeSpec(spec: GarmentSpec): GarmentSpec {
 }
 
 const MAX_PHOTOS = 4;
-const QUALITY_TEXT: Record<string, string> = {
-  small: "tiene poca resolución",
-  blurry: "está desenfocada",
-  dark: "está oscura",
-  bright: "está muy clara",
-};
 
 export default function HomePage() {
+  return (
+    <I18nProvider>
+      <PatternApp />
+    </I18nProvider>
+  );
+}
+
+function PatternApp() {
+  const { t, tx, lang, setLang } = useT();
   const [step, setStep] = useState<Step>("upload");
   const [files, setFiles] = useState<File[]>([]);
   const [previews, setPreviews] = useState<string[]>([]);
@@ -353,7 +245,8 @@ export default function HomePage() {
   const [imageId, setImageId] = useState<string | null>(null);
   const [imageIds, setImageIds] = useState<string[]>([]);
   // Opciones del PDF: se eligen en el ultimo paso, sin volver atras.
-  const [patternLang, setPatternLang] = useState<Language>("es");
+  // Por defecto sigue al idioma de la interfaz (ver efecto mas abajo).
+  const [patternLang, setPatternLang] = useState<Language>(lang);
   const [designer, setDesigner] = useState("");
   const [coverPhotos, setCoverPhotos] = useState<number[]>([]);
   const [includeGuide, setIncludeGuide] = useState(true);
@@ -376,6 +269,22 @@ export default function HomePage() {
   const [wakeLock, setWakeLock] = useState(false);
   const wakeLockRef = useRef<WakeLockSentinelLike | null>(null);
 
+  // Sin patron generado, el idioma del PDF acompana al de la interfaz.
+  useEffect(() => {
+    if (!result) setPatternLang(lang);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
+  const numberFormat = useMemo(
+    () => new Intl.NumberFormat(LOCALES[lang], { maximumFractionDigits: 1 }),
+    [lang],
+  );
+  const formatCm = (value: number) => `${numberFormat.format(value)} cm`;
+  const tr = (options: Options) =>
+    options.map(([key, labelKey]) => [key, t(labelKey)] as const);
+  const errorText = (caught: unknown, fallback: TKey) =>
+    caught instanceof Error ? tx(caught.message) : t(fallback);
+
   const baseStitchOptions =
     spec?.tecnica === "crochet" ? crochetStitches : baseStitches;
   const isGarment = spec ? garmentCategories.has(spec.categoria) : false;
@@ -394,13 +303,13 @@ export default function HomePage() {
       return [
         [
           "size",
-          spec.motivo.forma === "square" ? "Lado del motivo" : "Diámetro del motivo",
-          "Ej. 20",
+          spec.motivo.forma === "square" ? "dim.motif_side" : "dim.motif_diameter",
+          "20",
         ],
       ];
     }
     if (spec.categoria === "blanket" && spec.tecnica === "crochet") {
-      return [["size", "Lado del módulo", "Ej. 15"]];
+      return [["size", "dim.module_side", "15"]];
     }
     return dimensionFields[spec.categoria] ?? [];
   }, [spec]);
@@ -410,7 +319,7 @@ export default function HomePage() {
     return result.pattern.sections.flatMap((section) =>
       section.steps.map((step) => ({
         sectionId: section.id,
-        sectionLabel: sectionLabels[section.name_key] ?? section.name_key,
+        sectionKey: section.name_key,
         stepNumber: step.number,
         stitchCount: step.stitch_count_end,
         noteKey: step.note_key,
@@ -495,7 +404,7 @@ export default function HomePage() {
       setCoverPhotos(ids.map((_, index) => index));
       setStep("confirm");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No se pudo analizar la foto.");
+      setError(errorText(caught, "err.analyze"));
     } finally {
       setBusy(false);
     }
@@ -504,9 +413,7 @@ export default function HomePage() {
   async function onGenerate(overrides: { talla?: string; peso_hilo?: string } = {}) {
     if (!spec) return;
     if (unsupportedCategory) {
-      setError(
-        "Esta categoría todavía no tiene una familia de patrón. Probá con otra categoría o con “Pieza plana”.",
-      );
+      setError(t("err.unsupported_category"));
       return;
     }
     const currentSpec = normalizeSpec(spec);
@@ -549,7 +456,7 @@ export default function HomePage() {
       setRowIndex(0);
       setStep("pattern");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No se pudo generar el patrón.");
+      setError(errorText(caught, "err.generate"));
     } finally {
       setBusy(false);
     }
@@ -560,7 +467,7 @@ export default function HomePage() {
     const project: SavedProject = {
       id: result.id,
       savedAt: new Date().toISOString(),
-      label: optionLabel(categories, spec?.categoria ?? null),
+      label: t(optionKey(categories, spec?.categoria ?? null)),
       size,
       yarnWeight,
       patternText,
@@ -575,7 +482,7 @@ export default function HomePage() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
-      setError("No se pudo guardar el proyecto en este dispositivo.");
+      setError(t("err.save"));
     }
   }
 
@@ -598,7 +505,7 @@ export default function HomePage() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(next));
     } catch {
-      setError("No se pudo actualizar la lista de proyectos.");
+      setError(t("err.update_list"));
     }
   }
 
@@ -615,14 +522,14 @@ export default function HomePage() {
       };
     };
     if (!nav.wakeLock) {
-      setError("Este navegador no permite mantener la pantalla encendida.");
+      setError(t("err.wake_unsupported"));
       return;
     }
     try {
       wakeLockRef.current = await nav.wakeLock.request("screen");
       setWakeLock(true);
     } catch {
-      setError("No se pudo mantener la pantalla encendida.");
+      setError(t("err.wake_failed"));
     }
   }
 
@@ -634,7 +541,7 @@ export default function HomePage() {
     try {
       setPatternText(await fetchPatternText(result.id, lang));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No se pudo cambiar el idioma.");
+      setError(errorText(caught, "err.change_language"));
     } finally {
       setBusy(false);
     }
@@ -655,7 +562,7 @@ export default function HomePage() {
       const data = await rewritePattern(result.id, patternLang);
       setPatternText(data.text);
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No se pudo reescribir.");
+      setError(errorText(caught, "err.rewrite"));
     } finally {
       setBusy(false);
     }
@@ -668,7 +575,7 @@ export default function HomePage() {
     try {
       setCritique(await critiquePattern(result.id, imageId, patternLang));
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "No se pudo revisar.");
+      setError(errorText(caught, "err.critique"));
     } finally {
       setBusy(false);
     }
@@ -694,7 +601,10 @@ export default function HomePage() {
     .filter((item) => item.issues.length > 0)
     .map(
       (item) =>
-        `La foto ${item.photo} ${item.issues.map((code) => QUALITY_TEXT[code] ?? code).join(" y ")}.`,
+        t("quality.photo", {
+          n: item.photo,
+          issues: item.issues.map((code) => tx(`q.${code}`, code)).join(t("quality.and")),
+        }),
     );
 
   function confidenceFor(key: string): number | null {
@@ -708,7 +618,7 @@ export default function HomePage() {
         href="#main"
         className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-ink focus:px-4 focus:py-2 focus:text-white"
       >
-        Saltar al contenido
+        {t("app.skip")}
       </a>
       <main
         id="main"
@@ -716,25 +626,40 @@ export default function HomePage() {
         className="mx-auto min-h-screen w-full max-w-3xl px-5 pb-16 pt-8 sm:px-8"
       >
       <header className="mb-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sage">
-          Tejedora
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-sm font-semibold uppercase tracking-[0.18em] text-sage">
+            {t("app.brand")}
+          </p>
+          <select
+            value={lang}
+            onChange={(event) => setLang(event.target.value as Language)}
+            aria-label={t("app.language")}
+            className="rounded-lg border border-ink/15 bg-white/70 px-2 py-1 text-sm"
+          >
+            {UI_LANGUAGES.map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </div>
         <h1 className="mt-2 text-4xl font-bold leading-tight sm:text-5xl">
-          De la foto al patrón.
+          {t("hero.title")}
         </h1>
         <p className="mt-3 max-w-xl text-lg leading-relaxed text-ink/75">
-          Subí una foto de una prenda tejida. La IA interpreta la imagen; el motor
-          calcula y verifica cada número antes de mostrártelo.
+          {t("hero.lead")}
         </p>
       </header>
 
-      <nav aria-label="Pasos" className="mb-8 flex flex-wrap gap-2 text-sm">
-        {[
-          ["upload", "1. Foto"],
-          ["confirm", "2. Confirmar"],
-          ["params", "3. Medidas"],
-          ["pattern", "4. Patrón"],
-        ].map(([key, label]) => (
+      <nav aria-label={t("steps.aria")} className="mb-8 flex flex-wrap gap-2 text-sm">
+        {(
+          [
+            ["upload", t("steps.upload")],
+            ["confirm", t("steps.confirm")],
+            ["params", t("steps.params")],
+            ["pattern", t("steps.pattern")],
+          ] as const
+        ).map(([key, label]) => (
           <span
             key={key}
             aria-current={step === key ? "step" : undefined}
@@ -754,28 +679,24 @@ export default function HomePage() {
           role="alert"
           className="mb-6 rounded-2xl border border-clay/40 bg-clay/10 p-4 text-base text-ink"
         >
-          <strong className="block">No pudimos continuar</strong>
+          <strong className="block">{t("error.title")}</strong>
           <span className="mt-1 block break-words">{error}</span>
         </div>
       ) : null}
       <p role="status" aria-live="polite" className="sr-only">
-        {busy ? "Procesando, esperá un momento." : ""}
+        {busy ? t("status.busy") : ""}
       </p>
 
       {step === "upload" ? (
         <section className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
-          <h2 className="text-2xl font-semibold">Empezá con una foto clara</h2>
-          <p className="mt-2 text-ink/70">
-            Se ve mejor la prenda completa, de frente, con buena luz. Podés sumar
-            hasta {MAX_PHOTOS} fotos de la misma pieza (espalda, detalle del punto,
-            puesta) y también usar fotos de Instagram o de tu galería.
-          </p>
+          <h2 className="text-2xl font-semibold">{t("upload.title")}</h2>
+          <p className="mt-2 text-ink/70">{t("upload.lead", { max: MAX_PHOTOS })}</p>
           <label className="mt-6 flex min-h-44 cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-sage/50 bg-sage/5 p-6 text-center hover:bg-sage/10">
             <span className="text-lg font-semibold text-sage">
-              {files.length > 0 ? "Sumar otra foto" : "Elegir o sacar una foto"}
+              {files.length > 0 ? t("upload.add_more") : t("upload.choose")}
             </span>
             <span className="mt-1 text-sm text-ink/60">
-              JPG, PNG o WebP · hasta 12 MB
+              {t("upload.formats")}
             </span>
             <input
               type="file"
@@ -795,13 +716,13 @@ export default function HomePage() {
                 >
                   <img
                     src={url}
-                    alt={`Foto ${index + 1} de la prenda`}
+                    alt={t("upload.photo_alt", { n: index + 1 })}
                     className="max-h-60 w-full object-contain"
                   />
                   <button
                     type="button"
                     onClick={() => removePhoto(index)}
-                    aria-label={`Quitar la foto ${index + 1}`}
+                    aria-label={t("upload.remove_photo", { n: index + 1 })}
                     className="absolute right-2 top-2 min-h-9 min-w-9 rounded-full bg-white/90 text-lg font-semibold text-ink shadow"
                   >
                     ×
@@ -812,17 +733,17 @@ export default function HomePage() {
           ) : null}
 
           <label className="mt-6 block rounded-2xl border border-ink/10 bg-paper/60 p-4">
-            <span className="text-sm font-semibold">Contanos qué es, con tus palabras (opcional)</span>
+            <span className="text-sm font-semibold">{t("upload.describe_label")}</span>
             <textarea
               value={description}
               onChange={(event) => setDescription(event.target.value)}
               maxLength={600}
               rows={3}
-              placeholder="Por ejemplo: un osito tejido a dos agujas, de unos 15 cm, para regalar."
+              placeholder={t("upload.describe_placeholder")}
               className="mt-2 w-full rounded-xl border border-ink/20 bg-white px-3 py-2 text-base"
             />
             <span className="mt-1 block text-xs text-ink/55">
-              Qué es, si es de agujas o crochet, para quién, el tamaño… Lo que sepas ayuda a interpretar la foto.
+              {t("upload.describe_hint")}
             </span>
           </label>
 
@@ -832,16 +753,13 @@ export default function HomePage() {
             disabled={files.length === 0 || busy}
             className="mt-6 min-h-12 w-full rounded-xl bg-ink px-5 py-3 text-lg font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {busy ? "Analizando la foto…" : "Analizar foto"}
+            {busy ? t("upload.analyzing") : t("upload.analyze")}
           </button>
 
           {savedProjects.length > 0 ? (
             <div className="mt-8 border-t border-ink/10 pt-6">
-              <h3 className="text-lg font-semibold">Proyectos guardados</h3>
-              <p className="mt-1 text-sm text-ink/60">
-                Se guardan en este dispositivo. Podés retomar el contador donde
-                lo dejaste.
-              </p>
+              <h3 className="text-lg font-semibold">{t("saved.title")}</h3>
+              <p className="mt-1 text-sm text-ink/60">{t("saved.lead")}</p>
               <ul className="mt-3 space-y-2">
                 {savedProjects.map((project) => (
                   <li
@@ -853,13 +771,15 @@ export default function HomePage() {
                       onClick={() => loadProject(project)}
                       className="text-left font-semibold text-sage underline-offset-4 hover:underline"
                     >
-                      {project.label}
+                      {project.result.pattern.spec
+                        ? t(optionKey(categories, project.result.pattern.spec.categoria))
+                        : project.label}
                       {project.result.pattern.spec &&
                       garmentCategories.has(project.result.pattern.spec.categoria)
                         ? ` · ${project.size}`
                         : ""}
                       <span className="ml-2 text-xs font-normal text-ink/50">
-                        {new Date(project.savedAt).toLocaleDateString("es-AR")}
+                        {new Date(project.savedAt).toLocaleDateString(LOCALES[lang])}
                       </span>
                     </button>
                     <button
@@ -867,7 +787,7 @@ export default function HomePage() {
                       onClick={() => deleteProject(project.id)}
                       className="self-start rounded-lg border border-ink/15 px-3 py-1 text-sm sm:self-auto"
                     >
-                      Borrar
+                      {t("saved.delete")}
                     </button>
                   </li>
                 ))}
@@ -880,94 +800,91 @@ export default function HomePage() {
       {step === "confirm" && spec ? (
         <section className="space-y-6">
           <div className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
-            <h2 className="text-2xl font-semibold">Esto es lo que detecté</h2>
-            <p className="mt-2 text-ink/70">
-              Revisá y corregí lo que haga falta. La confianza baja está marcada en
-              ámbar.
-            </p>
+            <h2 className="text-2xl font-semibold">{t("confirm.title")}</h2>
+            <p className="mt-2 text-ink/70">{t("confirm.lead")}</p>
             {spec.motivo && spec.tecnica === "crochet" ? (
               <p className="mt-3 rounded-xl bg-sage/10 p-3 text-sm text-ink/80">
-                Detecté un motivo {spec.motivo.forma === "square" ? "cuadrado" : "redondo"} con{" "}
-                {spec.motivo.bandas.length} bandas y simetría de {spec.motivo.simetria}. El
-                patrón lo reproduce con vueltas calculadas para la medida que elijas.
+                {t(
+                  spec.motivo.forma === "square" ? "confirm.motif_square" : "confirm.motif_round",
+                  { bands: spec.motivo.bandas.length, symmetry: spec.motivo.simetria },
+                )}
               </p>
             ) : null}
             {qualityNotes.length > 0 ? (
               <p className="mt-3 rounded-xl bg-amber-50 p-3 text-sm text-ink/80">
-                {qualityNotes.join(" ")} Si podés, sumá otra foto más nítida para
-                que el análisis sea más seguro.
+                {qualityNotes.join(" ")} {t("confirm.quality_more")}
               </p>
             ) : null}
 
             <div className="mt-6 grid gap-5 sm:grid-cols-2">
               <Field
-                label="Categoría"
+                label={t("field.category")}
                 confidence={confidenceFor("categoria")}
                 value={spec.categoria}
-                options={categories}
+                options={tr(categories)}
                 onChange={updateCategory}
               />
               <Field
-                label="Técnica"
+                label={t("field.technique")}
                 confidence={confidenceFor("tecnica")}
                 value={spec.tecnica}
-                options={techniqueOptions}
+                options={tr(techniqueOptions)}
                 onChange={(value) => updateNullable("tecnica", value)}
               />
               {spec.categoria === "pullover" ? (
                 <Field
-                  label="Construcción"
+                  label={t("field.construction")}
                   confidence={confidenceFor("construccion")}
                   value={spec.construccion ?? ""}
-                  options={constructions}
+                  options={tr(constructions)}
                   onChange={(value) => updateNullable("construccion", value)}
                 />
               ) : null}
               {isGarment ? (
                 <>
                   <Field
-                    label="Escote"
+                    label={t("field.neckline")}
                     confidence={confidenceFor("escote")}
                     value={spec.escote ?? ""}
-                    options={necklines}
+                    options={tr(necklines)}
                     onChange={(value) => updateNullable("escote", value)}
                   />
                   <Field
-                    label="Largo del cuerpo"
+                    label={t("field.body_length")}
                     confidence={confidenceFor("largo_cuerpo")}
                     value={spec.largo_cuerpo ?? ""}
-                    options={bodyLengths}
+                    options={tr(bodyLengths)}
                     onChange={(value) => updateNullable("largo_cuerpo", value)}
                   />
                   <Field
-                    label="Largo de manga"
+                    label={t("field.sleeve_length")}
                     confidence={confidenceFor("largo_manga")}
                     value={spec.largo_manga ?? ""}
-                    options={sleeveLengths}
+                    options={tr(sleeveLengths)}
                     onChange={(value) => updateNullable("largo_manga", value)}
                   />
                   <Field
-                    label="Ajuste"
+                    label={t("field.fit")}
                     confidence={confidenceFor("ajuste")}
                     value={spec.ajuste ?? ""}
-                    options={fits}
+                    options={tr(fits)}
                     onChange={(value) => updateNullable("ajuste", value)}
                   />
                 </>
               ) : null}
               <Field
-                label="Punto base"
+                label={t("field.base_stitch")}
                 confidence={confidenceFor("punto_base")}
                 value={spec.punto_base ?? ""}
-                options={baseStitchOptions}
+                options={tr(baseStitchOptions)}
                 onChange={(value) => updateNullable("punto_base", value)}
               />
               {spec.categoria === "amigurumi" ? (
                 <Field
-                  label="Figura"
+                  label={t("field.figure")}
                   confidence={confidenceFor("figura")}
                   value={spec.figura ?? "generic"}
-                  options={toyFigures}
+                  options={tr(toyFigures)}
                   onChange={(value) => updateNullable("figura", value)}
                 />
               ) : null}
@@ -975,17 +892,14 @@ export default function HomePage() {
 
             {unsupportedCategory ? (
               <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink/75">
-                <h3 className="font-semibold">Categoría todavía no disponible</h3>
-                <p className="mt-1">
-                  Esta categoría no tiene una familia de patrón todavía. Elegí
-                  otra categoría compatible para continuar.
-                </p>
+                <h3 className="font-semibold">{t("unsupported.title")}</h3>
+                <p className="mt-1">{t("unsupported.body")}</p>
               </div>
             ) : null}
 
             {spec.incertidumbres.length > 0 || spec.no_visible.length > 0 ? (
               <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4">
-                <h3 className="font-semibold">Lo que la foto no alcanza a mostrar</h3>
+                <h3 className="font-semibold">{t("uncertain.title")}</h3>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-ink/75">
                   {[...spec.incertidumbres, ...spec.no_visible].map((item) => (
                     <li key={item}>{item}</li>
@@ -996,8 +910,7 @@ export default function HomePage() {
 
             {spec.texturas.length > 0 ? (
               <p className="mt-4 text-sm text-ink/70">
-                Texturas detectadas. En pulóveres se tejen como un panel en el cuerpo; quitá
-                las que no estén en la prenda.
+                {t("textures.hint")}
               </p>
             ) : null}
             {spec.texturas.length > 0 ? (
@@ -1007,11 +920,13 @@ export default function HomePage() {
                     key={`${texture.textura}-${texture.ubicacion ?? ""}-${index}`}
                     className="inline-flex items-center gap-2 rounded-full bg-sage/10 px-3 py-1 text-sm text-sage"
                   >
-                    {textureLabels[texture.textura] ?? texture.textura}
+                    {tx(`tex.${texture.textura}`, texture.textura)}
                     {texture.ubicacion ? ` · ${texture.ubicacion}` : ""}
                     <button
                       type="button"
-                      aria-label={`Quitar ${textureLabels[texture.textura] ?? texture.textura}`}
+                      aria-label={t("texture.remove", {
+                        name: tx(`tex.${texture.textura}`, texture.textura),
+                      })}
                       onClick={() =>
                         setSpec({
                           ...spec,
@@ -1034,7 +949,7 @@ export default function HomePage() {
               onClick={() => setStep("upload")}
               className="min-h-12 rounded-xl border border-ink/20 px-5 py-3 font-semibold"
             >
-              Cambiar foto
+              {t("confirm.change_photo")}
             </button>
             <button
               type="button"
@@ -1042,7 +957,7 @@ export default function HomePage() {
               disabled={unsupportedCategory}
               className="min-h-12 flex-1 rounded-xl bg-sage px-5 py-3 text-lg font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
-              Confirmar y elegir medidas
+              {t("confirm.next")}
             </button>
           </div>
         </section>
@@ -1051,18 +966,18 @@ export default function HomePage() {
       {step === "params" ? (
         <section className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
           <h2 className="text-2xl font-semibold">
-            {isGarment ? "Tu hilo y tu talle" : "Tu hilo y tus medidas"}
+            {isGarment ? t("params.title_garment") : t("params.title_other")}
           </h2>
           <p className="mt-2 text-ink/70">
             {isGarment
-              ? "Con esto calculamos los puntos. Si ya tejiste una muestra, ingresá tu densidad real: es la opción más precisa."
-              : "Este proyecto no se calcula por talle: usamos las medidas de abajo. Si ya tejiste una muestra, ingresá tu densidad real."}
+              ? t("params.lead_garment")
+              : t("params.lead_other")}
           </p>
 
           <div className="mt-6 grid gap-5 sm:grid-cols-2">
             {isGarment ? (
               <label className="block">
-                <span className="text-sm font-semibold">Talle</span>
+                <span className="text-sm font-semibold">{t("params.size")}</span>
                 <select
                   value={size}
                   onChange={(event) => setSize(event.target.value)}
@@ -1077,7 +992,7 @@ export default function HomePage() {
               </label>
             ) : null}
             <label className="block">
-              <span className="text-sm font-semibold">Grosor del hilo</span>
+              <span className="text-sm font-semibold">{t("params.yarn")}</span>
               <select
                 value={yarnWeight}
                 onChange={(event) => setYarnWeight(event.target.value)}
@@ -1085,13 +1000,13 @@ export default function HomePage() {
               >
                 {yarnWeights.map(([value, label]) => (
                   <option key={value} value={value}>
-                    {label}
+                    {t(label)}
                   </option>
                 ))}
               </select>
               {spec?.hilo_aparente?.grosor_estimado === yarnWeight ? (
                 <span className="mt-1 block text-xs text-ink/55">
-                  Estimado a partir de la foto. Cambialo por el hilo que vas a usar.
+                  {t("params.yarn_estimated")}
                 </span>
               ) : null}
             </label>
@@ -1099,11 +1014,11 @@ export default function HomePage() {
 
           <fieldset className="mt-6 rounded-2xl border border-ink/10 bg-paper/60 p-4">
             <legend className="px-1 text-sm font-semibold">
-              Muestra (opcional): puntos y vueltas en 10 cm
+              {t("gauge.legend")}
             </legend>
             <div className="mt-3 grid gap-4 sm:grid-cols-2">
               <label className="block">
-                <span className="text-sm text-ink/70">Puntos</span>
+                <span className="text-sm text-ink/70">{t("gauge.stitches")}</span>
                 <input
                   type="number"
                   min="1"
@@ -1111,12 +1026,12 @@ export default function HomePage() {
                   step="0.5"
                   value={gaugeStitches}
                   onChange={(event) => setGaugeStitches(event.target.value)}
-                  placeholder="Ej. 22"
+                  placeholder={t("common.eg", { value: 22 })}
                   className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
                 />
               </label>
               <label className="block">
-                <span className="text-sm text-ink/70">Vueltas</span>
+                <span className="text-sm text-ink/70">{t("gauge.rows")}</span>
                 <input
                   type="number"
                   min="1"
@@ -1124,18 +1039,18 @@ export default function HomePage() {
                   step="0.5"
                   value={gaugeRows}
                   onChange={(event) => setGaugeRows(event.target.value)}
-                  placeholder="Ej. 30"
+                  placeholder={t("common.eg", { value: 30 })}
                   className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
                 />
               </label>
             </div>
             <p className="mt-2 text-xs text-ink/55">
-              Si los dejás vacíos, usamos una densidad típica para el grosor elegido.
+              {t("gauge.hint")}
             </p>
             {spec && spec.texturas.length > 0 ? (
               <label className="mt-4 block">
                 <span className="text-sm text-ink/70">
-                  Ancho de una repetición del panel de textura en tu muestra (cm, opcional)
+                  {t("panel.label")}
                 </span>
                 <input
                   type="number"
@@ -1144,12 +1059,11 @@ export default function HomePage() {
                   step="0.1"
                   value={panelUnitCm}
                   onChange={(event) => setPanelUnitCm(event.target.value)}
-                  placeholder="Ej. 2.4"
+                  placeholder={t("common.eg", { value: numberFormat.format(2.4) })}
                   className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
                 />
                 <span className="mt-1 block text-xs text-ink/55">
-                  Las trenzas cierran el tejido. Si medís una repetición del gráfico en tu muestra
-                  lavada, compensamos el ancho para que la prenda mida lo de la tabla.
+                  {t("panel.hint")}
                 </span>
               </label>
             ) : null}
@@ -1158,19 +1072,19 @@ export default function HomePage() {
           {activeDimensionFields.length > 0 ? (
             <fieldset className="mt-6 rounded-2xl border border-ink/10 bg-paper/60 p-4">
               <legend className="px-1 text-sm font-semibold">
-                Medidas propias (opcional)
+                {t("dims.legend")}
               </legend>
               <p className="mt-1 text-xs text-ink/55">
                 {isGarment
-                  ? "Si no las completás, usamos las medidas típicas del talle y de la categoría."
+                  ? t("dims.hint_garment")
                   : spec?.motivo && spec.tecnica === "crochet"
-                    ? "Si no la completás, el motivo sale con las vueltas que se ven en la foto y mide lo que dé tu hilo."
-                    : "Si no las completás, usamos medidas típicas de la categoría."}
+                    ? t("dims.hint_motif")
+                    : t("dims.hint_other")}
               </p>
               <div className="mt-3 grid gap-4 sm:grid-cols-2">
                 {activeDimensionFields.map(([key, label, placeholder]) => (
                   <label key={key} className="block">
-                    <span className="text-sm text-ink/70">{label}</span>
+                    <span className="text-sm text-ink/70">{t(label)}</span>
                     <input
                       type="number"
                       min="0.5"
@@ -1183,7 +1097,7 @@ export default function HomePage() {
                           [key]: event.target.value,
                         }))
                       }
-                      placeholder={placeholder}
+                      placeholder={t("common.eg", { value: placeholder })}
                       className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
                     />
                   </label>
@@ -1194,7 +1108,7 @@ export default function HomePage() {
 
           {isGarment ? (
             <label className="mt-5 block">
-              <span className="text-sm font-semibold">Holgura extra (opcional)</span>
+              <span className="text-sm font-semibold">{t("ease.label")}</span>
               <input
                 type="number"
                 min="-10"
@@ -1202,11 +1116,11 @@ export default function HomePage() {
                 step="0.5"
                 value={ease}
                 onChange={(event) => setEase(event.target.value)}
-                placeholder="Ej. 8"
+                placeholder={t("common.eg", { value: 8 })}
                 className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
               />
               <span className="mt-1 block text-xs text-ink/55">
-                En centímetros, además de la holgura del ajuste elegido.
+                {t("ease.hint")}
               </span>
             </label>
           ) : null}
@@ -1217,7 +1131,7 @@ export default function HomePage() {
               onClick={() => setStep("confirm")}
               className="min-h-12 rounded-xl border border-ink/20 px-5 py-3 font-semibold"
             >
-              Volver
+              {t("common.back")}
             </button>
             <button
               type="button"
@@ -1225,7 +1139,7 @@ export default function HomePage() {
               disabled={busy}
               className="min-h-12 flex-1 rounded-xl bg-ink px-5 py-3 text-lg font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {busy ? "Calculando y verificando…" : "Generar patrón"}
+              {busy ? t("params.generating") : t("params.generate")}
             </button>
           </div>
         </section>
@@ -1236,24 +1150,21 @@ export default function HomePage() {
           <div className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
             <div className="flex flex-wrap items-center gap-3">
               <span className="rounded-full bg-sage/15 px-3 py-1 text-sm font-semibold text-sage">
-                Patrón verificado
+                {t("pattern.verified")}
               </span>
               <span className="text-sm text-ink/60">
-                {optionLabel(categories, spec?.categoria ?? null)}
-                {isGarment ? ` · Talle ${size}` : ""}
+                {t(optionKey(categories, spec?.categoria ?? null))}
+                {isGarment ? ` · ${t("pattern.size", { size })}` : ""}
               </span>
             </div>
-            <h2 className="mt-4 text-3xl font-bold">Tu patrón está listo</h2>
-            <p className="mt-2 text-ink/70">
-              El simulador revisó los conteos, las uniones y las medidas. Igual,
-              tejé una muestra antes de empezar.
-            </p>
+            <h2 className="mt-4 text-3xl font-bold">{t("pattern.ready")}</h2>
+            <p className="mt-2 text-ink/70">{t("pattern.lead")}</p>
 
             <fieldset className="mt-6 rounded-2xl border border-ink/10 bg-paper/60 p-4">
-              <legend className="px-1 text-sm font-semibold">Ajustá tu PDF</legend>
+              <legend className="px-1 text-sm font-semibold">{t("pdf.legend")}</legend>
               <div className="mt-2 grid gap-4 sm:grid-cols-2">
                 <label className="block">
-                  <span className="text-sm text-ink/70">Idioma del patrón</span>
+                  <span className="text-sm text-ink/70">{t("pdf.lang")}</span>
                   <select
                     value={patternLang}
                     onChange={(event) => void changeLanguage(event.target.value as Language)}
@@ -1269,7 +1180,7 @@ export default function HomePage() {
                 </label>
                 {isGarment ? (
                   <label className="block">
-                    <span className="text-sm text-ink/70">Talle resaltado</span>
+                    <span className="text-sm text-ink/70">{t("pdf.size")}</span>
                     <select
                       value={size}
                       onChange={(event) => adjust("talla", event.target.value)}
@@ -1285,7 +1196,7 @@ export default function HomePage() {
                   </label>
                 ) : null}
                 <label className="block">
-                  <span className="text-sm text-ink/70">Grosor del hilo</span>
+                  <span className="text-sm text-ink/70">{t("params.yarn")}</span>
                   <select
                     value={yarnWeight}
                     onChange={(event) => adjust("peso_hilo", event.target.value)}
@@ -1294,30 +1205,30 @@ export default function HomePage() {
                   >
                     {yarnWeights.map(([value, label]) => (
                       <option key={value} value={value}>
-                        {label}
+                        {t(label)}
                       </option>
                     ))}
                   </select>
                 </label>
                 <label className="block">
-                  <span className="text-sm text-ink/70">Diseñado por (opcional)</span>
+                  <span className="text-sm text-ink/70">{t("pdf.designer")}</span>
                   <input
                     value={designer}
                     maxLength={80}
                     onChange={(event) => setDesigner(event.target.value)}
-                    placeholder="Tu nombre o tu marca"
+                    placeholder={t("pdf.designer_placeholder")}
                     className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
                   />
                 </label>
                 <label className="block">
-                  <span className="text-sm text-ink/70">Papel</span>
+                  <span className="text-sm text-ink/70">{t("pdf.paper")}</span>
                   <select
                     value={paper}
                     onChange={(event) => setPaper(event.target.value as "A4" | "Letter")}
                     className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
                   >
                     <option value="A4">A4</option>
-                    <option value="Letter">Carta (EE. UU.)</option>
+                    <option value="Letter">{t("pdf.letter")}</option>
                   </select>
                 </label>
               </div>
@@ -1329,15 +1240,13 @@ export default function HomePage() {
                   className="mt-1 h-5 w-5"
                 />
                 <span className="text-sm">
-                  Incluir la explicación paso a paso con palabras simples
-                  <span className="block text-xs text-ink/55">
-                    La escribe la IA sin tocar ningún número. Tarda unos segundos más.
-                  </span>
+                  {t("pdf.guide")}
+                  <span className="block text-xs text-ink/55">{t("pdf.guide_hint")}</span>
                 </span>
               </label>
               {imageIds.length > 0 && previews.length === imageIds.length ? (
                 <div className="mt-4">
-                  <span className="text-sm text-ink/70">Fotos en la portada</span>
+                  <span className="text-sm text-ink/70">{t("pdf.cover")}</span>
                   <div className="mt-2 flex flex-wrap gap-3">
                     {previews.map((url, index) => {
                       const chosen = coverPhotos.includes(index);
@@ -1355,7 +1264,7 @@ export default function HomePage() {
                           }
                           className={`relative overflow-hidden rounded-xl border-2 ${chosen ? "border-clay" : "border-transparent opacity-40"}`}
                         >
-                          <img src={url} alt={`Foto ${index + 1}`} className="h-20 w-20 object-cover" />
+                          <img src={url} alt={t("pdf.photo_alt", { n: index + 1 })} className="h-20 w-20 object-cover" />
                         </button>
                       );
                     })}
@@ -1363,12 +1272,11 @@ export default function HomePage() {
                 </div>
               ) : null}
               <p className="mt-3 text-xs text-ink/55">
-                Talle e hilo se recalculan y se verifican al instante. Para la muestra o
-                medidas propias,{" "}
+                {t("pdf.recalc_before")}{" "}
                 <button type="button" onClick={() => setStep("params")} className="underline">
-                  volvé al paso anterior
+                  {t("pdf.recalc_link")}
                 </button>
-                .
+                {t("pdf.recalc_after")}
               </p>
             </fieldset>
 
@@ -1383,7 +1291,7 @@ export default function HomePage() {
                 })}
                 className="min-h-12 rounded-xl bg-clay px-5 py-3 text-center text-lg font-semibold text-white"
               >
-                Descargar PDF
+                {t("actions.download_pdf")}
               </a>
               <a
                 href={patternSvgUrl(result.id)}
@@ -1391,14 +1299,14 @@ export default function HomePage() {
                 rel="noreferrer"
                 className="min-h-12 rounded-xl border border-ink/20 px-5 py-3 text-center font-semibold"
               >
-                Ver esquema SVG
+                {t("actions.view_svg")}
               </a>
               <button
                 type="button"
                 onClick={saveProject}
                 className="min-h-12 rounded-xl border border-sage px-5 py-3 font-semibold text-sage"
               >
-                Guardar proyecto
+                {t("actions.save")}
               </button>
             </div>
             <div className="mt-3 flex flex-col gap-3 sm:flex-row">
@@ -1408,7 +1316,7 @@ export default function HomePage() {
                 disabled={busy}
                 className="min-h-12 rounded-xl border border-sage px-5 py-3 font-semibold text-sage disabled:opacity-40"
               >
-                Mejorar redacción
+                {t("actions.rewrite")}
               </button>
               <button
                 type="button"
@@ -1416,7 +1324,7 @@ export default function HomePage() {
                 disabled={busy || !imageId}
                 className="min-h-12 rounded-xl border border-ink/20 px-5 py-3 font-semibold disabled:opacity-40"
               >
-                Revisar con IA
+                {t("actions.critique")}
               </button>
             </div>
           </div>
@@ -1424,10 +1332,8 @@ export default function HomePage() {
           <div className="rounded-3xl border border-sage/30 bg-sage/5 p-5 shadow-sm sm:p-8">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <h3 className="text-xl font-semibold">Modo tejiendo</h3>
-                <p className="mt-1 text-sm text-ink/60">
-                  Una vuelta a la vez. El contador no cambia los números del patrón.
-                </p>
+                <h3 className="text-xl font-semibold">{t("knit.title")}</h3>
+                <p className="mt-1 text-sm text-ink/60">{t("knit.lead")}</p>
               </div>
               <button
                 type="button"
@@ -1435,7 +1341,7 @@ export default function HomePage() {
                 aria-pressed={wakeLock}
                 className="rounded-xl border border-sage px-4 py-2 text-sm font-semibold text-sage"
               >
-                {wakeLock ? "Pantalla encendida" : "Mantener pantalla encendida"}
+                {wakeLock ? t("knit.wake_on") : t("knit.wake_off")}
               </button>
             </div>
             {currentRow ? (
@@ -1445,21 +1351,22 @@ export default function HomePage() {
                 aria-live="polite"
               >
                 <p className="text-sm font-semibold text-sage">
-                  {currentRow.sectionLabel} · vuelta {currentSectionRowNumber} de{" "}
-                  {currentRow.sectionStepCount}
+                  {t("knit.row_of", {
+                    section: tx(currentRow.sectionKey),
+                    n: currentSectionRowNumber,
+                    total: currentRow.sectionStepCount,
+                  })}
                 </p>
                 <p className="mt-2 text-3xl font-bold">
-                  {currentRow.stitchCount} puntos
+                  {t("knit.stitches", { n: currentRow.stitchCount })}
                 </p>
                 <p className="mt-1 text-sm text-ink/60">
-                  Vuelta {currentRow.stepNumber} del patrón
-                  {currentRow.noteKey
-                    ? ` · ${noteLabels[currentRow.noteKey] ?? currentRow.noteKey}`
-                    : ""}
+                  {t("knit.pattern_row", { n: currentRow.stepNumber })}
+                  {currentRow.noteKey ? ` · ${tx(currentRow.noteKey)}` : ""}
                 </p>
               </div>
             ) : (
-              <p className="mt-4 text-sm text-ink/60">Sin vueltas para mostrar.</p>
+              <p className="mt-4 text-sm text-ink/60">{t("knit.empty")}</p>
             )}
             <div className="mt-4 flex flex-wrap gap-3">
               <button
@@ -1468,7 +1375,7 @@ export default function HomePage() {
                 disabled={rowIndex <= 0}
                 className="min-h-12 rounded-xl border border-ink/20 px-4 py-2 font-semibold disabled:opacity-40"
               >
-                Vuelta anterior
+                {t("knit.prev")}
               </button>
               <button
                 type="button"
@@ -1478,20 +1385,20 @@ export default function HomePage() {
                 disabled={rowIndex >= flatRows.length - 1}
                 className="min-h-12 rounded-xl bg-sage px-4 py-2 font-semibold text-white disabled:opacity-40"
               >
-                Siguiente vuelta
+                {t("knit.next")}
               </button>
               <button
                 type="button"
                 onClick={() => setRowIndex(0)}
                 className="min-h-12 rounded-xl border border-ink/20 px-4 py-2 font-semibold"
               >
-                Reiniciar contador
+                {t("knit.reset")}
               </button>
             </div>
           </div>
 
           <div className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
-            <h3 className="text-xl font-semibold">Medidas calculadas</h3>
+            <h3 className="text-xl font-semibold">{t("measures.title")}</h3>
             <dl className="mt-4 grid gap-3 sm:grid-cols-2">
               {result.pattern.measurements.map((measurement) => (
                 <div
@@ -1499,13 +1406,13 @@ export default function HomePage() {
                   className="rounded-xl bg-paper/70 px-4 py-3"
                 >
                   <dt className="text-sm text-ink/60">
-                    {measurementLabels[measurement.key] ?? measurement.key}
+                    {tx(`m.${measurement.key}`, measurement.key)}
                   </dt>
                   <dd className="text-lg font-semibold">
                     {formatCm(measurement.value_cm)}
                     {measurement.target_cm != null ? (
                       <span className="ml-2 text-sm font-normal text-ink/50">
-                        objetivo {formatCm(measurement.target_cm)}
+                        {t("measures.target", { value: formatCm(measurement.target_cm) })}
                       </span>
                     ) : null}
                   </dd>
@@ -1516,39 +1423,59 @@ export default function HomePage() {
 
           <div className="grid gap-6 sm:grid-cols-2">
             <div className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm">
-              <h3 className="text-xl font-semibold">Materiales</h3>
+              <h3 className="text-xl font-semibold">{t("materials.title")}</h3>
               <ul className="mt-3 space-y-2 text-sm text-ink/75">
-                <li>Hilo: {result.pattern.materials.yarn_weight}</li>
                 <li>
-                  Metraje estimado:{" "}
-                  {numberFormat.format(result.pattern.materials.meters)} m
+                  {t("materials.yarn", {
+                    value: tx(
+                      `yarn.${result.pattern.materials.yarn_weight}`,
+                      result.pattern.materials.yarn_weight,
+                    ),
+                  })}
+                </li>
+                <li>
+                  {t("materials.yardage", {
+                    value: numberFormat.format(result.pattern.materials.meters),
+                  })}
                   {result.pattern.materials.grams
                     ? ` (${numberFormat.format(result.pattern.materials.grams)} g)`
                     : ""}
                 </li>
                 {result.pattern.materials.needle_mm ? (
-                  <li>Agujas: {result.pattern.materials.needle_mm} mm</li>
+                  <li>
+                    {t("materials.needles", {
+                      value: numberFormat.format(result.pattern.materials.needle_mm),
+                    })}
+                  </li>
                 ) : null}
                 {result.pattern.materials.hook_mm ? (
-                  <li>Ganchillo: {result.pattern.materials.hook_mm} mm</li>
+                  <li>
+                    {t("materials.hook", {
+                      value: numberFormat.format(result.pattern.materials.hook_mm),
+                    })}
+                  </li>
                 ) : null}
                 {result.pattern.materials.notions.length > 0 ? (
-                  <li>Otros: {result.pattern.materials.notions.join(", ")}</li>
+                  <li>
+                    {t("materials.notions", {
+                      value: result.pattern.materials.notions.join(", "),
+                    })}
+                  </li>
                 ) : null}
               </ul>
             </div>
 
             <div className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm">
-              <h3 className="text-xl font-semibold">Advertencias</h3>
+              <h3 className="text-xl font-semibold">{t("warnings.title")}</h3>
               {result.pattern.warnings.length === 0 ? (
-                <p className="mt-3 text-sm text-ink/60">Sin advertencias.</p>
+                <p className="mt-3 text-sm text-ink/60">{t("warnings.none")}</p>
               ) : (
                 <ul className="mt-3 space-y-2 text-sm text-ink/75">
                   {result.pattern.warnings.map((warning) => (
                     <li key={warning.code} className="flex gap-2">
                       <span aria-hidden="true">•</span>
                       <span>
-                        {warning.message ?? warningLabels[warning.message_key] ?? warning.message_key}
+                        {warning.message ?? tx(warning.message_key, warning.message_key, warning.params)}
                       </span>
                     </li>
                   ))}
@@ -1558,10 +1485,8 @@ export default function HomePage() {
           </div>
 
           <div className="rounded-3xl border border-ink/10 bg-white/80 p-5 shadow-sm sm:p-8">
-            <h3 className="text-xl font-semibold">Instrucciones</h3>
-            <p className="mt-1 text-sm text-ink/60">
-              Texto generado desde los números ya verificados.
-            </p>
+            <h3 className="text-xl font-semibold">{t("instructions.title")}</h3>
+            <p className="mt-1 text-sm text-ink/60">{t("instructions.lead")}</p>
             <pre className="mt-4 max-h-[32rem] overflow-auto whitespace-pre-wrap rounded-2xl bg-paper/80 p-4 font-mono text-sm leading-relaxed">
               {patternText}
             </pre>
@@ -1569,10 +1494,8 @@ export default function HomePage() {
 
           {critique ? (
             <div className="rounded-3xl border border-sage/30 bg-sage/5 p-5 shadow-sm sm:p-8">
-              <h3 className="text-xl font-semibold">Revisión de la IA</h3>
-              <p className="mt-1 text-sm text-ink/60">
-                Observaciones informativas: no cambian el patrón.
-              </p>
+              <h3 className="text-xl font-semibold">{t("critique.title")}</h3>
+              <p className="mt-1 text-sm text-ink/60">{t("critique.lead")}</p>
               <ul className="mt-3 list-disc space-y-2 pl-5 text-sm text-ink/75">
                 {[...critique.observations, ...critique.risks].map((item) => (
                   <li key={item}>{item}</li>
@@ -1598,7 +1521,7 @@ export default function HomePage() {
             }}
             className="min-h-12 w-full rounded-xl border border-ink/20 px-5 py-3 font-semibold"
           >
-            Empezar con otra foto
+            {t("restart")}
           </button>
         </section>
       ) : null}
@@ -1620,6 +1543,7 @@ function Field({
   confidence: number | null;
   onChange: (value: string) => void;
 }) {
+  const { t } = useT();
   const uncertain = confidence != null && confidence < 0.6;
   return (
     <label className="block">
@@ -1640,7 +1564,7 @@ function Field({
         onChange={(event) => onChange(event.target.value)}
         className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
       >
-        <option value="">Sin definir</option>
+        <option value="">{t("field.undefined")}</option>
         {options.map(([key, option]) => (
           <option key={key} value={key}>
             {option}
