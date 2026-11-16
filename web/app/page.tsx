@@ -344,8 +344,7 @@ export default function HomePage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [hintCraft, setHintCraft] = useState("");
-  const [hintCategory, setHintCategory] = useState("");
+  const [description, setDescription] = useState("");
   const [size, setSize] = useState("M");
   const [yarnWeight, setYarnWeight] = useState("dk");
   const [gaugeStitches, setGaugeStitches] = useState("");
@@ -464,7 +463,7 @@ export default function HomePage() {
     setBusy(true);
     setError(null);
     try {
-      const data = await analyzeImage(files, { tejido: hintCraft, categoria: hintCategory });
+      const data = await analyzeImage(files, { descripcion: description.trim() });
       setAnalysis(data);
       setSpec(normalizeSpec(data.spec));
       // El grosor que se ve en la foto es mejor default que uno fijo.
@@ -768,43 +767,20 @@ export default function HomePage() {
             </div>
           ) : null}
 
-          <fieldset className="mt-6 rounded-2xl border border-ink/10 bg-paper/60 p-4">
-            <legend className="px-1 text-sm font-semibold">
-              Si ya lo sabés, contanos (opcional)
-            </legend>
-            <div className="mt-2 grid gap-4 sm:grid-cols-2">
-              <label className="block">
-                <span className="text-sm text-ink/70">¿Con qué está tejido?</span>
-                <select
-                  value={hintCraft}
-                  onChange={(event) => setHintCraft(event.target.value)}
-                  className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
-                >
-                  <option value="">No sé</option>
-                  <option value="knit">Agujas (dos agujas o circular)</option>
-                  <option value="crochet">Crochet (ganchillo)</option>
-                </select>
-              </label>
-              <label className="block">
-                <span className="text-sm text-ink/70">¿Qué es?</span>
-                <select
-                  value={hintCategory}
-                  onChange={(event) => setHintCategory(event.target.value)}
-                  className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
-                >
-                  <option value="">No sé</option>
-                  {categories.map(([value, label]) => (
-                    <option key={value} value={value}>
-                      {label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-            <p className="mt-2 text-xs text-ink/55">
-              Ayuda a interpretar la foto. Si lo dejás en “No sé”, lo deducimos de la foto.
-            </p>
-          </fieldset>
+          <label className="mt-6 block rounded-2xl border border-ink/10 bg-paper/60 p-4">
+            <span className="text-sm font-semibold">Contanos qué es, con tus palabras (opcional)</span>
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              maxLength={600}
+              rows={3}
+              placeholder="Por ejemplo: un osito tejido a dos agujas, de unos 15 cm, para regalar."
+              className="mt-2 w-full rounded-xl border border-ink/20 bg-white px-3 py-2 text-base"
+            />
+            <span className="mt-1 block text-xs text-ink/55">
+              Qué es, si es de agujas o crochet, para quién, el tamaño… Lo que sepas ayuda a interpretar la foto.
+            </span>
+          </label>
 
           <button
             type="button"

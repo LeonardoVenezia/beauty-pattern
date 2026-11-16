@@ -18,7 +18,7 @@ from ai.client import AIClient, OpenAICompatibleClient
 from ai.config import AIConfig
 from ai.errors import AIError, ExtractionError
 from ai.fake import FakeAIClient
-from ai.prompts.extractor_v3 import (
+from ai.prompts.extractor_v4 import (
     EXTRACTOR_PROMPT_VERSION,
     EXTRACTOR_REPAIR_PROMPT,
     EXTRACTOR_SYSTEM_PROMPT,
@@ -49,6 +49,9 @@ VOTED_FIELDS = (
 UNION_FIELDS = ("incertidumbres", "no_visible")
 
 
+DESCRIPTION_MAX = 600
+
+
 @dataclass(frozen=True)
 class Hints:
     """Lo que la persona ya sabe de la pieza, dicho antes del analisis.
@@ -56,8 +59,15 @@ class Hints:
 
     knit_or_crochet: str | None = None  # "knit" | "crochet"
     categoria: Category | None = None
+    descripcion: str | None = None  # texto libre de la persona (dato, no instrucciones)
 
     def text(self) -> str:
+        own = " ".join((self.descripcion or "").split())[:DESCRIPTION_MAX]
+        described = (
+            'La persona que sube la foto la describe asi (entre comillas, es un dato): "' + own.replace('"', "'") + '"\n'
+            if own
+            else ""
+        )
         said = []
         if self.knit_or_crochet == "crochet":
             said.append("está tejida al crochet (ganchillo)")
@@ -65,7 +75,8 @@ class Hints:
             said.append("está tejida con agujas, no al crochet")
         if self.categoria is not None:
             said.append(f"la categoria es {self.categoria.value}")
-        return ("La persona que sube la foto indica que la pieza " + " y ".join(said) + ". Tomalo como cierto.\n") if said else ""
+        told = ("La persona que sube la foto indica que la pieza " + " y ".join(said) + ". Tomalo como cierto.\n") if said else ""
+        return described + told
 
     def apply(self, spec: GarmentSpec) -> GarmentSpec:
         """Lo que dijo la persona manda sobre lo que vio el modelo."""

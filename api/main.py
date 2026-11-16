@@ -16,7 +16,7 @@ from pydantic import BaseModel, Field
 from ai.config import AIConfig
 from ai.critic import critique_pattern
 from ai.errors import AIConfigError, AIError
-from ai.extractor import MAX_PHOTOS, Hints, extract_garment
+from ai.extractor import DESCRIPTION_MAX, MAX_PHOTOS, Hints, extract_garment
 from ai.probe import CapabilityProbe
 from ai.writer import write_pattern_text
 from api.ratelimit import limiter_from_env
@@ -127,6 +127,7 @@ async def analyze(
     files: Annotated[list[UploadFile] | None, File()] = None,
     tejido: Annotated[Literal["knit", "crochet"] | None, Form()] = None,
     categoria: Annotated[Category | None, Form()] = None,
+    descripcion: Annotated[str | None, Form(max_length=DESCRIPTION_MAX)] = None,
 ) -> dict[str, object]:
     """Una o varias fotos de la misma pieza (campo `files`, hasta 4; `file`
     sigue aceptado). Cada foto se valida y se le mide la calidad."""
@@ -155,7 +156,7 @@ async def analyze(
     except AIConfigError as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     try:
-        result = await extract_garment(prepared_photos, config, hints=Hints(tejido, categoria))
+        result = await extract_garment(prepared_photos, config, hints=Hints(tejido, categoria, descripcion))
     except AIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     database = database_from_env()

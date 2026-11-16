@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from ai.prompts.extractor_v3 import EXTRACTOR_PROMPT_VERSION, extractor_response_format
+from ai.prompts.extractor_v4 import EXTRACTOR_PROMPT_VERSION, extractor_response_format
 from evals.run_eval import run
 
 

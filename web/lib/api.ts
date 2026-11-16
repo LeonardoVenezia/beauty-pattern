@@ -171,7 +171,7 @@ async function parseError(response: Response): Promise<string> {
 
 export async function analyzeImage(
   files: File[],
-  hints: { tejido?: string; categoria?: string } = {},
+  hints: { tejido?: string; categoria?: string; descripcion?: string } = {},
 ): Promise<AnalysisResponse> {
   const form = new FormData();
   for (const file of files) form.append("files", file);

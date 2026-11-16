@@ -1,6 +1,6 @@
 """Prompts versionados de la capa de IA."""
 
-from ai.prompts.extractor_v3 import (
+from ai.prompts.extractor_v4 import (
     EXTRACTOR_PROMPT_VERSION,
     EXTRACTOR_REPAIR_PROMPT,
     EXTRACTOR_SYSTEM_PROMPT,
