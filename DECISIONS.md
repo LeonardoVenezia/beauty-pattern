@@ -553,3 +553,43 @@ desparejos.
   pedir más datos antes; la mayoría se los salta y la foto ya los da.
 - **Defaults**: medida del motivo según las vueltas de la foto y el hilo;
   grosor preseleccionado con el estimado de la foto (commit 993a164).
+
+## D031 — Amigurumi en piezas (crochet y dos agujas) con plantillas de figura (2026-11-16)
+
+**Decisión.** El amigurumi se genera como un juguete en piezas, como los
+patrones publicados: cada pieza es una sección de la IR (cabeza, cuerpo,
+brazos y piernas "tejer 2", y según la figura orejas, hocico y cola), con su
+cierre, su relleno y un armado con números calculados (`Pattern.finishing`,
+nuevo; `Section.end_note_keys`, nuevo). La IA solo elige la plantilla
+(`GarmentSpec.figura`: `bear`, `bunny`, `cat`, `generic`); las proporciones
+están en `engine/garments/toy.py` y escalan con una sola medida, la altura
+del muñeco sentado. Sin figura: muñeco sin orejas y una nota.
+
+- **Geometría.** Cada pieza crece desde su extremo cerrado; su forma es una
+  lista de tramos (contorno objetivo, largo sobre el tejido; "lo más rápido"
+  o "lo que falte"). Los cambios se reparten parejo y van de a un sector
+  (6 pts en crochet, 8 en agujas) por vuelta o por hilera del derecho, así
+  cada vuelta se escribe "*n pb, aum; rep". El simulador verifica conteos y
+  el largo de cada pieza (tolerancia 20 %); el generador rechaza con
+  `too_small_for_yarn` una altura que no entra en el hilo.
+- **Dos agujas: en plano, no en redondo.** Alternativas: en redondo con
+  agujas de doble punta (sin costura) o en plano. Se eligió en plano y en
+  jersey, desde pocos puntos montados, con kfb/2pjd en las hileras del
+  derecho, fruncido de los extremos y costura con punto colchonero, porque
+  montar 6-8 puntos en redondo es lo más difícil para una principiante y es
+  la construcción clásica de juguetes de dos agujas. El texto escribe solo
+  las hileras del derecho ("Hileras pares: rev") como los patrones impresos.
+  Se quitó el ruteo que forzaba el amigurumi de agujas a crochet.
+- **ASUNCIONES** (docs/fuentes.md): proporciones de las plantillas (cabeza
+  0,52 x altura, cuerpo 0,38 de diámetro y 0,58 de costado, brazos 0,12 x
+  0,34, piernas 0,16 x 0,28, orejas, hocico y cola); altura por defecto por
+  grosor (10 a 40 cm); tejido apretado (pb CYC x 1,25, jersey CYC x 1,15,
+  con ganchillo/agujas más finos: DK 3 mm / 3,25 mm); 8 aumentos por hilera
+  del derecho en agujas; altura sentado = 0,9 x cabeza + 0,9 x costado del
+  cuerpo; ojos al 56 % de la cabeza separados 18 % del contorno, ojos de
+  seguridad de ~1 mm por cm de cabeza.
+- **Esquema.** `render/toy.py` dibuja el muñeco armado de frente con formas
+  simples a escala de la IR, rótulos en una columna con líneas guía y la
+  cota de altura afuera del dibujo (antes la cota "Ancho" pisaba el borde).
+- **Descartado:** formas sueltas (esfera, cilindro, cono con `spec.forma`):
+  no eran un patrón de juguete.
