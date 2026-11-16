@@ -21,6 +21,7 @@ from render.draw import (
     TEXT_SOFT,
     _f,
     caption,
+    clip_group,
     label,
     svg_document,
     title_block,
@@ -54,6 +55,27 @@ def _dim(x1: float, y1: float, x2: float, y2: float, text: str, *, dx: float = 0
     )
     parts.append(label(mx, my, text, size=12, weight="700", color=TEXT))
     return parts
+
+
+def _yoke_band_stripes(pattern: Pattern, depth_cm: float) -> list[tuple[float, float, str]]:
+    """(desde cm, hasta cm, color) de cada guarda de jacquard del canesu."""
+    yoke = next((s for s in pattern.sections if s.id == "yoke"), None)
+    if yoke is None or not yoke.steps:
+        return []
+    colors = pattern.materials.colors
+    rows = len(yoke.steps)
+    stripes: list[tuple[float, float, str]] = []
+    for index, step in enumerate(yoke.steps):
+        if step.note_key != "pattern.note.yoke_chart":
+            continue
+        contrast = ord(dict(step.note_params).get("fg", "B")) - 65
+        color = colors[contrast] if 0 <= contrast < len(colors) else STROKE
+        y0, y1 = depth_cm * index / rows, depth_cm * (index + 1) / rows
+        if stripes and stripes[-1][2] == color and abs(stripes[-1][1] - y0) < 1e-9:
+            stripes[-1] = (stripes[-1][0], y1, color)
+        else:
+            stripes.append((y0, y1, color))
+    return stripes
 
 
 def render_sweater_svg(pattern: Pattern, lang: str, *, values: bool) -> str:
@@ -126,6 +148,16 @@ def render_sweater_svg(pattern: Pattern, lang: str, *, values: bool) -> str:
         d += f" Q {_f(nb[0])} {_f(nb[1])} {_f(nr[0])} {_f(nr[1])} Z"
         neck_bottom = neck_depth
     parts = [f'<path d="{d}" fill="{FILL}" stroke="{STROKE}" stroke-width="1.8" stroke-linejoin="round"/>']
+    stripes = _yoke_band_stripes(pattern, yoke)
+    if stripes:  # guardas de jacquard del canesu, a su altura y en su color
+        x0, x1 = p(-total_w / 2, 0)[0], p(total_w / 2, 0)[0]
+        rects = [
+            f'<rect x="{_f(x0)}" y="{_f(p(0, y0)[1])}" width="{_f(x1 - x0)}" '
+            f'height="{_f(max(1.0, (y1 - y0) * scale))}" fill="{color}" fill-opacity="0.75"/>'
+            for y0, y1, color in stripes
+        ]
+        parts += clip_group("yoke-bands", f'<path d="{d}"/>', rects)
+        parts.append(f'<path d="{d}" fill="none" stroke="{STROKE}" stroke-width="1.8" stroke-linejoin="round"/>')
     if cardigan:  # abertura del frente con su tapa de botones
         top_y, hem_y = p(0, neck_bottom)[1], p(0, body_len)[1]
         band = 1.5 * scale

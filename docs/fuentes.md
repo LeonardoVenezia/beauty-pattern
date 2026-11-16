@@ -164,6 +164,20 @@ Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.
   mitad del escote de la espalda por delantero; el redondo usa los mismos
   7 cm y 20 % del escote redondo en piezas.
 
+## Guardas de jacquard del canesú (engine/colorwork.py)
+
+- Motivos geométricos originales definidos por reglas en código (damero,
+  puntitos, crucecitas, zigzag, rombos, abetos, estrellas de 8 puntas por
+  simetría); no se copió ningún gráfico publicado.
+- **ASUNCION:** flote máximo de 5 puntos (límite habitual recomendado para
+  jacquard en prendas); los tramos más largos se cortan con un punto del otro
+  color en el medio.
+- **ASUNCION:** disposición de las guardas (borde después del último aumento,
+  guarda principal en el tramo anterior, guardas chicas más arriba) y una
+  vuelta lisa antes y después de cada guarda.
+- **ASUNCION:** metraje del contraste = puntos de contraste + un tercio de
+  punto por cada punto de flote.
+
 ## Motivos radiales de crochet (engine/garments/motif.py)
 
 - Círculo plano: puntos por vuelta = 2π × radio / ancho de punto, la misma

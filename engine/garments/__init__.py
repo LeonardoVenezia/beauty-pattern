@@ -69,7 +69,7 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
     if (
         spec.colorwork is not None
         and spec.colorwork.tipo not in {ColorworkType.NONE, ColorworkType.STRIPES}
-        and "colorwork_not_charted" not in codes
+        and not {"colorwork_not_charted", "colorwork_charted"} & codes
     ):
         extra.append(Warning("colorwork_not_charted", "warning.colorwork_generic"))
     if not extra:

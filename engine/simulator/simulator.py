@@ -140,6 +140,24 @@ def _check_section(
                     step=step.number,
                 )
             )
+        # Vuelta de un grafico de colores: la repeticion tiene que entrar un
+        # numero entero de veces y la vuelta no puede dar forma.
+        repeat = dict(step.note_params).get("chart_repeat")
+        if repeat is not None and (
+            int(repeat) <= 0 or consumed % int(repeat) != 0 or produced != consumed
+        ):
+            issues.append(
+                Issue(
+                    code="chart_repeat",
+                    message=(
+                        f"seccion {section.id}, vuelta {step.number}: la repeticion "
+                        f"de {repeat} pts del grafico no entra justa en {consumed} pts "
+                        "o la vuelta cambia el conteo"
+                    ),
+                    section=section.id,
+                    step=step.number,
+                )
+            )
         total_increases += _step_increases(step)
         total_decreases += _step_decreases(step)
         available = computed_end

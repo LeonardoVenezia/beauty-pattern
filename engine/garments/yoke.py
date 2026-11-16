@@ -2,9 +2,11 @@
 
 El canesu es una pieza circular que crece desde el cuello hasta la separation
 de cuerpo y mangas. Los aumentos se reparten de forma uniforme; no hay lineas
-de raglan. La version actual no genera el grafico de jacquard: si la foto
-muestra colorwork, se conserva la paleta y se advierte que el motivo debe
-disenarse aparte.
+de raglan. Si la foto muestra jacquard (fair isle), el canesu lleva guardas
+horizontales con graficos de motivos geometricos originales
+(`engine.colorwork`), ubicadas en los tramos de vueltas lisas entre los
+aumentos: ningun aumento cae dentro de una guarda y la repeticion de cada
+grafico divide el conteo de su tramo en todos los talles.
 """
 
 from __future__ import annotations
@@ -12,8 +14,10 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from datetime import UTC, datetime
+from itertools import pairwise
 
 from engine import ENGINE_VERSION
+from engine.colorwork import MAX_FLOAT, ColorworkChart, palette, pick_motif
 from engine.distribution import (
     decrease_evenly,
     regular_rows,
@@ -42,7 +46,7 @@ from engine.ir import (
 )
 from engine.materials import default_needle_mm, estimate_yarn
 from engine.rounding import round_half_up
-from engine.sizes import BodySize, ease_for_fit, resolve_body_size
+from engine.sizes import BODY_SIZES, BodySize, ease_for_fit, resolve_body_size
 from engine.spec import (
     BodyLength,
     ColorworkType,
@@ -75,6 +79,14 @@ YOKE_EASE_CM = 4.0
 # los aumentos queda lugar para las guardas de jacquard.
 YOKE_INCREASE_ROUNDS = 6
 MEASUREMENT_TOLERANCE_CM = 2.5
+# Guardas de jacquard: tramo (contado desde el ultimo aumento hacia arriba) y
+# papel de cada guarda. La guarda de borde va despues del ultimo aumento, con
+# el conteo final fijo (siempre multiplo de 4), y solo usa repeticiones de 2.
+# ASUNCION: disposicion tipica de los canesus de jacquard (guarda principal
+# ancha abajo, guardas chicas arriba), sin fuente publicada.
+BAND_LAYOUT = ((0, "border"), (1, "main"), (3, "medium"), (5, "peerie"))
+# ASUNCION: un flote gasta aprox. un tercio del hilo de un punto tejido.
+FLOAT_YARN_FACTOR = 0.35
 
 
 @dataclass(frozen=True)
@@ -253,6 +265,126 @@ def plan_yoke(
     return plan, gauge, size
 
 
+def _increase_positions(plan: YokePlan) -> list[int]:
+    """Vueltas del canesu (1 = la primera despues de la preparacion) donde
+    cae cada vuelta de aumento, repartidas parejas."""
+    rounds = plan.increase_rounds
+    return [round(k * plan.yoke_rows / (rounds + 1)) or 1 for k in range(1, rounds + 1)]
+
+
+def _stretch_lengths(plan: YokePlan) -> list[int]:
+    """Vueltas lisas de cada tramo: antes del primer aumento, entre aumentos y
+    despues del ultimo (indice k = tramo despues del aumento k)."""
+    pos = _increase_positions(plan)
+    inner = [b - a - 1 for a, b in pairwise(pos)]
+    return [pos[0] - 1, *inner, plan.yoke_rows - pos[-1]]
+
+
+@dataclass(frozen=True)
+class YokeBand:
+    """Guarda de jacquard en el tramo `stretch` (despues del aumento numero
+    `stretch`). Empieza en la segunda vuelta lisa del tramo."""
+
+    stretch: int
+    chart: ColorworkChart
+
+
+def _is_fair_isle(spec: GarmentSpec) -> bool:
+    return spec.colorwork is not None and spec.colorwork.tipo is ColorworkType.FAIR_ISLE
+
+
+def yoke_colors(spec: GarmentSpec) -> tuple[str, ...]:
+    """Paleta del patron: la de la foto (si hay jacquard, completada hasta
+    tener fondo y contraste)."""
+    colors = tuple(spec.colorwork.paleta) if spec.colorwork else ()
+    return palette(colors) if _is_fair_isle(spec) else colors
+
+
+def yoke_bands(spec: GarmentSpec, params: PatternParams) -> tuple[YokeBand, ...]:
+    """Guardas de jacquard del canesu, iguales en todos los talles.
+
+    La altura de cada guarda sale del tramo mas corto entre este talle y los
+    de la tabla (asi el grafico es uno solo para el patron multitalle), menos
+    una vuelta lisa antes (despues del aumento) y al menos una despues.
+    """
+    if not _is_fair_isle(spec):
+        return ()
+    plan, _, _ = plan_yoke(spec, params)
+    rounds = plan.increase_rounds
+    lengths = [_stretch_lengths(plan)]
+    for size in BODY_SIZES:
+        try:
+            other, _, _ = plan_yoke(spec, params.model_copy(update={"talla": size, "medidas_cm": None}))
+        except ImpossibleProportionsError:
+            continue
+        if other.increase_rounds == rounds:
+            lengths.append(_stretch_lengths(other))
+    colors = yoke_colors(spec)
+    contrast = {
+        "border": 1,
+        "main": 1,
+        "medium": min(2, len(colors) - 1),
+        "peerie": min(3, len(colors) - 1),
+    }
+    chosen: list[tuple[int, str, str, tuple[str, ...]]] = []
+    for offset, role in BAND_LAYOUT:
+        stretch = rounds - offset
+        if stretch < 1:
+            continue
+        available = min(length[stretch] for length in lengths) - 2
+        picked = pick_motif(role, available)
+        if picked is not None:
+            chosen.append((stretch, role, *picked))
+    chosen.sort()
+    # El grafico 1 es el del panel de textura del cuerpo, si lo hay.
+    first = 2 if panel_for(spec, _division(plan)) is not None else 1
+    return tuple(
+        YokeBand(
+            stretch=stretch,
+            chart=ColorworkChart(
+                number=first + index, motif=motif, rows=rows, background=0, contrast=contrast[role]
+            ),
+        )
+        for index, (stretch, role, motif, rows) in enumerate(chosen)
+    )
+
+
+def _yoke_targets(plan: YokePlan, widths: dict[int, int]) -> list[int]:
+    """Conteo despues de cada vuelta de aumento.
+
+    Crecimiento geometrico (cada vuelta suma la misma proporcion, como un
+    circulo que se abre parejo), ajustado de forma determinista para que:
+    - el conteo de un tramo con guarda sea multiplo de la repeticion del
+      grafico (`widths[tramo]`);
+    - ninguna vuelta reparta exacto: cada vuelta tiene siempre dos grupos
+      ("(5 der, m1) 4 veces, (4 der, m1) 14 veces") en todos los talles y el
+      texto multitalle no se parte en "Solo talles ...".
+    """
+    rounds = plan.increase_rounds
+    ratio = (plan.yoke_sts / plan.neck_sts) ** (1 / rounds)
+
+    def uneven(before: int, after: int) -> bool:
+        added = after - before
+        return 0 < added <= before and before % added != 0
+
+    targets: list[int] = []
+    previous = plan.neck_sts
+    for k in range(1, rounds):
+        width = widths.get(k, 1)
+        base = round(plan.neck_sts * ratio**k / width)
+        last = k == rounds - 1
+        for step in range(40):
+            delta = (step + 1) // 2 if step % 2 else -(step // 2)
+            candidate = (base + delta) * width
+            if uneven(previous, candidate) and (not last or uneven(candidate, plan.yoke_sts)):
+                break
+        else:
+            raise RuntimeError(f"canesu: no hay conteo valido para el aumento {k}")
+        targets.append(candidate)
+        previous = candidate
+    return [*targets, plan.yoke_sts]
+
+
 def _neckband_section(plan: YokePlan, gauge: Gauge) -> Section:
     rib = get_stitch("rib_1x1")
     steps = tuple(
@@ -295,7 +427,7 @@ def _spread_increases(stitches: int, count: int) -> tuple[Item, ...]:
     )
 
 
-def _yoke_section(plan: YokePlan) -> Section:
+def _yoke_section(plan: YokePlan, bands: tuple[YokeBand, ...] = ()) -> Section:
     steps: list[Step] = [
         build_step(
             1,
@@ -304,37 +436,43 @@ def _yoke_section(plan: YokePlan) -> Section:
             note_key="pattern.note.yoke_circular_setup",
         )
     ]
-    # Crecimiento geometrico: cada vuelta de aumento suma la misma proporcion
-    # de puntos, como un circulo que se abre parejo.
-    rounds = plan.increase_rounds
-    ratio = (plan.yoke_sts / plan.neck_sts) ** (1 / rounds)
-    targets = [round(plan.neck_sts * ratio**k) for k in range(1, rounds)] + [plan.yoke_sts]
-    # Que ninguna vuelta reparta exacto: asi cada vuelta tiene siempre dos
-    # grupos ("(5 der, m1) 4 veces, (4 der, m1) 14 veces") en todos los talles y
-    # el texto multitalle no se parte en "Solo talles ...".
-    for _ in range(10):
-        steps_from = [plan.neck_sts, *targets[:-1]]
-        bad = [k for k, (a, b) in enumerate(zip(steps_from, targets, strict=True)) if b > a and a % (b - a) == 0]
-        if not bad:
-            break
-        k = bad[0]
-        if k < rounds - 1:
-            targets[k] += 1
-        elif k > 0:
-            targets[k - 1] -= 1
-        else:
-            break
-    positions = [round(k * plan.yoke_rows / (rounds + 1)) or 1 for k in range(1, rounds + 1)]
+    by_stretch = {band.stretch: band for band in bands}
+    targets = _yoke_targets(plan, {band.stretch: band.chart.width for band in bands})
+    positions = _increase_positions(plan)
+    done = 0
+    last_increase = 0
     current = plan.neck_sts
     for row in range(1, plan.yoke_rows + 1):
         number = row + 1
-        if positions and row == positions[0]:
-            positions.pop(0)
-            count = targets.pop(0) - current
+        if done < len(positions) and row == positions[done]:
+            count = targets[done] - current
             steps.append(
                 build_step(number, current, _spread_increases(current, count), note_key="pattern.note.increase_yoke")
             )
             current += count
+            done += 1
+            last_increase = row
+            continue
+        band = by_stretch.get(done)
+        offset = row - last_increase  # 1 = primera vuelta lisa del tramo
+        if band is not None and 2 <= offset <= band.chart.height + 1:
+            chart = band.chart
+            steps.append(
+                build_step(
+                    number,
+                    current,
+                    (Op(StitchKind.KNIT, times=current),),
+                    note_key="pattern.note.yoke_chart",
+                    note_params=(
+                        ("n", str(chart.number)),
+                        ("rows", str(chart.height)),
+                        ("chart_repeat", str(chart.width)),
+                        ("reps", str(current // chart.width)),
+                        ("bg", chr(65 + chart.background)),
+                        ("fg", chr(65 + chart.contrast)),
+                    ),
+                )
+            )
         else:
             steps.append(
                 build_step(number, current, (Op(StitchKind.KNIT, times=current),), note_key="pattern.note.plain")
@@ -365,14 +503,15 @@ def _yoke_section(plan: YokePlan) -> Section:
             "body": plan.body_sts,
             "sleeve": plan.sleeve_sts,
             "underarm": plan.underarm_sts,
+            "colorwork_bands": len(bands),
         },
     )
 
 
-def _body_section(plan: YokePlan, spec: GarmentSpec, params: PatternParams) -> Section:
+def _division(plan: YokePlan) -> tuple[tuple[str, int], ...]:
     # Orden fisico: espalda, manga, delantero, manga.
     half = plan.body_before // 2
-    division = (
+    return (
         ("knit", half),
         ("hold", plan.sleeve_before),
         ("cast_on", plan.underarm_sts),
@@ -380,6 +519,10 @@ def _body_section(plan: YokePlan, spec: GarmentSpec, params: PatternParams) -> S
         ("hold", plan.sleeve_before),
         ("cast_on", plan.underarm_sts),
     )
+
+
+def _body_section(plan: YokePlan, spec: GarmentSpec, params: PatternParams) -> Section:
+    division = _division(plan)
     first = build_step(
         1, plan.body_before, division_ops(division), note_key="pattern.note.separation"
     )
@@ -571,6 +714,7 @@ def _warnings(
     spec: GarmentSpec,
     params: PatternParams,
     base_id: str,
+    charted: bool = False,
 ) -> tuple[Warning, ...]:
     warnings: list[Warning] = [
         Warning("gauge_sample", "warning.gauge_sample", severity="info"),
@@ -578,7 +722,9 @@ def _warnings(
         Warning("assumption", "warning.assumption", severity="info"),
         Warning("no_short_rows", "warning.no_short_rows"),
     ]
-    if spec.colorwork and spec.colorwork.tipo is not ColorworkType.NONE:
+    if charted:
+        warnings.append(Warning("colorwork_charted", "warning.colorwork_charted", params={"max": MAX_FLOAT}, severity="info"))
+    elif spec.colorwork and spec.colorwork.tipo is not ColorworkType.NONE:
         warnings.append(
             Warning("colorwork_not_charted", "warning.colorwork_not_charted")
         )
@@ -659,14 +805,45 @@ def _measurements(
     )
 
 
+def _color_meters(
+    yoke: Section, bands: tuple[YokeBand, ...], gauge: Gauge, params: PatternParams, colors: int, total: float
+) -> tuple[float, ...]:
+    """Metros por color: A = el total de la prenda; cada contraste, lo que
+    usan sus puntos en las guardas mas lo que recorren sus flotes."""
+    if not bands:
+        return ()
+    charts = {str(band.chart.number): band.chart for band in bands}
+    stitch_cm2 = 1.0 / (gauge.stitches_per_cm * gauge.rows_per_cm)
+    area = [0.0] * colors
+    row_of: dict[str, int] = {}
+    for step in yoke.steps:
+        if step.note_key != "pattern.note.yoke_chart":
+            continue
+        number = dict(step.note_params)["n"]
+        chart = charts[number]
+        row = row_of.get(number, 0)
+        row_of[number] = row + 1
+        cells = chart.rows[row]
+        reps = step.consumes // chart.width
+        knit = cells.count("#") * reps
+        floats = (len(cells) - cells.count("#")) * reps if knit else 0
+        area[chart.contrast] += (knit + FLOAT_YARN_FACTOR * floats) * stitch_cm2
+    result = [total]
+    for value in area[1:]:
+        meters, _ = estimate_yarn(value, params.peso_hilo)
+        result.append(max(10.0, meters) if value else 0.0)
+    return tuple(result)
+
+
 def generate_yoke(spec: GarmentSpec, params: PatternParams) -> Pattern:
     plan, gauge, size = plan_yoke(spec, params)
+    bands = yoke_bands(spec, params)
     base_id = catalog_id_for_name(spec.punto_base or StitchPatternName.STOCKINETTE)
     if base_id == "other":
         base_id = "stockinette"
     sections = (
         _neckband_section(plan, gauge),
-        _yoke_section(plan),
+        _yoke_section(plan, bands),
         _body_section(plan, spec, params),
         _hem_section(plan),
         _sleeve_section("left", plan),
@@ -691,7 +868,8 @@ def generate_yoke(spec: GarmentSpec, params: PatternParams) -> Pattern:
         "notion.row_counter",
         "notion.tape_measure",
     )
-    colors = tuple(spec.colorwork.paleta) if spec.colorwork else ()
+    colors = yoke_colors(spec)
+    color_meters = _color_meters(sections[1], bands, gauge, params, len(colors), meters)
     digest = hashlib.sha256(
         (spec.model_dump_json() + params.model_dump_json()).encode("utf-8")
     ).hexdigest()[:12]
@@ -711,6 +889,7 @@ def generate_yoke(spec: GarmentSpec, params: PatternParams) -> Pattern:
         grams=grams,
         notions=notions,
         colors=colors,
+        color_meters=color_meters,
     )
     joins = (
         JoinCheck(
@@ -749,6 +928,6 @@ def generate_yoke(spec: GarmentSpec, params: PatternParams) -> Pattern:
         sections=sections,
         measurements=_measurements(plan, gauge, size),
         materials=materials,
-        warnings=_warnings(spec, params, base_id),
+        warnings=_warnings(spec, params, base_id, charted=bool(bands)),
         joins=joins,
     )

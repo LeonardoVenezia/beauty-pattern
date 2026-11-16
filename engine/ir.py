@@ -229,6 +229,8 @@ class Materials:
     grams: float | None = None
     notions: tuple[str, ...] = ()
     colors: tuple[str, ...] = ()
+    # Metros por color, en el orden de `colors` (vacio si no se estima).
+    color_meters: tuple[float, ...] = ()
 
 
 @dataclass(frozen=True)

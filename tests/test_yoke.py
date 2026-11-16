@@ -106,7 +106,7 @@ def test_yoke_sleeveless_is_rejected() -> None:
         )
 
 
-def test_yoke_colorwork_is_declared_not_charted() -> None:
+def test_yoke_fair_isle_is_charted() -> None:
     pattern = generate(
         yoke_spec(
             colorwork=Colorwork(
@@ -117,8 +117,19 @@ def test_yoke_colorwork_is_declared_not_charted() -> None:
         PatternParams(talla="M"),
     )
     assert simulate(pattern).ok
-    assert any(w.code == "colorwork_not_charted" for w in pattern.warnings)
+    codes = {w.code for w in pattern.warnings}
+    assert "colorwork_charted" in codes
+    assert "colorwork_not_charted" not in codes
     assert pattern.materials.colors == ("#ffffff", "#222222")
+
+
+def test_yoke_intarsia_is_declared_not_charted() -> None:
+    pattern = generate(
+        yoke_spec(colorwork=Colorwork(tipo=ColorworkType.INTARSIA, paleta=["#ffffff", "#222222"])),
+        PatternParams(talla="M"),
+    )
+    assert simulate(pattern).ok
+    assert any(w.code == "colorwork_not_charted" for w in pattern.warnings)
 
 
 def test_yoke_text_svg_and_pdf() -> None:

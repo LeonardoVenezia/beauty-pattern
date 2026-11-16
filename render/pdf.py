@@ -46,6 +46,7 @@ from engine.i18n import t
 from engine.ir import Pattern
 from engine.multisize import NOT_APPLICABLE
 from render.chart import render_stitch_chart_svg
+from render.colorwork import render_colorwork_chart_svg
 from render.schematic import render_schematic_svg
 
 Paper = Literal["A4", "Letter"]
@@ -370,6 +371,14 @@ def render_document_pdf(
             chart = document.charts[int(block.text)]
             svg = render_stitch_chart_svg(chart, repeats=2, lang=lang, in_the_round=True)
             drawing = _svg_drawing(svg, width * 0.8, doc.height * 0.5)
+            if drawing is not None:
+                heading = story.pop() if story and isinstance(story[-1], Paragraph) and story[-1].style.name == "H1" else None
+                story.append(KeepTogether([heading, drawing] if heading is not None else [drawing]))
+        elif kind is BlockKind.COLORWORK_CHART:
+            flush()
+            colorwork = document.colorwork_charts[int(block.text)]
+            svg = render_colorwork_chart_svg(colorwork, document.palette, lang=lang)
+            drawing = _svg_drawing(svg, width * 0.85, doc.height * 0.45)
             if drawing is not None:
                 heading = story.pop() if story and isinstance(story[-1], Paragraph) and story[-1].style.name == "H1" else None
                 story.append(KeepTogether([heading, drawing] if heading is not None else [drawing]))
