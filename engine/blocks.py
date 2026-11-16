@@ -59,6 +59,7 @@ class BlockKind(Enum):
     TABLE = auto()  # rows[0] es el encabezado
     SCHEMATIC = auto()  # lugar del esquema; el render inserta el dibujo
     CHART = auto()  # grafico de puntos; text = indice en PatternDocument.charts
+    COLORWORK_CHART = auto()  # jacquard; text = indice en PatternDocument.colorwork_charts
     PAGE_BREAK = auto()
 
 
@@ -194,6 +195,10 @@ def _raglan_marker_body(parts: tuple[bool, ...], lang: str) -> str:
 
 
 def _step_body(step: Step, lang: str, *, markers: bool = False) -> str:
+    if step.note_key == "pattern.note.yoke_chart":
+        params = dict(step.note_params)
+        key = "pattern.chart_round_single" if params.get("rows") == "1" else "pattern.chart_rounds"
+        return t(key, lang, **params)
     if markers:
         parts = _raglan_parts(step)
         if parts is not None:

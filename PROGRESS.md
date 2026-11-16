@@ -197,8 +197,10 @@ Completado con limitaciones declaradas; tests, `ruff`, `mypy` y suite completa
 - [x] Tests nuevos: combinaciones de talle/hilo/ajuste, variantes de largo y
   escote, patrones golden, advertencias, texto/SVG/PDF y casos imposibles.
 
-**Limitaciones honestas:** el canesú no genera el gráfico de jacquard; conserva
-la paleta y emite `warning.colorwork_not_charted`. El cardigan no incluye
+**Limitaciones honestas:** el canesú genera guardas de jacquard (fair isle)
+con motivos geométricos originales (ver `DECISIONS.md`, "Guardas de jacquard
+en el canesú circular"); intarsia y mosaico siguen sin gráfico
+(`warning.colorwork_not_charted`). El cardigan no incluye
 ojales ni forma de escote; el chaleco no lleva bandas ni forma de sisa. La
 manga encajada usa una copa simplificada (`warning.set_in_simplified`) y no
 modela hileras cortas. Las piezas planas se cosen y no son prendas sin

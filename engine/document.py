@@ -22,6 +22,7 @@ from engine.blocks import (
     glossary_blocks,
     instruction_blocks,
 )
+from engine.colorwork import ColorworkChart, color_name
 from engine.garments.panels import build_panel, panel_for, texture_motif
 from engine.i18n import has_key, t
 from engine.ir import Pattern
@@ -78,6 +79,9 @@ class PatternDocument:
     date: str
     language: str
     charts: tuple[StitchPattern, ...] = ()
+    # Graficos de jacquard (BlockKind.COLORWORK_CHART) y su paleta (#rrggbb).
+    colorwork_charts: tuple[ColorworkChart, ...] = ()
+    palette: tuple[str, ...] = ()
 
 
 def _kinds(patterns: list[Pattern]) -> set[StitchKind]:
@@ -250,8 +254,20 @@ def build_document(
         notions = ", ".join(t(key, language) for key in base.materials.notions)
         line(f"{t('pattern.notions', language)}: {notions}")
     if base.materials.colors:
-        colors = ", ".join(f"{chr(65 + i)}: {c}" for i, c in enumerate(base.materials.colors))
+        colors = ", ".join(
+            f"{chr(65 + i)}: {color_name(c, language)} ({c})" if c.startswith("#") else f"{chr(65 + i)}: {c}"
+            for i, c in enumerate(base.materials.colors)
+        )
         line(t("doc.colors", language, colors=colors))
+    if base.materials.color_meters and all(
+        len(p.materials.color_meters) == len(base.materials.color_meters) for p in patterns
+    ):
+        per_color = [
+            f"{chr(65 + i)} {_merged([f'{p.materials.color_meters[i]:g}' for p in patterns])} m"
+            for i in range(len(base.materials.color_meters))
+            if base.materials.color_meters[i]
+        ]
+        line(t("doc.color_meters", language, colors="; ".join(per_color)))
 
     # 6. Muestra.
     heading("doc.gauge")
@@ -337,6 +353,27 @@ def build_document(
                     rows=panel.rows,
                 )
             )
+    colorwork: list[ColorworkChart] = []
+    if base.meta.family == "yoke":
+        from engine.garments.yoke import yoke_bands
+
+        colorwork = [band.chart for band in yoke_bands(base.spec, base.params)]
+    if colorwork and not charts:
+        heading("doc.charts")
+    for index, chart in enumerate(colorwork):
+        blocks.append(Block(BlockKind.COLORWORK_CHART, str(index)))
+        line(
+            t(
+                "doc.colorwork_chart_note",
+                language,
+                n=chart.number,
+                name=t(f"colorwork.motif.{chart.motif}", language),
+                w=chart.width,
+                rows=chart.height,
+                bg=chr(65 + chart.background),
+                fg=chr(65 + chart.contrast),
+            )
+        )
 
     # 12. Esquema.
     heading("pattern.schematic")
@@ -373,6 +410,8 @@ def build_document(
         blocks=tuple(blocks),
         schematic=patterns[chosen],
         charts=tuple(charts),
+        colorwork_charts=tuple(colorwork),
+        palette=base.materials.colors,
         version=ENGINE_VERSION,
         date=when,
         language=language,

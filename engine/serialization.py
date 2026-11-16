@@ -104,6 +104,7 @@ def pattern_to_dict(pattern: Pattern) -> dict[str, Any]:
             "grams": pattern.materials.grams,
             "notions": list(pattern.materials.notions),
             "colors": list(pattern.materials.colors),
+            "color_meters": list(pattern.materials.color_meters),
         },
         "warnings": [
             {
@@ -211,6 +212,7 @@ def pattern_from_dict(data: dict[str, Any]) -> Pattern:
             grams=materials.get("grams"),
             notions=tuple(materials.get("notions", ())),
             colors=tuple(materials.get("colors", ())),
+            color_meters=tuple(float(m) for m in materials.get("color_meters", ())),
         ),
         warnings=tuple(
             Warning(

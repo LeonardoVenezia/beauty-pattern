@@ -553,3 +553,45 @@ desparejos.
   pedir más datos antes; la mayoría se los salta y la foto ya los da.
 - **Defaults**: medida del motivo según las vueltas de la foto y el hilo;
   grosor preseleccionado con el estimado de la foto (commit 993a164).
+
+## Guardas de jacquard en el canesú circular (2026-11-16)
+
+- **Decisión:** si la foto muestra fair isle, el canesú circular
+  (`engine/garments/yoke.py`) lleva guardas horizontales con un gráfico cada
+  una, en lugar de advertir "no incluye un gráfico de jacquard".
+- **Motivos** (`engine/colorwork.py`): biblioteca chica de motivos
+  geométricos ORIGINALES generados por reglas (damero, puntitos, crucecitas,
+  zigzag, rombos, abetos, estrellas por simetría octogonal). Un "cortador de
+  flotes" garantiza flotes de 5 pts como máximo (vuelta circular); hay test
+  para todos los motivos y alturas. La IA no elige celdas ni números: solo la
+  paleta (ya existente). El primer color es el fondo (**ASUNCIÓN**: la paleta
+  viene ordenada por dominancia); si faltan colores se completan con unos por
+  defecto.
+- **Ubicación:** guardas en los tramos de vueltas lisas entre aumentos, con
+  una vuelta lisa antes y al menos una después: borde (damero, repetición de
+  2) después del último aumento, porque el conteo final es fijo y siempre
+  múltiplo de 4; guarda principal en el tramo anterior; mediana y chica más
+  arriba (tramos 6, 5, 3 y 1 con 6 aumentos). La altura sale del tramo más
+  corto entre el talle pedido y todos los de la tabla, así el gráfico es el
+  mismo en el patrón multitalle (test).
+- **Conteos:** los conteos intermedios del crecimiento geométrico se ajustan
+  al múltiplo más cercano de la repetición de la guarda de su tramo, sin
+  repartos exactos (el texto multitalle sigue sin "Solo talles"). El
+  conteo final no cambia. El simulador verifica en cada vuelta de gráfico que
+  la repetición entre justa y que la vuelta no cambie el conteo
+  (`chart_repeat`).
+- **Documento:** texto "tejer las vueltas 1 a N del gráfico K, repitiendo R
+  veces los W pts del gráfico"; gráfico SVG (`render/colorwork.py`) con
+  cuadros de color, símbolo por color para B/N, vueltas a la derecha, llave
+  de repetición y referencias con nombre de color aproximado; versión en
+  texto con letras. Si el cuerpo tiene panel de textura, ese es el gráfico 1
+  y los de jacquard siguen. El esquema pinta las guardas en el canesú.
+- **Metraje:** `Materials.color_meters` (A = total; contrastes = puntos de
+  contraste + 1/3 por punto de flote, **ASUNCIÓN**).
+- **Alternativas descartadas:** un gráfico único de todo el canesú con las
+  disminuciones dentro de las guardas (como varios patrones publicados): más
+  fiel, pero mezcla forma y color y rompe el texto multitalle; dejar que la
+  IA dibuje el motivo: viola "la IA interpreta, el código calcula".
+- **Límites:** no reproduce el dibujo de la foto; las guardas son de 2
+  colores por vuelta; en hilos muy gruesos solo entran dameros; intarsia y
+  mosaico siguen sin gráfico; la IA no elige "estilo" de motivo todavía.

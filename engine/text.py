@@ -8,6 +8,7 @@ comerciales; el nivel ya no cambia el vocabulario.
 from __future__ import annotations
 
 from engine.blocks import Block, BlockKind, build_pattern_blocks
+from engine.colorwork import chart_text_lines
 from engine.document import PatternDocument
 from engine.ir import Pattern
 
@@ -47,6 +48,8 @@ def render_document_text(document: PatternDocument) -> str:
             lines.extend(" | ".join(row) for row in block.rows)
         elif block.kind is BlockKind.SCHEMATIC or block.kind is BlockKind.PAGE_BREAK:
             continue
+        elif block.kind is BlockKind.COLORWORK_CHART:
+            lines.extend(chart_text_lines(document.colorwork_charts[int(block.text)], document.language))
         else:
             lines.append(render_blocks_text((block,)))
     return "\n".join(lines)
