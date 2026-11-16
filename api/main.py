@@ -7,7 +7,7 @@ from dataclasses import asdict
 from datetime import UTC, datetime
 from typing import Annotated, Literal
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Query, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import Response
@@ -28,10 +28,10 @@ from engine.i18n import t
 from engine.ir import Pattern
 from engine.serialization import pattern_from_dict, pattern_to_dict
 from engine.simulator import simulate
-from engine.spec import Category, GarmentSpec, PatternParams
+from engine.spec import Category, GarmentSpec, Language, PatternParams
 from engine.stitches.catalog import STITCH_PATTERNS
 from engine.text import render_pattern_text
-from render.pdf import GuideText, render_pattern_pdf
+from render.pdf import DESIGNER_MAX, GuideText, render_pattern_pdf
 from render.schematic import render_schematic_svg
 from vision.preprocess import ImageValidationError, PreparedImage, prepare_image
 
@@ -72,13 +72,13 @@ class PatternRequest(BaseModel):
 
 
 class RewriteRequest(BaseModel):
-    lang: Literal["es", "en"] = "es"
+    lang: Language = "es"
     level: Literal["principiante", "experta"] | None = None
 
 
 class CritiqueRequest(BaseModel):
     image_id: str
-    lang: Literal["es", "en"] = "es"
+    lang: Language = "es"
 
 
 def _max_upload_bytes() -> int:
@@ -152,8 +152,6 @@ async def analyze(
         except ImageValidationError as exc:
             raise HTTPException(status_code=422, detail=f"foto {index}: {exc}") from exc
         datas.append(data)
-    data = datas[0]
-    prepared = prepared_photos[0]
     try:
         config = AIConfig.from_env()
     except AIConfigError as exc:
@@ -163,11 +161,13 @@ async def analyze(
     except AIError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
     database = database_from_env()
-    image_id = database.save_image(
-        data, prepared.mime_type, ttl_hours=_image_ttl_hours()
-    )
+    image_ids = [
+        database.save_image(raw, photo.mime_type, ttl_hours=_image_ttl_hours())
+        for raw, photo in zip(datas, prepared_photos, strict=True)
+    ]
     return {
-        "image_id": image_id,
+        "image_id": image_ids[0],
+        "image_ids": image_ids,
         "spec": result.spec.model_dump(mode="json"),
         "confidence": result.confidence,
         "disagreements": {
@@ -207,6 +207,8 @@ async def create_pattern(
                 "issues": [asdict(issue) for issue in report.issues],
             },
         )
+    if pattern.params.idioma not in {"es", "en"}:
+        pattern = _in_language(pattern, "es")  # se guarda en es; los idiomas salen al pedirlos
     text_es = render_pattern_text(pattern, lang="es")
     text_en = render_pattern_text(pattern, lang="en")
     database = database_from_env()
@@ -219,34 +221,66 @@ async def create_pattern(
     return {
         "id": pattern_id,
         "pattern": pattern_to_dict(pattern),
-        "text": {"es": text_es, "en": text_en},
+        "text": {"es": text_es, "en": text_en, **_texts(pattern, payload.params.idioma)},
         "simulation": {"ok": True, "issues": []},
     }
 
 
+def _in_language(pattern: Pattern, lang: Language) -> Pattern:
+    """El mismo patron en otro idioma. Los numeros no dependen del idioma,
+    pero algunos textos se fijan al generar, asi que se regenera y se verifica."""
+    if pattern.params.idioma == lang:
+        return pattern
+    other = generate(pattern.spec, pattern.params.model_copy(update={"idioma": lang}))
+    if not simulate(other).ok:
+        raise HTTPException(status_code=422, detail="simulation_failed")
+    return other
+
+
+def _texts(pattern: Pattern, lang: Language) -> dict[str, str]:
+    return {} if lang in {"es", "en"} else {lang: render_pattern_text(_in_language(pattern, lang), lang=lang)}
+
+
 @app.get("/pattern/{pattern_id}")
-async def get_pattern(pattern_id: str) -> dict[str, object]:
+async def get_pattern(pattern_id: str, lang: Language | None = None) -> dict[str, object]:
     record = database_from_env().get_pattern(pattern_id)
     if record is None:
         raise HTTPException(status_code=404, detail="patron no encontrado")
+    extra = _texts(pattern_from_dict(record.pattern), lang) if lang else {}
     return {
         "id": record.id,
         "pattern": record.pattern,
-        "text": {"es": record.text_es, "en": record.text_en},
+        "text": {"es": record.text_es, "en": record.text_en, **extra},
         "created_at": record.created_at,
     }
 
 
-async def _guide(pattern: Pattern) -> GuideText | None:
-    """Segunda pasada de IA: la voz humana del patron, sin numeros. Si no hay
-    IA configurada o no cumple las reglas, el PDF sale igual sin guia."""
+# ponytail: cache en memoria por (patron, idioma), se pierde al reiniciar;
+# pasarla a la base si el costo de IA lo pide.
+_GUIDES: dict[tuple[str, str], GuideText | None] = {}
+
+
+async def _guide(pattern_id: str, pattern: Pattern) -> GuideText | None:
+    """Segunda pasada de IA: la voz humana del patron, sin numeros. Se pide
+    una sola vez por idioma (solo el que se descarga). Si no hay IA
+    configurada o no cumple las reglas, el PDF sale igual sin guia."""
+    lang = pattern.params.idioma
+    key = (pattern_id, lang)
+    if key not in _GUIDES:
+        if len(_GUIDES) > 512:
+            _GUIDES.clear()
+        _GUIDES[key] = await _write_guide(pattern)
+    return _GUIDES[key]
+
+
+async def _write_guide(pattern: Pattern) -> GuideText | None:
+    lang = pattern.params.idioma
     try:
         notes = await write_guide(pattern, config=AIConfig.from_env())
     except AIConfigError:
         return None
     if notes is None:
         return None
-    lang = pattern.params.idioma
     return GuideText(
         intro=notes.intro,
         sections={t(s.name_key, lang): notes.secciones[s.id] for s in pattern.sections if s.id in notes.secciones},
@@ -259,20 +293,29 @@ async def get_pattern_pdf(
     pattern_id: str,
     papel: Literal["A4", "Letter"] = "A4",
     imprimir: bool = False,
-    foto: str | None = None,
+    foto: Annotated[list[str] | None, Query(max_length=MAX_PHOTOS)] = None,
     guia: bool = True,
+    lang: Language | None = None,
+    disenio: Annotated[str, Query(max_length=DESIGNER_MAX)] = "",
 ) -> Response:
+    """`foto` se repite (hasta 4, en el orden de la portada); `disenio` es el
+    nombre que la persona quiere como creadora del patron (opcional)."""
     database = database_from_env()
     record = database.get_pattern(pattern_id)
     if record is None:
         raise HTTPException(status_code=404, detail="patron no encontrado")
-    pattern = pattern_from_dict(record.pattern)
+    pattern = _in_language(pattern_from_dict(record.pattern), lang or "es")
     # ponytail: la foto vive lo que dura la imagen guardada (IMAGE_TTL_HOURS);
     # despues el PDF sale sin foto. Guardarla con el patron si hace falta mas.
-    image = database.get_image(foto) if foto else None
-    photo = prepare_image(image[0]).main if image else None  # sin EXIF y achicada
+    images = [image for image in (database.get_image(i) for i in foto or []) if image is not None]
+    photos = tuple(prepare_image(image[0]).main for image in images)  # sin EXIF y achicadas
     pdf = render_pattern_pdf(
-        pattern, paper=papel, print_mode=imprimir, photo=photo, guide=await _guide(pattern) if guia else None
+        pattern,
+        paper=papel,
+        print_mode=imprimir,
+        photos=photos,
+        guide=await _guide(pattern_id, pattern) if guia else None,
+        designer=disenio,
     )
     return Response(
         content=pdf,

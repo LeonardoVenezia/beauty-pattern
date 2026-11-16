@@ -58,6 +58,9 @@ _PANEL = colors.HexColor("#f6f0e8")
 _ACCENT = colors.HexColor("#9c4a2f")
 
 
+DESIGNER_MAX = 80
+
+
 def _styles(print_mode: bool) -> dict[str, ParagraphStyle]:
     def style(name: str, **kw: Any) -> ParagraphStyle:
         base: dict[str, Any] = {"fontName": "Helvetica", "fontSize": 10.5, "leading": 15, "textColor": _INK}
@@ -201,7 +204,7 @@ class _Doc(BaseDocTemplate):  # type: ignore[misc]
             self.canv.addOutlineEntry(text, key, level=level, closed=level == 1)
 
 
-def _numbered_canvas(document: PatternDocument) -> type[Canvas]:
+def _numbered_canvas(document: PatternDocument, designer: str = "") -> type[Canvas]:
     lang = document.language
 
     class NumberedCanvas(Canvas):  # type: ignore[misc]
@@ -235,7 +238,8 @@ def _numbered_canvas(document: PatternDocument) -> type[Canvas]:
             self.setFillColor(_SOFT)
             self.drawString(18 * mm, height - 11 * mm, f"{document.title} · Tejedora")
             self.drawRightString(width - 18 * mm, height - 11 * mm, document.subtitle)
-            self.drawString(18 * mm, 9 * mm, t("doc.copyright", lang, year=document.date[:4]))
+            if designer:
+                self.drawString(18 * mm, 9 * mm, t("doc.designer", lang, name=designer))
             self.drawRightString(
                 width - 18 * mm, 9 * mm, t("doc.page", lang, n=self._pageNumber, total=total)
             )
@@ -245,7 +249,7 @@ def _numbered_canvas(document: PatternDocument) -> type[Canvas]:
 
 
 def _photo(data: bytes, max_w: float, max_h: float) -> Flowable | None:
-    """La foto de la persona en la portada, como en los patrones impresos."""
+    """Una foto de la persona en la portada, como en los patrones impresos."""
     try:
         image = Image(BytesIO(data))
     except Exception:  # una foto ilegible no impide el PDF
@@ -270,10 +274,12 @@ def render_document_pdf(
     *,
     paper: Paper = "A4",
     print_mode: bool = False,
-    photo: bytes | None = None,
+    photos: tuple[bytes, ...] = (),
     guide: GuideText | None = None,
+    designer: str = "",
 ) -> bytes:
     lang = document.language
+    designer = " ".join(designer.split())[:DESIGNER_MAX]
     buffer = BytesIO()
     pagesize = LETTER if paper == "Letter" else A4
     doc = _Doc(
@@ -284,7 +290,7 @@ def render_document_pdf(
         topMargin=18 * mm,
         bottomMargin=18 * mm,
         title=document.title,
-        author="Tejedora",
+        author=designer or "Tejedora",
         subject=document.subtitle,
         keywords=["tejido", "patron", *document.sizes],
         creator="Tejedora",
@@ -301,24 +307,26 @@ def render_document_pdf(
     story.append(Paragraph(_esc(document.title), styles["cover_title"]))
     story.append(Spacer(1, 6))
     story.append(Paragraph(_esc(document.subtitle), styles["cover_sub"]))
-    story.append(Paragraph("Tejedora", styles["cover_sub"]))
+    if designer:
+        story.append(Paragraph(_esc(t("doc.designer", lang, name=designer)), styles["cover_sub"]))
     story.append(Spacer(1, 1 * cm))
     multi = len(document.sizes) > 1
-    picture = _photo(photo, width * 0.7, doc.height * 0.38) if photo else None
-    if picture is not None:
-        story.append(picture)
+    # Todas las fotos de la persona (hasta 4): una grande o una grilla de 2.
+    single = len(photos) == 1
+    cell_w, cell_h = (width * 0.8, doc.height * 0.55) if single else (width / 2 - 6, doc.height * 0.3)
+    pictures = [p for p in (_photo(data, cell_w, cell_h) for data in photos[:4]) if p is not None]
+    if len(pictures) == 1:
+        story.append(pictures[0])
+    elif pictures:
+        rows = [pictures[i : i + 2] + [""] * (i + 2 - len(pictures)) for i in range(0, len(pictures), 2)]
+        story.append(Table(rows, colWidths=[width / 2] * 2, style=[("ALIGN", (0, 0), (-1, -1), "CENTER"), ("VALIGN", (0, 0), (-1, -1), "MIDDLE")]))
+    if pictures:
         story.append(Spacer(1, 4))
         story.append(Paragraph(_esc(t("doc.cover_photo", lang)), styles["cover_sub"]))
-        story.append(Spacer(1, 0.6 * cm))
-    cover = _drawing(
-        document.schematic,
-        lang,
-        width,
-        doc.height * (0.3 if picture is not None else 0.45 if print_mode else 0.6),
-        letters_only=multi,
-    )
-    if cover is not None:
-        story.append(cover)
+    else:  # sin fotos, el esquema ilustra la portada
+        cover = _drawing(document.schematic, lang, width, doc.height * (0.45 if print_mode else 0.6), letters_only=multi)
+        if cover is not None:
+            story.append(cover)
     story.append(PageBreak())
 
     highlight = document.highlight
@@ -394,7 +402,7 @@ def render_document_pdf(
             add(Paragraph(_highlight(block.text, highlight, document.sizes, lang), styles["body"]))
     flush()
 
-    doc.build(story, canvasmaker=_numbered_canvas(document))
+    doc.build(story, canvasmaker=_numbered_canvas(document, designer))
     return buffer.getvalue()
 
 
@@ -405,8 +413,9 @@ def render_pattern_pdf(
     paper: Paper = "A4",
     print_mode: bool = False,
     all_sizes: bool = True,
-    photo: bytes | None = None,
+    photos: tuple[bytes, ...] = (),
     guide: GuideText | None = None,
+    designer: str = "",
 ) -> bytes:
     """PDF de un patron. Las prendas incluyen todos los talles verificados,
     con el talle del patron resaltado; si no se pueden regenerar, solo el suyo.
@@ -429,4 +438,6 @@ def render_pattern_pdf(
             for p in patterns
         ]
     document = build_document(patterns, highlight=pattern.meta.size, lang=lang)
-    return render_document_pdf(document, paper=paper, print_mode=print_mode, photo=photo, guide=guide)
+    return render_document_pdf(
+        document, paper=paper, print_mode=print_mode, photos=photos, guide=guide, designer=designer
+    )

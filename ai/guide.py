@@ -30,19 +30,30 @@ class Guide(BaseModel):
     cierre: str = Field(default="", max_length=400)
 
 
-# Cifras y numeros escritos en palabras (es/en). Los ordinales no hacen falta:
+# Cifras y numeros escritos en palabras, por idioma (una palabra como "dos"
+# es un numero en es y "la espalda" en fr). Los ordinales no hacen falta:
 # "primera vuelta" no es una cantidad que pueda contradecir el patron.
-_NUMBER_WORDS = (
-    r"dos(?!\s+agujas)|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|veinte|treinta|cien|mil|mitad|"
-    r"two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|hundred|half"
-)
-_NUMBERS = re.compile(rf"\d+|\b(?:{_NUMBER_WORDS})\b", re.IGNORECASE)
+_NUMBER_WORDS = {
+    "es": r"dos(?!\s+agujas)|tres|cuatro|cinco|seis|siete|ocho|nueve|diez|once|doce|veinte|treinta|cien|mil|mitad",
+    "en": r"two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|twenty|thirty|hundred|half",
+    "fr": r"deux|trois|quatre|cinq|six|sept|huit|neuf|dix|onze|douze|vingt|trente|cent|moitié",
+    "de": r"zwei|drei|vier|fünf|sechs|sieben|acht|neun|zehn|elf|zwölf|zwanzig|dreißig|hundert|hälfte",
+    "it": r"due|tre|quattro|cinque|sei|sette|otto|nove|dieci|undici|dodici|venti|trenta|cento|metà",
+}
+
+
+def _numbers(lang: str) -> re.Pattern[str]:
+    words = _NUMBER_WORDS.get(lang) or _NUMBER_WORDS["es"] + "|" + _NUMBER_WORDS["en"]
+    return re.compile(rf"\d+|\b(?:{words})(?!\w)", re.IGNORECASE)
+
+
 _SECTION_MAX = 500
 
 
-def guide_problems(guide: Guide, section_ids: set[str]) -> list[str]:
+def guide_problems(guide: Guide, section_ids: set[str], lang: str = "") -> list[str]:
     texts = [guide.intro, guide.cierre, *guide.secciones.values()]
-    problems = [f"numero: {m.group(0)!r}" for text in texts for m in [_NUMBERS.search(text)] if m]
+    numbers = _numbers(lang)
+    problems = [f"numero: {m.group(0)!r}" for text in texts for m in [numbers.search(text)] if m]
     problems += [f"seccion inexistente: {key}" for key in guide.secciones if key not in section_ids]
     problems += [f"seccion demasiado larga: {key}" for key, text in guide.secciones.items() if len(text) > _SECTION_MAX]
     if not guide.intro.strip():
@@ -107,7 +118,7 @@ async def write_guide(
                 return None
             try:
                 guide = Guide.model_validate_json(response.text.strip().removeprefix("```json").removesuffix("```"))
-                problems = guide_problems(guide, ids)
+                problems = guide_problems(guide, ids, lang)
             except ValidationError as exc:
                 problems = [str(exc).splitlines()[0]]
             if not problems:

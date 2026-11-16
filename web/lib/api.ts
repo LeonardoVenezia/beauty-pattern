@@ -53,13 +53,23 @@ export type PatternParams = {
   } | null;
   ease_cm?: number | null;
   panel_motivo_cm?: number | null;
-  idioma?: "es" | "en";
+  idioma?: Language;
   nivel?: "principiante" | "experta";
   unidades?: "cm" | "in";
 };
 
+export const LANGUAGES = [
+  ["en", "English"],
+  ["es", "Español"],
+  ["fr", "Français"],
+  ["de", "Deutsch"],
+  ["it", "Italiano"],
+] as const;
+export type Language = (typeof LANGUAGES)[number][0];
+
 export type AnalysisResponse = {
   image_id: string;
+  image_ids?: string[];
   spec: GarmentSpec;
   confidence: Record<string, number>;
   disagreements: Record<string, string[]>;
@@ -135,7 +145,7 @@ export type Pattern = {
 export type PatternResponse = {
   id: string;
   pattern: Pattern;
-  text: { es: string; en: string };
+  text: Partial<Record<Language, string>> & { es: string; en: string };
   simulation: { ok: boolean; issues: unknown[] };
 };
 
@@ -200,8 +210,31 @@ export async function createPattern(
   return (await response.json()) as PatternResponse;
 }
 
-export function patternPdfUrl(id: string, imageId?: string | null): string {
-  return `${API_URL}/pattern/${id}/pdf` + (imageId ? `?foto=${encodeURIComponent(imageId)}` : "");
+export type PdfOptions = {
+  photos?: string[]; // ids de imagen, en el orden de la portada (hasta 4)
+  lang?: Language;
+  designer?: string;
+  guide?: boolean;
+  paper?: "A4" | "Letter";
+};
+
+export function patternPdfUrl(id: string, options: PdfOptions = {}): string {
+  const query = new URLSearchParams();
+  for (const photo of options.photos ?? []) query.append("foto", photo);
+  if (options.lang) query.set("lang", options.lang);
+  if (options.designer?.trim()) query.set("disenio", options.designer.trim());
+  if (options.guide === false) query.set("guia", "false");
+  if (options.paper && options.paper !== "A4") query.set("papel", options.paper);
+  const text = query.toString();
+  return `${API_URL}/pattern/${id}/pdf` + (text ? `?${text}` : "");
+}
+
+/** El texto del patron en otro idioma (mismos numeros, sin IA). */
+export async function fetchPatternText(id: string, lang: Language): Promise<string> {
+  const response = await fetch(`${API_URL}/pattern/${id}?lang=${lang}`);
+  if (!response.ok) throw new Error("No se pudo cambiar el idioma.");
+  const data = (await response.json()) as PatternResponse;
+  return data.text[lang] ?? data.text.es;
 }
 
 export function patternSvgUrl(id: string): string {
@@ -225,7 +258,7 @@ export type CritiqueResponse = {
 
 export async function rewritePattern(
   id: string,
-  lang: "es" | "en" = "es",
+  lang: Language = "es",
 ): Promise<RewriteResponse> {
   const response = await fetch(`${API_URL}/pattern/${id}/rewrite`, {
     method: "POST",
@@ -239,7 +272,7 @@ export async function rewritePattern(
 export async function critiquePattern(
   id: string,
   imageId: string,
-  lang: "es" | "en" = "es",
+  lang: Language = "es",
 ): Promise<CritiqueResponse> {
   const response = await fetch(`${API_URL}/pattern/${id}/critique`, {
     method: "POST",

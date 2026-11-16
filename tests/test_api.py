@@ -196,6 +196,26 @@ def test_analyze_accepts_several_photos_and_reports_quality(
     assert too_many.status_code == 422
 
 
+def test_pdf_with_every_photo_language_and_designer(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: object
+) -> None:
+    """Las fotos van todas a la portada; el idioma se elige al descargar
+    (mismos numeros) y la persona puede firmarse como creadora."""
+    _fake_env(monkeypatch, tmp_path)
+    photos = [("files", (f"f{i}.png", _png(), "image/png")) for i in range(3)]
+    with TestClient(app) as client:
+        data = client.post("/analyze", files=photos).json()
+        assert len(data["image_ids"]) == 3 and data["image_id"] == data["image_ids"][0]
+        created = client.post("/pattern", json={"spec": data["spec"], "params": {"talla": "M"}}).json()
+        query = "&".join(f"foto={i}" for i in data["image_ids"])
+        pdf = client.get(f"/pattern/{created['id']}/pdf?{query}&lang=fr&disenio=Ana%20Tejedora")
+        assert pdf.status_code == 200, pdf.text
+        assert b"Ana Tejedora" in pdf.content  # autora en los metadatos del PDF
+        german = client.get(f"/pattern/{created['id']}?lang=de").json()["text"]
+        assert german["de"] and german["es"]
+        assert client.get(f"/pattern/{created['id']}/pdf?disenio=" + "x" * 200).status_code == 422
+
+
 def test_analyze_hints_from_the_person_win_over_the_model(
     monkeypatch: pytest.MonkeyPatch, tmp_path: object
 ) -> None:

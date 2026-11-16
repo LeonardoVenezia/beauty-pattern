@@ -269,6 +269,10 @@ class GarmentSpec(BaseModel):
         return value
 
 
+Language = Literal["es", "en", "fr", "de", "it"]
+LANGUAGES: tuple[Language, ...] = ("es", "en", "fr", "de", "it")
+
+
 class PatternParams(BaseModel):
     """Parametros que elige la persona: talle, densidad, idioma, etc."""
 
@@ -279,7 +283,7 @@ class PatternParams(BaseModel):
     dimensiones_cm: dict[str, float] = Field(default_factory=dict)
     densidad: Gauge | None = None
     ease_cm: float | None = Field(default=None, ge=-10, le=40)
-    idioma: Literal["es", "en"] = "es"
+    idioma: Language = "es"
     nivel: Literal["principiante", "experta"] = "principiante"
     unidades: Literal["cm", "in"] = "cm"
     peso_hilo: YarnWeight = YarnWeight.DK

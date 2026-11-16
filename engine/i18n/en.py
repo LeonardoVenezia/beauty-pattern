@@ -428,6 +428,7 @@ EN: dict[str, str] = {
     "doc.materials": "Materials",
     "doc.gauge": "Gauge",
     "doc.credits": "Credits and legal",
+    "doc.designer": "Design: {name}",
     "doc.inspired_note": "Pattern generated and verified by Tejedora from the overall shape in a photo. It is an original design: it does not reproduce a published pattern.",
     "doc.level": "Level (Craft Yarn Council)",
     "doc.technique": "Technique",

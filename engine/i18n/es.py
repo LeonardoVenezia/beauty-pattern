@@ -430,6 +430,7 @@ ES: dict[str, str] = {
     "doc.materials": "Materiales",
     "doc.gauge": "Muestra",
     "doc.credits": "Créditos y legales",
+    "doc.designer": "Diseño: {name}",
     "doc.inspired_note": "Patrón generado y verificado por Tejedora a partir de la forma general de una foto. Es un diseño propio: no reproduce un patrón publicado.",
     "doc.level": "Nivel (Craft Yarn Council)",
     "doc.technique": "Técnica",

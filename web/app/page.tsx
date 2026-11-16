@@ -6,12 +6,15 @@ import {
   analyzeImage,
   createPattern,
   critiquePattern,
+  fetchPatternText,
+  LANGUAGES,
   patternPdfUrl,
   patternSvgUrl,
   rewritePattern,
   type AnalysisResponse,
   type CritiqueResponse,
   type GarmentSpec,
+  type Language,
   type PatternResponse,
 } from "@/lib/api";
 
@@ -348,6 +351,13 @@ export default function HomePage() {
   const [spec, setSpec] = useState<GarmentSpec | null>(null);
   const [result, setResult] = useState<PatternResponse | null>(null);
   const [imageId, setImageId] = useState<string | null>(null);
+  const [imageIds, setImageIds] = useState<string[]>([]);
+  // Opciones del PDF: se eligen en el ultimo paso, sin volver atras.
+  const [patternLang, setPatternLang] = useState<Language>("es");
+  const [designer, setDesigner] = useState("");
+  const [coverPhotos, setCoverPhotos] = useState<number[]>([]);
+  const [includeGuide, setIncludeGuide] = useState(true);
+  const [paper, setPaper] = useState<"A4" | "Letter">("A4");
   const [patternText, setPatternText] = useState("");
   const [critique, setCritique] = useState<CritiqueResponse | null>(null);
   const [busy, setBusy] = useState(false);
@@ -454,6 +464,7 @@ export default function HomePage() {
     setSpec(null);
     setResult(null);
     setImageId(null);
+    setImageIds([]);
     setPatternText("");
     setCritique(null);
     setError(null);
@@ -479,6 +490,9 @@ export default function HomePage() {
       const seen = data.spec.hilo_aparente?.grosor_estimado;
       setYarnWeight(yarnWeights.some(([value]) => value === seen) ? (seen as string) : "dk");
       setImageId(data.image_id);
+      const ids = data.image_ids ?? [data.image_id];
+      setImageIds(ids);
+      setCoverPhotos(ids.map((_, index) => index));
       setStep("confirm");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No se pudo analizar la foto.");
@@ -487,7 +501,7 @@ export default function HomePage() {
     }
   }
 
-  async function onGenerate() {
+  async function onGenerate(overrides: { talla?: string; peso_hilo?: string } = {}) {
     if (!spec) return;
     if (unsupportedCategory) {
       setError(
@@ -509,8 +523,9 @@ export default function HomePage() {
       }
     }
     const params = {
-      talla: size,
-      peso_hilo: yarnWeight,
+      talla: overrides.talla ?? size,
+      peso_hilo: overrides.peso_hilo ?? yarnWeight,
+      idioma: patternLang,
       densidad:
         stitches > 0 && rows > 0
           ? { stitches_per_10cm: stitches, rows_per_10cm: rows }
@@ -529,7 +544,7 @@ export default function HomePage() {
     try {
       const data = await createPattern(currentSpec, params);
       setResult(data);
-      setPatternText(data.text.es);
+      setPatternText(data.text[patternLang] ?? data.text.es);
       setCritique(null);
       setRowIndex(0);
       setStep("pattern");
@@ -611,12 +626,33 @@ export default function HomePage() {
     }
   }
 
+  async function changeLanguage(lang: Language) {
+    setPatternLang(lang);
+    if (!result) return;
+    setBusy(true);
+    setError(null);
+    try {
+      setPatternText(await fetchPatternText(result.id, lang));
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "No se pudo cambiar el idioma.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Cambiar talle o hilo en el ultimo paso recalcula y verifica al instante.
+  function adjust(key: "talla" | "peso_hilo", value: string) {
+    if (key === "talla") setSize(value);
+    else setYarnWeight(value);
+    void onGenerate({ [key]: value });
+  }
+
   async function onRewrite() {
     if (!result) return;
     setBusy(true);
     setError(null);
     try {
-      const data = await rewritePattern(result.id, "es");
+      const data = await rewritePattern(result.id, patternLang);
       setPatternText(data.text);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No se pudo reescribir.");
@@ -630,7 +666,7 @@ export default function HomePage() {
     setBusy(true);
     setError(null);
     try {
-      setCritique(await critiquePattern(result.id, imageId, "es"));
+      setCritique(await critiquePattern(result.id, imageId, patternLang));
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "No se pudo revisar.");
     } finally {
@@ -757,7 +793,6 @@ export default function HomePage() {
                   key={url}
                   className="relative overflow-hidden rounded-2xl border border-ink/10 bg-ink/5"
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={url}
                     alt={`Foto ${index + 1} de la prenda`}
@@ -1186,7 +1221,7 @@ export default function HomePage() {
             </button>
             <button
               type="button"
-              onClick={onGenerate}
+              onClick={() => void onGenerate()}
               disabled={busy}
               className="min-h-12 flex-1 rounded-xl bg-ink px-5 py-3 text-lg font-semibold text-white disabled:cursor-not-allowed disabled:opacity-40"
             >
@@ -1214,9 +1249,138 @@ export default function HomePage() {
               tejé una muestra antes de empezar.
             </p>
 
+            <fieldset className="mt-6 rounded-2xl border border-ink/10 bg-paper/60 p-4">
+              <legend className="px-1 text-sm font-semibold">Ajustá tu PDF</legend>
+              <div className="mt-2 grid gap-4 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-sm text-ink/70">Idioma del patrón</span>
+                  <select
+                    value={patternLang}
+                    onChange={(event) => void changeLanguage(event.target.value as Language)}
+                    disabled={busy}
+                    className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
+                  >
+                    {LANGUAGES.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {isGarment ? (
+                  <label className="block">
+                    <span className="text-sm text-ink/70">Talle resaltado</span>
+                    <select
+                      value={size}
+                      onChange={(event) => adjust("talla", event.target.value)}
+                      disabled={busy}
+                      className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
+                    >
+                      {sizes.map((value) => (
+                        <option key={value} value={value}>
+                          {value}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label className="block">
+                  <span className="text-sm text-ink/70">Grosor del hilo</span>
+                  <select
+                    value={yarnWeight}
+                    onChange={(event) => adjust("peso_hilo", event.target.value)}
+                    disabled={busy}
+                    className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
+                  >
+                    {yarnWeights.map(([value, label]) => (
+                      <option key={value} value={value}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label className="block">
+                  <span className="text-sm text-ink/70">Diseñado por (opcional)</span>
+                  <input
+                    value={designer}
+                    maxLength={80}
+                    onChange={(event) => setDesigner(event.target.value)}
+                    placeholder="Tu nombre o tu marca"
+                    className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-sm text-ink/70">Papel</span>
+                  <select
+                    value={paper}
+                    onChange={(event) => setPaper(event.target.value as "A4" | "Letter")}
+                    className="mt-1 min-h-12 w-full rounded-xl border border-ink/20 bg-white px-3"
+                  >
+                    <option value="A4">A4</option>
+                    <option value="Letter">Carta (EE. UU.)</option>
+                  </select>
+                </label>
+              </div>
+              <label className="mt-4 flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  checked={includeGuide}
+                  onChange={(event) => setIncludeGuide(event.target.checked)}
+                  className="mt-1 h-5 w-5"
+                />
+                <span className="text-sm">
+                  Incluir la explicación paso a paso con palabras simples
+                  <span className="block text-xs text-ink/55">
+                    La escribe la IA sin tocar ningún número. Tarda unos segundos más.
+                  </span>
+                </span>
+              </label>
+              {imageIds.length > 0 && previews.length === imageIds.length ? (
+                <div className="mt-4">
+                  <span className="text-sm text-ink/70">Fotos en la portada</span>
+                  <div className="mt-2 flex flex-wrap gap-3">
+                    {previews.map((url, index) => {
+                      const chosen = coverPhotos.includes(index);
+                      return (
+                        <button
+                          key={url}
+                          type="button"
+                          aria-pressed={chosen}
+                          onClick={() =>
+                            setCoverPhotos(
+                              chosen
+                                ? coverPhotos.filter((item) => item !== index)
+                                : [...coverPhotos, index].sort((a, b) => a - b),
+                            )
+                          }
+                          className={`relative overflow-hidden rounded-xl border-2 ${chosen ? "border-clay" : "border-transparent opacity-40"}`}
+                        >
+                          <img src={url} alt={`Foto ${index + 1}`} className="h-20 w-20 object-cover" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+              <p className="mt-3 text-xs text-ink/55">
+                Talle e hilo se recalculan y se verifican al instante. Para la muestra o
+                medidas propias,{" "}
+                <button type="button" onClick={() => setStep("params")} className="underline">
+                  volvé al paso anterior
+                </button>
+                .
+              </p>
+            </fieldset>
+
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <a
-                href={patternPdfUrl(result.id, imageId)}
+                href={patternPdfUrl(result.id, {
+                  photos: coverPhotos.map((index) => imageIds[index]).filter(Boolean),
+                  lang: patternLang,
+                  designer,
+                  guide: includeGuide,
+                  paper,
+                })}
                 className="min-h-12 rounded-xl bg-clay px-5 py-3 text-center text-lg font-semibold text-white"
               >
                 Descargar PDF

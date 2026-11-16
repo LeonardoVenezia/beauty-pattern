@@ -22,6 +22,7 @@ GRANNY = GarmentSpec(categoria=Category.GRANNY_SQUARE, tecnica=Technique.CROCHET
 EXAMPLES = [SWEATER, SHAWL, AMIGURUMI, GRANNY]
 
 REQUIRED = [
+    "pattern.schematic",
     "doc.description",
     "doc.technical",
     "doc.materials",
@@ -29,9 +30,7 @@ REQUIRED = [
     "pattern.abbreviations",
     "pattern.notes",
     "pattern.instructions",
-    "pattern.schematic",
     "pattern.finished",
-    "doc.credits",
 ]
 
 

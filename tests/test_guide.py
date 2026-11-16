@@ -25,6 +25,14 @@ def test_numbers_in_any_form_are_rejected_but_dos_agujas_is_fine() -> None:
     assert guide_problems(Guide(intro="Hola.", secciones={"sleeve": "x"}), ids)
 
 
+def test_number_words_follow_the_guide_language() -> None:
+    """"dos" es un numero en es y la espalda en fr: cada idioma con su lista."""
+    assert guide_problems(Guide(intro="Le dos se tricote en rond."), set(), "fr") == []
+    assert guide_problems(Guide(intro="Tricoter deux rangs."), set(), "fr")
+    assert guide_problems(Guide(intro="Arriva a metà altezza."), set(), "it")
+    assert guide_problems(Guide(intro="Zwölf Runden stricken."), set(), "de")
+
+
 def test_guide_is_repaired_or_dropped_never_wrong() -> None:
     good = {"intro": "Un gorro calentito.", "secciones": {"crown": "Al final se cierra pasando la hebra."}, "cierre": ""}
     client = FakeAIClient(responses=[json.dumps({"intro": "Montar 72 puntos."}), json.dumps(good)])

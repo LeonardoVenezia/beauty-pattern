@@ -197,11 +197,61 @@ def build_document(
     def line(text: str) -> None:
         blocks.append(Block(BlockKind.LINE, text))
 
+    # 1a. Esquema.
+    heading("pattern.schematic")
+    chosen = sizes.index(highlight) if highlight in sizes else (len(sizes) // 2 if multi else 0)
+    blocks.append(Block(BlockKind.SCHEMATIC, sizes[chosen]))
+    if multi:
+        line(t("doc.schematic_note", language, size=sizes[chosen]))
+
+    # 1b. Graficos (arriba de todo: la mejor entrada).
+    charts: list[StitchPattern] = []
+    body = next((s for s in base.sections if "panel_rows" in s.meta), None)
+    if body is not None:
+        motif = texture_motif(base.spec)
+        if body.division:
+            panel = panel_for(base.spec, body.division)
+        else:
+            panel = build_panel(motif, body.meta["panel_segment"]) if motif else None
+        if panel is not None:
+            charts.append(panel.chart())
+            heading("doc.charts")
+            blocks.append(Block(BlockKind.CHART, "0"))
+            line(
+                t(
+                    "doc.chart_note_flat" if body.mode == "flat" else "doc.chart_note",
+                    language,
+                    n=1,
+                    name=t(charts[0].name_key, language),
+                    rows=panel.rows,
+                )
+            )
+    colorwork: list[ColorworkChart] = []
+    if base.meta.family == "yoke":
+        from engine.garments.yoke import yoke_bands
+
+        colorwork = [band.chart for band in yoke_bands(base.spec, base.params)]
+    if colorwork and not charts:
+        heading("doc.charts")
+    for index, chart in enumerate(colorwork):
+        blocks.append(Block(BlockKind.COLORWORK_CHART, str(index)))
+        line(
+            t(
+                "doc.colorwork_chart_note",
+                language,
+                n=chart.number,
+                name=t(f"colorwork.motif.{chart.motif}", language),
+                w=chart.width,
+                rows=chart.height,
+                bg=chr(65 + chart.background),
+                fg=chr(65 + chart.contrast),
+            )
+        )
+
     # 2. Descripcion.
     heading("doc.description")
     desc_key = "desc." + base.meta.title_key.removeprefix("title.")
     line(t(desc_key if has_key(desc_key, language) else "desc.generic", language))
-    line(t("doc.inspired_note", language))
 
     # 3. Ficha tecnica.
     heading("doc.technical")
@@ -337,61 +387,9 @@ def build_document(
                 blocks.append(Block(BlockKind.WARNING, text))
 
     # 10. Instrucciones.
-    blocks.append(Block(BlockKind.PAGE_BREAK, ""))
     heading("pattern.instructions")
     per_size = [instruction_blocks(p, language) for p in patterns]
     blocks.extend(merge_size_blocks(per_size, sizes, language) if multi else per_size[0])
-
-    # 11. Graficos (paneles de textura).
-    charts: list[StitchPattern] = []
-    body = next((s for s in base.sections if "panel_rows" in s.meta), None)
-    if body is not None:
-        motif = texture_motif(base.spec)
-        if body.division:
-            panel = panel_for(base.spec, body.division)
-        else:
-            panel = build_panel(motif, body.meta["panel_segment"]) if motif else None
-        if panel is not None:
-            charts.append(panel.chart())
-            heading("doc.charts")
-            blocks.append(Block(BlockKind.CHART, "0"))
-            line(
-                t(
-                    "doc.chart_note_flat" if body.mode == "flat" else "doc.chart_note",
-                    language,
-                    n=1,
-                    name=t(charts[0].name_key, language),
-                    rows=panel.rows,
-                )
-            )
-    colorwork: list[ColorworkChart] = []
-    if base.meta.family == "yoke":
-        from engine.garments.yoke import yoke_bands
-
-        colorwork = [band.chart for band in yoke_bands(base.spec, base.params)]
-    if colorwork and not charts:
-        heading("doc.charts")
-    for index, chart in enumerate(colorwork):
-        blocks.append(Block(BlockKind.COLORWORK_CHART, str(index)))
-        line(
-            t(
-                "doc.colorwork_chart_note",
-                language,
-                n=chart.number,
-                name=t(f"colorwork.motif.{chart.motif}", language),
-                w=chart.width,
-                rows=chart.height,
-                bg=chr(65 + chart.background),
-                fg=chr(65 + chart.contrast),
-            )
-        )
-
-    # 12. Esquema.
-    heading("pattern.schematic")
-    chosen = sizes.index(highlight) if highlight in sizes else (len(sizes) // 2 if multi else 0)
-    blocks.append(Block(BlockKind.SCHEMATIC, sizes[chosen]))
-    if multi:
-        line(t("doc.schematic_note", language, size=sizes[chosen]))
 
     # 13. Terminacion.
     heading("pattern.finished")
@@ -403,14 +401,7 @@ def build_document(
     if not base.finishing:
         line(t("pattern.block", language))
 
-    # 14. Creditos y legales.
-    heading("doc.credits")
     when = (today or date.today()).isoformat()
-    line(t("doc.copyright", language, year=when[:4]))
-    line(t("doc.usage", language))
-    line(t("doc.rights_photo", language))
-    line(t("doc.version", language, version=ENGINE_VERSION, date=when))
-
     subtitle_parts = [t(f"technique_name.{base.spec.tecnica.value}", language)]
     if base.meta.family in _SIZED:
         subtitle_parts.append(t("doc.sizes_line", language, sizes=", ".join(sizes)))
