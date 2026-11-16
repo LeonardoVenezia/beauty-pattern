@@ -97,10 +97,11 @@ const crochetStitches = [
   ["crochet_dc", "Punto alto"],
 ] as const;
 
-const amigurumiShapes = [
-  ["straight", "Esfera"],
-  ["boxy", "Cilindro"],
-  ["a_line", "Cono"],
+const toyFigures = [
+  ["generic", "Muñeco (sin orejas)"],
+  ["bear", "Oso"],
+  ["bunny", "Conejo"],
+  ["cat", "Gato"],
 ] as const;
 
 const baseStitches = [
@@ -188,10 +189,7 @@ const dimensionFields: Record<string, readonly DimensionField[]> = {
     ["width", "Ancho", "Ej. 20"],
     ["length", "Alto", "Ej. 20"],
   ],
-  amigurumi: [
-    ["diameter", "Diámetro", "Ej. 8"],
-    ["height", "Altura", "Ej. 8"],
-  ],
+  amigurumi: [["height", "Altura sentado", "Ej. 22"]],
 };
 
 const sectionLabels: Record<string, string> = {
@@ -219,6 +217,13 @@ const sectionLabels: Record<string, string> = {
   "section.right_front": "Delantero derecho",
   "section.button_band": "Tapa de botones",
   "section.amigurumi": "Amigurumi",
+  "section.toy_head": "Cabeza",
+  "section.toy_body": "Cuerpo",
+  "section.toy_arms": "Brazos (tejer 2)",
+  "section.toy_legs": "Piernas (tejer 2)",
+  "section.toy_ears": "Orejas (tejer 2)",
+  "section.toy_muzzle": "Hocico",
+  "section.toy_tail": "Cola",
   "section.granny_square": "Granny square",
   "section.bag": "Bolso",
   "section.flat_piece": "Pieza plana",
@@ -238,6 +243,7 @@ const noteLabels: Record<string, string> = {
   "pattern.note.crochet_flat": "Tejé en crochet, de ida y vuelta.",
   "pattern.note.amigurumi_increase": "Aumentá 6 puntos repartidos.",
   "pattern.note.amigurumi_decrease": "Disminuí 6 puntos repartidos.",
+  "pattern.note.toy_stuff": "Rellená firme y seguí rellenando mientras cerrás.",
   "pattern.note.plain": "Vuelta sin aumentos.",
   "pattern.magic_ring": "Anillo mágico con 6 puntos bajos.",
   "pattern.note.mittens_hand": "Hacé 2 piezas iguales para las manos y coselas.",
@@ -262,6 +268,9 @@ const measurementLabels: Record<string, string> = {
   foot_length: "Largo del pie",
   head: "Contorno de cabeza",
   thumb: "Largo del pulgar",
+  toy_height: "Altura sentado (aprox.)",
+  toy_head: "Contorno de la cabeza",
+  toy_body: "Contorno del cuerpo",
 };
 
 const textureLabels: Record<string, string> = {
@@ -920,11 +929,11 @@ export default function HomePage() {
               />
               {spec.categoria === "amigurumi" ? (
                 <Field
-                  label="Forma"
-                  confidence={confidenceFor("forma")}
-                  value={spec.forma ?? "straight"}
-                  options={amigurumiShapes}
-                  onChange={(value) => updateNullable("forma", value)}
+                  label="Figura"
+                  confidence={confidenceFor("figura")}
+                  value={spec.figura ?? "generic"}
+                  options={toyFigures}
+                  onChange={(value) => updateNullable("figura", value)}
                 />
               ) : null}
             </div>

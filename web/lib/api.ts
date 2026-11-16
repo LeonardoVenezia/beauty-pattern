@@ -34,6 +34,8 @@ export type GarmentSpec = {
     bandas: Array<{ punto: string; color: number | null; peso: number }>;
     cuadrar_en_banda: number | null;
   } | null;
+  // Plantilla de juguete (solo amigurumi): bear | bunny | cat | generic.
+  figura?: string | null;
   incertidumbres: string[];
   no_visible: string[];
   confianza: Record<string, number>;

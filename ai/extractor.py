@@ -44,6 +44,7 @@ VOTED_FIELDS = (
     "acabados",
     "hilo_aparente",
     "motivo",
+    "figura",
     "observaciones",
 )
 UNION_FIELDS = ("incertidumbres", "no_visible")
