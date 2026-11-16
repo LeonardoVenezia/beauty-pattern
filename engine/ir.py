@@ -193,6 +193,9 @@ class Section:
     note_keys: tuple[str, ...] = ()
     # Vuelta de separacion en orden fisico: ("knit"|"hold"|"cast_on", n).
     division: tuple[tuple[str, int], ...] = ()
+    # Textos que van despues de la ultima vuelta (cerrar, rellenar). Reciben
+    # `n` = puntos finales de la seccion.
+    end_note_keys: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.start_stitches < 0 or self.end_stitches < 0:
@@ -240,6 +243,14 @@ class Warning:
 
 
 @dataclass(frozen=True)
+class Note:
+    """Instruccion de texto con numeros ya calculados por el motor (armado)."""
+
+    key: str
+    params: dict[str, str | int | float] = field(default_factory=dict)
+
+
+@dataclass(frozen=True)
 class PatternMeta:
     id: str
     family: str
@@ -260,6 +271,9 @@ class Pattern:
     warnings: tuple[Warning, ...] = ()
     joins: tuple[JoinCheck, ...] = ()
     notes: tuple[str, ...] = ()
+    # Armado y terminacion propios del patron (por ejemplo, donde coser cada
+    # pieza de un juguete). Van antes de la terminacion generica.
+    finishing: tuple[Note, ...] = ()
 
     def section(self, section_id: str) -> Section:
         for section in self.sections:

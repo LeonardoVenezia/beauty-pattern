@@ -1,7 +1,8 @@
-# Amigurumi en crochet: esfera de 8 cm.
+# Amigurumi en crochet: osito sentado de 22 cm, en piezas que se rellenan y se cosen.
 spec:
   categoria: amigurumi
   tecnica: crochet
+  figura: bear
 params:
   peso_hilo: dk
-  dimensiones_cm: {diameter: 8}
+  dimensiones_cm: {height: 22}

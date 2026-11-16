@@ -19,6 +19,7 @@ from engine import ENGINE_VERSION
 from engine.blocks import (
     Block,
     BlockKind,
+    finishing_blocks,
     glossary_blocks,
     instruction_blocks,
 )
@@ -117,10 +118,14 @@ def _techniques(patterns: list[Pattern], lang: str) -> list[str]:
     found: list[str] = []
     if any(s.mode == "round" for s in base.sections):
         found.append("technique.in_the_round")
-    if kinds & {StitchKind.M1L, StitchKind.M1R, StitchKind.KFB}:
+    if kinds & {StitchKind.M1L, StitchKind.M1R}:
         found.append("technique.increases")
-    if kinds & {StitchKind.K2TOG, StitchKind.SSK, StitchKind.P2TOG, StitchKind.SSP}:
+    elif StitchKind.KFB in kinds:
+        found.append("technique.increases_kfb")
+    if kinds & {StitchKind.SSK, StitchKind.SSP}:
         found.append("technique.decreases")
+    elif kinds & {StitchKind.K2TOG, StitchKind.P2TOG}:
+        found.append("technique.decreases_k2tog")
     if any(s.division for s in base.sections):
         found.append("technique.hold_and_cast_on")
     if kinds & {StitchKind.MAGIC_RING, StitchKind.GRANNY_START}:
@@ -135,6 +140,8 @@ def _techniques(patterns: list[Pattern], lang: str) -> list[str]:
         found.append("technique.bobbles")
     if base.materials.colors and len(base.materials.colors) > 1:
         found.append("technique.color_changes")
+    if base.finishing:
+        found.append("technique.toy_assembly")
     return [t(key, lang) for key in found]
 
 
@@ -206,6 +213,10 @@ def build_document(
             ease = bust.value_cm - BODY_SIZES[base.meta.size].bust_cm if base.meta.size in BODY_SIZES else None
             if ease is not None:
                 rows.append((t("doc.ease", language), t("doc.ease_value", language, cm=_half(ease))))
+    toy_height = next((m for m in base.measurements if m.key == "toy_height"), None)
+    if toy_height is not None:
+        size = t("doc.toy_size_value", language, n=_length(toy_height.value_cm, units), unit=unit)
+        rows.append((t("doc.toy_size", language), size))
     techniques = _techniques(patterns, language)
     if techniques:
         rows.append((t("doc.techniques", language), ", ".join(techniques)))
@@ -350,8 +361,10 @@ def build_document(
     finishing_key = "finishing." + base.meta.family
     if has_key(finishing_key, language):
         line(t(finishing_key, language))
-    line(t("doc.weave_ends", language))
-    line(t("pattern.block", language))
+    blocks.extend(finishing_blocks(base, language))
+    line(t("doc.weave_ends_toy" if base.finishing else "doc.weave_ends", language))
+    if not base.finishing:
+        line(t("pattern.block", language))
 
     # 14. Creditos y legales.
     heading("doc.credits")

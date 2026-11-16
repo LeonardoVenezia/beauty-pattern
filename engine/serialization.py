@@ -12,6 +12,7 @@ from engine.ir import (
     JoinCheck,
     Materials,
     Measurement,
+    Note,
     Op,
     Pattern,
     PatternMeta,
@@ -70,6 +71,7 @@ def _section_to_dict(section: Section) -> dict[str, Any]:
         "bind_off": section.bind_off,
         "note_keys": list(section.note_keys),
         "division": [list(part) for part in section.division],
+        **({"end_note_keys": list(section.end_note_keys)} if section.end_note_keys else {}),
     }
 
 
@@ -131,6 +133,14 @@ def pattern_to_dict(pattern: Pattern) -> dict[str, Any]:
             for join in pattern.joins
         ],
         "notes": list(pattern.notes),
+        "finishing": [
+            {
+                "key": note.key,
+                "params": dict(note.params),
+                "text": t(note.key, pattern.params.idioma, **note.params),
+            }
+            for note in pattern.finishing
+        ],
     }
 
 
@@ -183,6 +193,7 @@ def _section_from_dict(data: dict[str, Any]) -> Section:
         bind_off=bool(data.get("bind_off", False)),
         note_keys=tuple(data.get("note_keys", ())),
         division=tuple((str(part), int(n)) for part, n in data.get("division", ())),
+        end_note_keys=tuple(data.get("end_note_keys", ())),
     )
 
 
@@ -236,6 +247,10 @@ def pattern_from_dict(data: dict[str, Any]) -> Pattern:
             for join in data.get("joins", ())
         ),
         notes=tuple(data.get("notes", ())),
+        finishing=tuple(
+            Note(key=note["key"], params=dict(note.get("params", {})))
+            for note in data.get("finishing", ())
+        ),
     )
 
 
