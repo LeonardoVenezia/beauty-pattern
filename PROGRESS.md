@@ -465,3 +465,8 @@ guantes con dedos; jacquard como gráfico de color; formas de pétalo
   agujas; suite completa y `make lint` en verde. Ver D033.
 - Limitaciones: un solo color; sin ropa, pelo ni hocico para gato o conejo;
   las proporciones son de plantilla, no medidas de la foto.
+
+## Idiomas, PDF ajustable y dibujo de aumentos (2026-11-16, D035)
+
+- Hecho: patrones en es/en/fr/de/it (mismos números, test); interfaz web en los cinco idiomas, inglés por defecto; último paso con idioma, talle, hilo, papel, guía, fotos de portada y "Diseñado por"; PDF con todas las fotos, esquema y gráficos primero, sin legales; dibujo de aumentos del amigurumi al crochet.
+- Pendiente: revisión de las traducciones por tejedoras nativas (fr/de/it); el extractor de IA sigue devolviendo sus observaciones en español; no se probó la interfaz en un navegador real.
