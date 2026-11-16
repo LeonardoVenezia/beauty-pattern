@@ -428,3 +428,18 @@ guantes con dedos; jacquard como gráfico de color; formas de pétalo
   lectura del gráfico en plano. Ver D029.
 - Verificado: suite completa, `make lint` en verde.
 - Pendiente: retícula de colores (jacquard), fotos reales para `make eval-fotos`.
+
+## Comparación con patrones de internet (2026-11-16)
+
+- [x] Canesú circular legible en todos los talles (6 vueltas de aumento). D031.
+- [x] Gorro de dos agujas: respeta el elástico, corona en el elástico o en
+  gajos, cierre pasando la hebra; esquema como silueta con textura. D031.
+- [x] Extractor v4 (agujas vs crochet por la superficie) y descripción libre
+  antes de analizar. Verificado con la IA real: el gorrito de elástico ahora
+  sale de dos agujas; el osito (foto chica, lana peluda) sigue saliendo crochet
+  y se corrige con la descripción o en la confirmación.
+- [x] Foto de la persona en la portada del PDF.
+- [x] Guía humana (segunda pasada de IA, sin números, validada). Probada con
+  la IA real sobre el gorro.
+- [ ] Amigurumi en piezas (agujas y crochet) — en curso.
+- [ ] Gráfico de jacquard del canesú — en curso.
