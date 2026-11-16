@@ -16,8 +16,6 @@ from datetime import UTC, datetime
 from engine import ENGINE_VERSION
 from engine.distribution import (
     decrease_evenly,
-    even_positions,
-    increase_evenly,
     regular_rows,
     split_even,
 )
