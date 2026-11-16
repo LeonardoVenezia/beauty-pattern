@@ -15,6 +15,7 @@ from engine.ir import Pattern, Section
 from engine.spec import resolve_gauge
 from render.draw import (
     FILL,
+    FILL_ALT,
     STROKE,
     STROKE_SOFT,
     TEXT,
@@ -24,6 +25,7 @@ from render.draw import (
     dashed_line,
     dim_h,
     dim_v,
+    knit_texture,
     label,
     shape_path,
     svg_document,
@@ -471,47 +473,55 @@ def _multi_piece_svg(pattern: Pattern, lang: str) -> str:
 
 
 def _hat_svg(pattern: Pattern, lang: str) -> str:
-    # draw brim+body profile and crown profile as two stacked pieces if possible
-    brim = _section_by_id(pattern, "brim")
-    body = _section_by_id(pattern, "body")
-    crown = _section_by_id(pattern, "crown")
-    parts: list[str] = []
-    box_w, box_h = 320.0, 420.0
-    x1 = WIDTH / 2 - box_w - 20
-    x2 = WIDTH / 2 + 20
-    y = TOP + 20
-    # main tube (brim+body)
-    if body or brim:
-        sec = body or brim
-        assert sec is not None
-        prof = _profile(pattern, sec)
-        length = 0.0
-        for s in (brim, body):
-            if s:
-                length += _section_length_cm(pattern, s)
-        if length <= 0:
-            length = _value(pattern, "length", 20.0)
-        ox, oy, dw, dh = _draw_piece(
-            parts, pattern, lang,
-            title="Cuerpo (tubo)", profile_cm=prof, length_cm=length,
-            x=x1, y=y, box_w=box_w, box_h=box_h, piece_id="hat-body", cut="Tejer 1",
+    """El gorro como se ve apoyado plano: borde, cuerpo y corona en una sola
+    silueta a escala, con la textura del punto (elastico = columnas) y cotas
+    de cada parte. La corona se cierra pasando la hebra: copa redondeada."""
+    parts_by_id = {sid: _section_by_id(pattern, sid) for sid in ("brim", "body", "crown")}
+    lengths = {sid: (_section_length_cm(pattern, sec) if sec else 0.0) for sid, sec in parts_by_id.items()}
+    total = sum(lengths.values()) or _value(pattern, "length", 22.0)
+    circ = _measure(pattern, "circumference") or _value(pattern, "head", 50.0)
+    flat = circ / 2
+    scale = min(380 / flat, 400 / total)
+    w, h = flat * scale, total * scale
+    x, bottom = (WIDTH - w) / 2 - 40, TOP + 40 + h
+    crown_h, brim_h = lengths["crown"] * scale, lengths["brim"] * scale
+    shoulder = bottom - h + crown_h  # donde empieza la corona
+    top = bottom - h
+    outline = (
+        f"M {_f(x)} {_f(bottom)} L {_f(x)} {_f(shoulder)} "
+        f"C {_f(x)} {_f(top + crown_h * 0.15)} {_f(x + w * 0.2)} {_f(top)} {_f(x + w / 2)} {_f(top)} "
+        f"C {_f(x + w * 0.8)} {_f(top)} {_f(x + w)} {_f(top + crown_h * 0.15)} {_f(x + w)} {_f(shoulder)} "
+        f"L {_f(x + w)} {_f(bottom)} Z"
+    )
+    parts: list[str] = [shape_path(outline)]
+    # Textura del punto: columnas donde es elastico (el borde siempre; el
+    # cuerpo y la corona si el gorro entero es elastico), V de jersey si no.
+    body_sec = parts_by_id["body"]
+    ribbed = bool(body_sec) and any(op.kind.value == "purl" for op in body_sec.steps[0].expanded_ops())
+    gauge = resolve_gauge(pattern.params)
+    column = max(6.0, 2 / gauge.stitches_per_cm * scale)  # una columna de 2 derechos
+    rib_top = top if ribbed else bottom - brim_h
+    texture: list[str] = [] if ribbed else knit_texture(x, top, w, h - brim_h, size=max(9.0, column))
+    cx = x + column / 2
+    while cx < x + w:
+        texture.append(
+            f'<line x1="{_f(cx)}" y1="{_f(rib_top)}" x2="{_f(cx)}" y2="{_f(bottom)}" '
+            f'stroke="#c9ad91" stroke-width="{_f(column * 0.45)}" opacity="0.55"/>'
         )
-        circ = _measure(pattern, "circumference") or _measure(pattern, "head")
-        _add_dims(parts, pattern, lang, ox, oy, dw, dh, prof[0], length, w_key="width", l_key="length")
-        if circ:
-            parts += dim_h(ox, ox + dw, oy + dh + 30, ("Contorno (plano x2)", _fmt(pattern, circ)), extension=-22)
-    # crown
-    if crown:
-        prof = _profile(pattern, crown)
-        length = _section_length_cm(pattern, crown)
-        ox, oy, dw, dh = _draw_piece(
-            parts, pattern, lang,
-            title="Corona", profile_cm=prof, length_cm=length,
-            x=x2, y=y, box_w=box_w, box_h=box_h, piece_id="hat-crown", cut="Disminuciones",
-        )
-        _add_dims(parts, pattern, lang, ox, oy, dw, dh, prof[0] if prof else 0, length, w_key="width", l_key="length")
-    if not parts:
-        return _panel_svg(pattern, lang)
+        cx += 2 * column
+    parts += clip_group("hat-outline", f'<path d="{outline}"/>', texture)
+    parts.append(shape_path(outline, fill="none"))
+    # Divisiones entre partes y sus nombres.
+    y_brim = bottom - brim_h
+    parts.append(dashed_line(x, y_brim, x + w, y_brim))
+    parts.append(dashed_line(x, shoulder, x + w, shoulder))
+    for sid, y0, y1 in (("brim", y_brim, bottom), ("body", shoulder, y_brim), ("crown", top, shoulder)):
+        if lengths[sid] > 0:
+            parts.append(label(x - 14, (y0 + y1) / 2 + 4, t(f"section.{sid}", lang), anchor="end", weight="700"))
+            parts += dim_v(y0, y1, x + w + 22, (_fmt(pattern, lengths[sid]),), side="right", extension=-16)
+    parts += dim_v(top, bottom, x + w + 110, (_mname(lang, "length"), _fmt(pattern, total)), side="right", extension=-100)
+    parts += dim_h(x, x + w, bottom + 44, (_mname(lang, "width"), _fmt(pattern, flat)), extension=-40)
+    parts.append(label(x + w / 2, bottom + 92, t("schematic.hat_flat_note", lang, circ=_fmt(pattern, circ)), color=TEXT_SOFT))
     return _frame(pattern, lang, parts)
 
 
