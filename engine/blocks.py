@@ -735,6 +735,9 @@ def _section_intro(section: Section, lang: str) -> str:
             front=meta["front_neck"],
             sleeve=meta["sleeve_neck"],
         )
+    if section.id == "yoke" and "back_final" not in section.meta:
+        rounds = sum(1 for step in section.steps if step.note_key == "pattern.note.increase_yoke")
+        return t("pattern.yoke_circular_summary", lang, start=section.start_stitches, rounds=rounds, end=section.end_stitches)
     if section.id == "yoke":
         meta = section.meta
         return t(

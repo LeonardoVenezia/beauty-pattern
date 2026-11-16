@@ -130,3 +130,17 @@ def test_yoke_text_svg_and_pdf() -> None:
     assert "Pullover con canesú circular" in svg
     pdf = render_pattern_pdf(pattern)
     assert pdf.startswith(b"%PDF")
+
+
+def test_yoke_multisize_text_reads_like_a_published_pattern() -> None:
+    """Pocas vueltas de aumento (siempre la misma cantidad) con vueltas lisas
+    entre medio: el texto multitalle no se parte en lineas "Solo talles"."""
+    from engine.document import build_document
+    from engine.text import render_document_text
+
+    patterns = [generate(yoke_spec(), PatternParams(talla=size)) for size in BODY_SIZES]
+    text = render_document_text(build_document(patterns))
+    yoke = text[text.index("Canesú\n") : text.index("Cuerpo\n")]
+    assert "Solo talles" not in yoke
+    assert yoke.count("Vuelta de aumentos repartidos") == 6
+    assert "raglán" not in yoke

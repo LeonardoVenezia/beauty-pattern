@@ -27,12 +27,14 @@ from engine.gauge import Gauge
 from engine.i18n import t
 from engine.ir import (
     CountRef,
+    Item,
     JoinCheck,
     Materials,
     Measurement,
     Op,
     Pattern,
     PatternMeta,
+    Repeat,
     Section,
     SectionTarget,
     Step,
@@ -68,6 +70,12 @@ UNDERARM_CM = 4.0
 SLEEVE_EASE_CM = 4.0
 CUFF_EASE_CM = 2.0
 YOKE_EASE_CM = 4.0
+# ASUNCION: canesu circular con pocas vueltas de aumento repartido y vueltas
+# lisas entre medio (sistema de porcentajes de Elizabeth Zimmermann, que usa 3;
+# los patrones comerciales actuales usan 4-8). Todas las tallas llevan la misma
+# cantidad, asi el texto multitalle queda en una sola linea por vuelta y entre
+# los aumentos queda lugar para las guardas de jacquard.
+YOKE_INCREASE_ROUNDS = 6
 MEASUREMENT_TOLERANCE_CM = 2.5
 
 
@@ -217,7 +225,7 @@ def plan_yoke(
         cuff_sts = max(4, sleeve_target - (sleeve_target % 4))
     sleeve_decreases = sleeve_target - cuff_sts
 
-    increase_rounds = min(yoke_rows, total_increases)
+    increase_rounds = max(1, min(YOKE_INCREASE_ROUNDS, (yoke_rows - 1) // 2, total_increases))
     plan = YokePlan(
         neck_sts=neck_sts,
         yoke_sts=yoke_sts,
@@ -275,6 +283,20 @@ def _neckband_section(plan: YokePlan, gauge: Gauge) -> Section:
     )
 
 
+def _spread_increases(stitches: int, count: int) -> tuple[Item, ...]:
+    """`count` aumentos repartidos en grupos parejos, escrito como lo haria
+    una disenadora: *5 der, m1; rep 10 veces*, *4 der, m1; rep 30 veces*."""
+    if count <= 0:
+        return (Op(StitchKind.KNIT, times=stitches),)
+    small, larger = divmod(stitches, count)
+    groups = [(small + 1, larger), (small, count - larger)]
+    return tuple(
+        Repeat(times=n, ops=(Op(StitchKind.KNIT, times=width), Op(StitchKind.M1L)) if width else (Op(StitchKind.M1L),))
+        for width, n in groups
+        if n
+    )
+
+
 def _yoke_section(plan: YokePlan) -> Section:
     steps: list[Step] = [
         build_step(
@@ -284,32 +306,40 @@ def _yoke_section(plan: YokePlan) -> Section:
             note_key="pattern.note.yoke_circular_setup",
         )
     ]
-    increase_counts = split_even(plan.total_increases, plan.increase_rounds)
-    increase_positions = set(even_positions(plan.yoke_rows, plan.increase_rounds))
+    # Crecimiento geometrico: cada vuelta de aumento suma la misma proporcion
+    # de puntos, como un circulo que se abre parejo.
+    rounds = plan.increase_rounds
+    ratio = (plan.yoke_sts / plan.neck_sts) ** (1 / rounds)
+    targets = [round(plan.neck_sts * ratio**k) for k in range(1, rounds)] + [plan.yoke_sts]
+    # Que ninguna vuelta reparta exacto: asi cada vuelta tiene siempre dos
+    # grupos ("(5 der, m1) 4 veces, (4 der, m1) 14 veces") en todos los talles y
+    # el texto multitalle no se parte en "Solo talles ...".
+    for _ in range(10):
+        steps_from = [plan.neck_sts, *targets[:-1]]
+        bad = [k for k, (a, b) in enumerate(zip(steps_from, targets, strict=True)) if b > a and a % (b - a) == 0]
+        if not bad:
+            break
+        k = bad[0]
+        if k < rounds - 1:
+            targets[k] += 1
+        elif k > 0:
+            targets[k - 1] -= 1
+        else:
+            break
+    positions = [round(k * plan.yoke_rows / (rounds + 1)) or 1 for k in range(1, rounds + 1)]
     current = plan.neck_sts
-    next_count = 0
     for row in range(1, plan.yoke_rows + 1):
         number = row + 1
-        if row in increase_positions:
-            count = increase_counts[next_count]
-            next_count += 1
-            items, current = increase_evenly(current, count)
+        if positions and row == positions[0]:
+            positions.pop(0)
+            count = targets.pop(0) - current
             steps.append(
-                build_step(
-                    number,
-                    current - count,
-                    items,
-                    note_key="pattern.note.increase_yoke",
-                )
+                build_step(number, current, _spread_increases(current, count), note_key="pattern.note.increase_yoke")
             )
+            current += count
         else:
             steps.append(
-                build_step(
-                    number,
-                    current,
-                    (Op(StitchKind.KNIT, times=current),),
-                    note_key="pattern.note.plain",
-                )
+                build_step(number, current, (Op(StitchKind.KNIT, times=current),), note_key="pattern.note.plain")
             )
     if current != plan.yoke_sts:
         raise RuntimeError(
