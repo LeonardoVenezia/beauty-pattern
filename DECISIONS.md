@@ -648,3 +648,13 @@ del muñeco sentado. Sin figura: muñeco sin orejas y una nota.
   cota de altura afuera del dibujo (antes la cota "Ancho" pisaba el borde).
 - **Descartado:** formas sueltas (esfera, cilindro, cono con `spec.forma`):
   no eran un patrón de juguete.
+
+## D034 — Exactitud geométrica, no solo aritmética (2026-11-16)
+
+Pedido: "si vas a hacer un cuadrado, no puede tener 10 puntos de un lado y 11 del otro". El simulador ya garantizaba que cada vuelta consume y produce lo declarado, pero una vuelta puede cerrar la cuenta y ser incoherente.
+
+Decisiones:
+- **Simulador, en cada patrón antes de entregarlo**: (1) toda vuelta con 4 esquinas tiene los 4 lados iguales (`square_sides`); (2) mangas, puños y tapas izquierda/derecha tienen el mismo conteo en cada vuelta (`pair_mismatch`); (3) delanteros y lados del escote en espejo pueden ir como mucho UNA hilera corridos (los cierres van al principio de una hilera de su lado, como en los patrones publicados) y terminan con los mismos puntos.
+- **Texto multitalle** (`tests/test_exactness.py`): se proyecta el texto fusionado a cada talle y los conteos `[N pts]` tienen que ser, en orden, los de la IR de ese talle. 7 familias × 3 grosores.
+- **Redactor de IA**: la versión reescrita tiene que tener exactamente la misma secuencia de números que el patrón calculado (antes alcanzaba con que cada número existiera en el patrón: "12 vueltas" cambiado por "8 vueltas" pasaba). Si no, se repara o se entrega la plantilla.
+- Comprobado además por muestreo: 3108 vueltas cuadradas de 400 motivos al azar, todos con lados iguales; todas las piezas pares de 8 familias × 7 talles × 3 grosores, iguales.

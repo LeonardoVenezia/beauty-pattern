@@ -24,6 +24,8 @@ from ai.types import AIResponse, Message, Usage
 from engine.ir import Op, Pattern, Repeat, Section, Step
 from engine.text import render_pattern_text
 
+WRITER_ORDER_HINT = "los numeros deben ser exactamente los del patron canonico, todos y en el mismo orden"
+
 _NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
 
 
@@ -173,6 +175,7 @@ async def write_pattern_text(
     difficulty = level or pattern.params.nivel
     canonical = render_pattern_text(pattern, lang=lang, level=difficulty)
     allowed = allowed_numbers(pattern, lang)
+    expected = [_normalize(v) for v in extract_numbers(canonical)]
     own_client = client is None
     if client is None:
         if chosen_config.fake:
@@ -203,7 +206,11 @@ async def write_pattern_text(
             usage = _merge_usage(usage, response.usage)
             cached = cached and response.cached
             unknown = unknown_numbers(response.text, allowed)
-            if not unknown:
+            # Exactitud: no alcanza con que cada numero exista en el patron (un
+            # "12 vueltas" cambiado por "8 vueltas" pasaria). La secuencia de
+            # numeros tiene que ser la misma y en el mismo orden.
+            same_sequence = [_normalize(v) for v in extract_numbers(response.text)] == expected
+            if not unknown and same_sequence:
                 return WriterResult(
                     text=response.text.strip(),
                     fallback_used=False,
@@ -213,8 +220,8 @@ async def write_pattern_text(
                     usage=usage,
                     cached=cached,
                 )
-            rendered = ", ".join(f"{number:g}" for number in unknown)
-            errors.append(f"numeros no permitidos: {rendered}")
+            rendered = ", ".join(f"{number:g}" for number in unknown) or WRITER_ORDER_HINT
+            errors.append(f"numeros no permitidos o fuera de orden: {rendered}")
             messages.append(Message.text("assistant", response.text))
             messages.append(
                 Message.user_text(WRITER_REPAIR_PROMPT.format(unknown=rendered))

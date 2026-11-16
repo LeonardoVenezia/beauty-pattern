@@ -229,6 +229,59 @@ def _check_section(
     return available
 
 
+_CORNERS = {StitchKind.CORNER_SC, StitchKind.CORNER_DC, StitchKind.SQUARE_TURN, StitchKind.GRANNY_CORNER}
+# Piezas que se tejen iguales: mismo conteo en cada vuelta.
+_PAIRS = (("sleeve_left", "sleeve_right"), ("cuff_left", "cuff_right"), ("button_band_left", "button_band_right"))
+# Piezas en espejo tejidas en plano: los cierres van al principio de una hilera
+# de su lado, asi que una pieza puede ir UNA hilera corrida respecto de la
+# otra (es lo habitual en patrones publicados), nunca mas, y terminan iguales.
+_MIRRORS = (("left_front", "right_front"), ("front_left", "front_right"), ("neck_left", "neck_right"))
+
+
+def _mirrored(a: list[int], b: list[int]) -> bool:
+    if len(a) != len(b) or a[-1:] != b[-1:]:
+        return False
+    return all(y in a[max(0, i - 1) : i + 2] for i, y in enumerate(b)) and all(
+        x in b[max(0, i - 1) : i + 2] for i, x in enumerate(a)
+    )
+
+
+def _check_symmetry(pattern: Pattern, issues: list[Issue]) -> None:
+    """Coherencia geometrica, no solo aritmetica: un cuadrado tiene sus 4
+    lados iguales en cada vuelta y las piezas pares son identicas. Una vuelta
+    puede cerrar la cuenta y aun asi tener 10 pts de un lado y 11 del otro."""
+    for section in pattern.sections:
+        for step in section.steps:
+            ops = list(step.expanded_ops())
+            corners = [i for i, op in enumerate(ops) if op.kind in _CORNERS]
+            if len(corners) != 4:
+                continue
+            ends = [*corners[1:], corners[0] + len(ops)]
+            sides = [
+                sum(ops[k % len(ops)].produces for k in range(a + 1, b)) for a, b in zip(corners, ends, strict=True)
+            ]
+            if len(set(sides)) > 1:
+                issues.append(
+                    Issue(
+                        code="square_sides",
+                        message=f"vuelta {step.number}: lados desiguales {sides}",
+                        section=section.id,
+                        step=step.number,
+                    )
+                )
+    by_id = {section.id: section for section in pattern.sections}
+    for left, right in (*_PAIRS, *_MIRRORS):
+        a, b = by_id.get(left), by_id.get(right)
+        if a is None or b is None:
+            continue
+        counts_a = [st.stitch_count_end for st in a.steps]
+        counts_b = [st.stitch_count_end for st in b.steps]
+        if counts_a != counts_b and not ((left, right) in _MIRRORS and _mirrored(counts_a, counts_b)):
+            issues.append(
+                Issue(code="pair_mismatch", message=f"{left} y {right} no tienen los mismos conteos", section=right)
+            )
+
+
 def simulate(pattern: Pattern) -> SimulationReport:
     issues: list[Issue] = []
     gauge = resolve_gauge(pattern.params)
@@ -256,6 +309,7 @@ def simulate(pattern: Pattern) -> SimulationReport:
             section, gauge_sts, gauge_rows, issues
         )
         steps_checked += len(section.steps)
+    _check_symmetry(pattern, issues)
 
     for measurement in pattern.measurements:
         if measurement.target_cm is None:

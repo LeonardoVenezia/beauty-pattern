@@ -202,3 +202,26 @@ def test_every_chart_symbol_is_anchored_on_the_stitch_it_is_worked_into(square_a
         assert len(anchors) == len(glyphs) == step.stitch_count_end
         assert anchors == sorted(anchors)
         assert anchors[0] >= 0 and anchors[-1] <= previous.stitch_count_end
+
+
+def test_simulator_rejects_a_square_with_one_side_longer() -> None:
+    """Cerrar la cuenta no alcanza: 10 pts de un lado y 11 del otro arruinan
+    el cuadrado. El simulador lo detecta aunque el total este bien."""
+    from dataclasses import replace
+
+    from engine.ir import Step
+
+    pattern = generate(motif_spec(MANDALA), PatternParams())
+    assert simulate(pattern).ok
+    section = pattern.sections[0]
+    last = section.steps[-1]
+    ops = list(last.expanded_ops())
+    corner = next(i for i, op in enumerate(ops) if op.kind in {StitchKind.CORNER_DC, StitchKind.CORNER_SC})
+    # mover un punto de un lado al siguiente: mismo total, lados distintos
+    plain = next(i for i in range(corner + 1, len(ops)) if ops[i].kind is ops[corner - 1].kind and ops[i].times == 1)
+    moved = [*ops[:plain], *ops[plain + 1 :]]
+    moved.insert(corner, ops[plain])
+    bad = Step(number=last.number, items=tuple(moved), stitch_count_end=last.stitch_count_end, note_key=last.note_key)
+    broken = replace(pattern, sections=(replace(section, steps=(*section.steps[:-1], bad)),))
+    report = simulate(broken)
+    assert not report.ok and "square_sides" in {issue.code for issue in report.issues}

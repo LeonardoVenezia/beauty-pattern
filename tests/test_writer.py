@@ -86,3 +86,21 @@ async def test_writer_language_changes_canonical() -> None:
     garment = pattern()
     result = await write_pattern_text(garment, language="en", config=fake_config())
     assert "size" in result.text.lower()
+
+
+async def test_writer_rejects_real_numbers_in_the_wrong_place() -> None:
+    """Un numero que existe en el patron pero puesto en otro lugar tambien es
+    un error: puede arruinar el tejido entero."""
+    garment = pattern()
+    canonical = render_pattern_text(garment, lang="es")
+    lines = canonical.splitlines()
+    numbered = [i for i, line in enumerate(lines) if "[" in line and "pts]" in line]
+    a, b = numbered[1], numbered[-2]
+    lines[a], lines[b] = lines[b], lines[a]  # mismos numeros, otro orden
+    dropped = canonical.replace("[", "", 1)  # y otra version a la que le falta... nada numerico
+    client = FakeAIClient(responses=["\n".join(lines), "\n".join(lines)])
+    result = await write_pattern_text(garment, config=fake_config(), client=client, max_attempts=2)
+    assert result.fallback_used is True and result.text == canonical
+    assert "orden" in result.validation_errors[0]
+    ok = await write_pattern_text(garment, config=fake_config(), client=FakeAIClient(responses=[dropped]))
+    assert ok.fallback_used is False
