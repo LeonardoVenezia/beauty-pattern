@@ -553,3 +553,16 @@ desparejos.
   pedir más datos antes; la mayoría se los salta y la foto ya los da.
 - **Defaults**: medida del motivo según las vueltas de la foto y el hilo;
   grosor preseleccionado con el estimado de la foto (commit 993a164).
+
+## D031 — Comparación con patrones publicados: canesú legible, gorro real, foto, descripción libre y guía humana (2026-11-16)
+
+Contexto: se compararon tres resultados nuestros (gorro de elástico, osito, pullover con canesú de jacquard) con patrones que circulan en internet. Los nuestros perdían en tres frentes: técnica mal detectada (agujas → crochet), texto ilegible (canesú con una línea "Solo talles…" por vuelta) y ausencia de voz humana y de imagen de la pieza.
+
+Decisiones:
+- **Canesú circular**: 6 vueltas de aumento repartido (`YOKE_INCREASE_ROUNDS`) con crecimiento geométrico y vueltas lisas entre medio, iguales en todos los talles. Cada vuelta se escribe "(5 der, m1l) 4 veces, (4 der, m1l) 14 veces"; ninguna vuelta reparte exacto, así siempre tiene la misma forma y el texto multitalle no se parte. ASUNCIÓN: sistema de porcentajes de E. Zimmermann (3 vueltas) y patrones comerciales (4-8). Alternativa descartada: aumentar en casi todas las vueltas (lo que había), ilegible.
+- **Repeticiones** entre paréntesis: "(ops) N veces" en vez de "Repetir N veces: ops", que no dejaba ver dónde terminaba la repetición.
+- **Gorro de dos agujas**: respeta el punto de la foto. En elástico, el gorro entero va en 2x2 y la corona disminuye dentro del elástico (primero los reveses, después los derechos). En los demás puntos, la corona va en gajos (4-10, el que mejor ajusta la medida), cada 2 vueltas y el final en todas si no entra en ~1/3 del alto (`CROWN_SHARE`, ASUNCIÓN). Se une en redondo sin cerrar entre partes y se termina pasando la hebra por los puntos (`meta["gather"]`).
+- **Extractor v4**: reglas para distinguir agujas de crochet por la superficie (columnas de V, elástico, nudos) y la descripción libre de la persona como dato.
+- **Descripción libre** antes de analizar (hasta 600 caracteres), en lugar de dos desplegables; la API sigue aceptando `tejido`/`categoria`.
+- **Foto en la portada** del PDF (`?foto=<image_id>`), reprocesada (sin EXIF, achicada). Vive lo que dura la imagen guardada (`IMAGE_TTL_HOURS`).
+- **Guía (IA, segunda pasada)**: notas de una tejedora experta por sección, intro y cierre (`ai/guide.py`, `guide-v1`). No puede tener ningún número (ni cifras ni palabras); se valida y repara hasta 2 veces y, si no cumple, el PDF sale sin guía. Así la IA aporta la voz humana sin poder contradecir el cálculo. El PDF la pide al descargarse (con caché del cliente de IA); `?guia=false` la omite.

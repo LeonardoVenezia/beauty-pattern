@@ -11,7 +11,7 @@ verificada; este modulo solo maqueta.
 from __future__ import annotations
 
 import re
-from dataclasses import replace
+from dataclasses import dataclass, replace
 from io import BytesIO
 from typing import Any, Literal
 
@@ -74,6 +74,10 @@ def _styles(print_mode: bool) -> dict[str, ParagraphStyle]:
         "body": style("Body", spaceAfter=3),
         "step": style("Step", leftIndent=12, firstLineIndent=-12, spaceAfter=4),
         "note": style("Note", fontSize=9.5, leading=13, textColor=_SOFT, leftIndent=10, firstLineIndent=-8, spaceAfter=2),
+        "guide": style(
+            "Guide", fontName="Helvetica-Oblique", fontSize=10, leading=14.5, textColor=_SOFT, leftIndent=8,
+            borderPadding=(4, 6, 4, 8), borderColor=_ACCENT, borderWidth=0, spaceBefore=2, spaceAfter=6,
+        ),
         "cell": style("Cell", fontSize=9.5, leading=12.5),
         "cell_bold": style("CellBold", fontName="Helvetica-Bold", fontSize=9.5, leading=12.5),
     }
@@ -250,8 +254,23 @@ def _photo(data: bytes, max_w: float, max_h: float) -> Flowable | None:
     return image
 
 
+@dataclass(frozen=True)
+class GuideText:
+    """La voz humana del patron (ai/guide.py), ya validada: sin numeros.
+    `sections` va por nombre de seccion tal como sale en el documento."""
+
+    intro: str
+    sections: dict[str, str]
+    closing: str = ""
+
+
 def render_document_pdf(
-    document: PatternDocument, *, paper: Paper = "A4", print_mode: bool = False, photo: bytes | None = None
+    document: PatternDocument,
+    *,
+    paper: Paper = "A4",
+    print_mode: bool = False,
+    photo: bytes | None = None,
+    guide: GuideText | None = None,
 ) -> bytes:
     lang = document.language
     buffer = BytesIO()
@@ -307,8 +326,8 @@ def render_document_pdf(
     def flush() -> None:
         nonlocal section
         if section:
-            story.append(KeepTogether(section[:2]))
-            story.extend(section[2:])
+            story.append(KeepTogether(section[:3]))  # titulo, nota de la guia y primer paso
+            story.extend(section[3:])
             section = []
 
     def add(flowable: Flowable) -> None:
@@ -321,10 +340,17 @@ def render_document_pdf(
             story.append(PageBreak())
         elif kind is BlockKind.DOC_HEADING:
             flush()
+            if guide is not None and block.text == t("pattern.finished", lang) and guide.closing:
+                story.append(Paragraph(_esc(guide.closing), styles["guide"]))
             story.append(Paragraph(_esc(block.text), styles["h1"]))
+            if guide is not None and block.text == t("doc.description", lang):
+                story.append(Paragraph(_esc(guide.intro), styles["guide"]))
         elif kind is BlockKind.SECTION_HEADING:
             flush()
             section = [Paragraph(_esc(block.text), styles["h2"])]
+            note = guide.sections.get(block.text) if guide is not None else None
+            if note:
+                section.append(Paragraph(_esc(note), styles["guide"]))
         elif kind is BlockKind.TABLE:
             flush()
             header = len(block.rows) > 1 and len(block.rows[0]) > 2
@@ -371,6 +397,7 @@ def render_pattern_pdf(
     print_mode: bool = False,
     all_sizes: bool = True,
     photo: bytes | None = None,
+    guide: GuideText | None = None,
 ) -> bytes:
     """PDF de un patron. Las prendas incluyen todos los talles verificados,
     con el talle del patron resaltado; si no se pueden regenerar, solo el suyo.
@@ -393,4 +420,4 @@ def render_pattern_pdf(
             for p in patterns
         ]
     document = build_document(patterns, highlight=pattern.meta.size, lang=lang)
-    return render_document_pdf(document, paper=paper, print_mode=print_mode, photo=photo)
+    return render_document_pdf(document, paper=paper, print_mode=print_mode, photo=photo, guide=guide)

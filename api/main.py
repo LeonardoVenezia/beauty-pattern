@@ -17,18 +17,21 @@ from ai.config import AIConfig
 from ai.critic import critique_pattern
 from ai.errors import AIConfigError, AIError
 from ai.extractor import DESCRIPTION_MAX, MAX_PHOTOS, Hints, extract_garment
+from ai.guide import write_guide
 from ai.probe import CapabilityProbe
 from ai.writer import write_pattern_text
 from api.ratelimit import limiter_from_env
 from api.storage import database_from_env
 from engine import ENGINE_VERSION
 from engine.garments import GarmentError, generate
+from engine.i18n import t
+from engine.ir import Pattern
 from engine.serialization import pattern_from_dict, pattern_to_dict
 from engine.simulator import simulate
 from engine.spec import Category, GarmentSpec, PatternParams
 from engine.stitches.catalog import STITCH_PATTERNS
 from engine.text import render_pattern_text
-from render.pdf import render_pattern_pdf
+from render.pdf import GuideText, render_pattern_pdf
 from render.schematic import render_schematic_svg
 from vision.preprocess import ImageValidationError, PreparedImage, prepare_image
 
@@ -234,9 +237,30 @@ async def get_pattern(pattern_id: str) -> dict[str, object]:
     }
 
 
+async def _guide(pattern: Pattern) -> GuideText | None:
+    """Segunda pasada de IA: la voz humana del patron, sin numeros. Si no hay
+    IA configurada o no cumple las reglas, el PDF sale igual sin guia."""
+    try:
+        notes = await write_guide(pattern, config=AIConfig.from_env())
+    except AIConfigError:
+        return None
+    if notes is None:
+        return None
+    lang = pattern.params.idioma
+    return GuideText(
+        intro=notes.intro,
+        sections={t(s.name_key, lang): notes.secciones[s.id] for s in pattern.sections if s.id in notes.secciones},
+        closing=notes.cierre,
+    )
+
+
 @app.get("/pattern/{pattern_id}/pdf")
 async def get_pattern_pdf(
-    pattern_id: str, papel: Literal["A4", "Letter"] = "A4", imprimir: bool = False, foto: str | None = None
+    pattern_id: str,
+    papel: Literal["A4", "Letter"] = "A4",
+    imprimir: bool = False,
+    foto: str | None = None,
+    guia: bool = True,
 ) -> Response:
     database = database_from_env()
     record = database.get_pattern(pattern_id)
@@ -247,7 +271,9 @@ async def get_pattern_pdf(
     # despues el PDF sale sin foto. Guardarla con el patron si hace falta mas.
     image = database.get_image(foto) if foto else None
     photo = prepare_image(image[0]).main if image else None  # sin EXIF y achicada
-    pdf = render_pattern_pdf(pattern, paper=papel, print_mode=imprimir, photo=photo)
+    pdf = render_pattern_pdf(
+        pattern, paper=papel, print_mode=imprimir, photo=photo, guide=await _guide(pattern) if guia else None
+    )
     return Response(
         content=pdf,
         media_type="application/pdf",
