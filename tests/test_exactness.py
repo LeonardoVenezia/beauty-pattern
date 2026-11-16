@@ -110,3 +110,15 @@ def test_every_language_gives_the_same_numbers(category: Category, technique: Te
     reference = counts("es")
     for lang in LANGUAGES[1:]:
         assert counts(lang) == reference, lang
+
+
+@pytest.mark.parametrize("lang", ["es", "en", "fr", "de", "it"])
+def test_multisize_lines_merge_the_same_way_in_every_language(lang: str) -> None:
+    """Un numero pegado a una letra ("7x") no se fusiona entre talles y el
+    texto se parte en una linea por talle: todos los idiomas igual de legibles."""
+    sizes = generate_size_set(GarmentSpec(categoria=Category.PULLOVER, tecnica=Technique.NEEDLES), PatternParams(idioma=lang))
+    lines = render_document_text(build_document(sizes, highlight="M")).splitlines()
+    reference = render_document_text(
+        build_document(generate_size_set(GarmentSpec(categoria=Category.PULLOVER, tecnica=Technique.NEEDLES), PatternParams()), highlight="M")
+    ).splitlines()
+    assert len(lines) == len(reference)

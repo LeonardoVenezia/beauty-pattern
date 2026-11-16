@@ -34,7 +34,7 @@ from engine.spec import (
     YarnWeight,
 )
 from engine.stitches.kinds import StitchKind
-from engine.text import render_document_text
+from engine.text import render_document_text, render_pattern_text
 from render.colorwork import render_colorwork_chart_svg
 from render.pdf import render_pattern_pdf
 
@@ -263,3 +263,21 @@ def test_simulator_rejects_a_chart_repeat_that_does_not_fit() -> None:
     report = simulate(replace(pattern, sections=sections))
     assert not report.ok
     assert any(issue.code == "chart_repeat" for issue in report.errors)
+
+
+def test_palette_names_follow_the_pattern_language() -> None:
+    """La IA nombra los colores en espanol: un PDF en aleman no puede decir
+    "azul denim". El color base se traduce y el dibujo sigue pintandolo."""
+    from engine.colorwork import translate_color
+    from render.draw import swatch
+
+    assert translate_color("azul denim", "de") == "blau"
+    assert translate_color("verde oscuro", "fr") == "vert foncé"
+    assert translate_color("azul denim", "es") == "azul denim"
+    assert translate_color("#aabbcc", "it") == "#aabbcc"
+    assert swatch("blau") == swatch("azul") == swatch("blue")
+    spec = fair_isle().model_copy(
+        update={"colorwork": fair_isle().colorwork.model_copy(update={"paleta": ["azul denim", "blanco"]})}  # type: ignore[union-attr]
+    )
+    text = render_pattern_text(generate(spec, PatternParams(idioma="de")), lang="de")
+    assert "blanco" not in text and "azul" not in text

@@ -16,6 +16,7 @@ from __future__ import annotations
 import colorsys
 from collections.abc import Callable
 from dataclasses import dataclass
+from functools import cache
 
 from engine.i18n import t
 
@@ -296,3 +297,46 @@ def chart_text_lines(chart: ColorworkChart, lang: str) -> list[str]:
         lines.append(f"{cells}  {row}")
     lines.append(t("chart.colorwork_repeat", lang, w=chart.width))
     return lines
+
+
+@cache
+def _color_words() -> dict[str, tuple[str, str | None, str]]:
+    """Nombre de color en cualquier idioma -> (clave, oscuro/claro, idioma)."""
+    from engine.i18n import CATALOGS
+
+    words: dict[str, tuple[str, str | None, str]] = {}
+    for lang, catalog in CATALOGS.items():
+        for key, value in catalog.items():
+            if not key.startswith("colorname.") or "{" in value:
+                continue
+            base = key.removeprefix("colorname.")
+            words.setdefault(value.lower(), (base, None, lang))
+            for shade in ("dark", "light"):
+                words.setdefault(t(f"colorname.{shade}", lang, name=value).lower(), (base, shade, lang))
+    return words
+
+
+def color_key(name: str) -> tuple[str, str | None, str] | None:
+    """El color conocido mas largo dentro del nombre ("azul denim" -> azul)."""
+    words = _color_words()
+    parts = name.strip().lower().replace("_", " ").replace("-", " ").split()
+    for size in range(len(parts), 0, -1):
+        for start in range(len(parts) - size + 1):
+            found = words.get(" ".join(parts[start : start + size]))
+            if found:
+                return found
+    return None
+
+
+def translate_color(name: str, lang: str) -> str:
+    """Nombre de la paleta (lo escribe la IA, casi siempre en espanol) en el
+    idioma del patron. Si ya esta en ese idioma o no es un color conocido,
+    queda igual; si no, sale el color base traducido, nunca mezclado.
+    ponytail: los matices sin traduccion ("denim", "salvia") se pierden en
+    otros idiomas; sumar claves colorname.* si hacen falta."""
+    found = color_key(name)
+    if found is None or found[2] == lang:
+        return name
+    base, shade, _ = found
+    text = t(f"colorname.{base}", lang)
+    return t(f"colorname.{shade}", lang, name=text) if shade else text

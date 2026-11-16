@@ -378,4 +378,11 @@ def swatch(name: str, index: int = 0) -> str:
     for word in key.replace("_", " ").replace("-", " ").split():
         if word in _NAMED:
             return _NAMED[word]
+    from engine.colorwork import color_key
+
+    found = color_key(key)  # "blau", "bleu", "blu": el mismo color en cada idioma
+    if found is not None:
+        for word in (found[0], *found[0].split("_")):
+            if word in _NAMED:
+                return _NAMED[word]
     return _NEUTRAL[index % len(_NEUTRAL)]

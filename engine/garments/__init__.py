@@ -57,6 +57,11 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
     verificada; lo que se aproximo o no se pudo reproducir queda en las
     advertencias del patron (nunca se pierde en silencio).
     """
+    if spec.colorwork and spec.colorwork.paleta:
+        from engine.colorwork import translate_color
+
+        paleta = [translate_color(name, params.idioma) for name in spec.colorwork.paleta]
+        spec = spec.model_copy(update={"colorwork": spec.colorwork.model_copy(update={"paleta": paleta})})
     routed, notes = route(spec)
     pattern = _generate(routed, params)
     extra = [Warning(f"approx_{note}", f"warning.approx.{note}") for note in notes]
