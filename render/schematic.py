@@ -15,7 +15,6 @@ from engine.ir import Pattern, Section
 from engine.spec import resolve_gauge
 from render.draw import (
     FILL,
-    FILL_ALT,
     STROKE,
     STROKE_SOFT,
     TEXT,
