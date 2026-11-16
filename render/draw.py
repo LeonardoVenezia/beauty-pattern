@@ -8,6 +8,7 @@ stroke-dasharray; sin <marker>, sin <use> y con la familia Helvetica/Arial.
 
 from __future__ import annotations
 
+import re
 from xml.sax.saxutils import escape
 
 STROKE = "#6b4f3a"
@@ -193,7 +194,13 @@ def callout(
     text_x = end_x + (6 if anchor == "start" else -6)
     for index, line in enumerate(lines):
         parts.append(
-            label(text_x, end_y + index * step - (len(lines) - 1) * step / 2, line, size=size, anchor=anchor)
+            label(
+                text_x,
+                end_y + index * step - (len(lines) - 1) * step / 2,
+                line,
+                size=size,
+                anchor=anchor,
+            )
         )
     return parts
 
@@ -253,8 +260,8 @@ def crochet_texture(
             if cx + arm <= x + w + 1:
                 parts.append(
                     f'<path d="M {_f(cx - arm)} {_f(cy - arm)} '
-                    f'L {_f(cx + arm)} {_f(cy + arm)} '
-                    f'M {_f(cx + arm)} {_f(cy - arm)} '
+                    f"L {_f(cx + arm)} {_f(cy + arm)} "
+                    f"M {_f(cx + arm)} {_f(cy - arm)} "
                     f'L {_f(cx - arm)} {_f(cy + arm)}"/>'
                 )
     parts.append("</g>")
@@ -264,7 +271,7 @@ def crochet_texture(
 def clip_group(clip_id: str, clip_path: str, parts: list[str]) -> list[str]:
     """Envuelve `parts` en un clipPath (svglib lo soporta)."""
     return [
-        f"<defs><clipPath id=\"{escape(clip_id)}\">",
+        f'<defs><clipPath id="{escape(clip_id)}">',
         clip_path,
         "</clipPath></defs>",
         f'<g clip-path="url(#{escape(clip_id)})">',
@@ -291,9 +298,7 @@ def caption(width: float, y: float, text: str) -> str:
     return label(width / 2, y, text, size=10, color=TEXT_SOFT)
 
 
-def dashed_line(
-    x1: float, y1: float, x2: float, y2: float, *, color: str = STROKE_SOFT
-) -> str:
+def dashed_line(x1: float, y1: float, x2: float, y2: float, *, color: str = STROKE_SOFT) -> str:
     return (
         f'<line x1="{_f(x1)}" y1="{_f(y1)}" x2="{_f(x2)}" y2="{_f(y2)}" '
         f'stroke="{color}" stroke-width="1" stroke-dasharray="5 4"/>'
@@ -322,3 +327,55 @@ def shape_rect(
         f'<rect x="{_f(x)}" y="{_f(y)}" width="{_f(w)}" height="{_f(h)}" '
         f'rx="{_f(rx)}" fill="{fill}" stroke="{stroke}" stroke-width="{_f(width)}"/>'
     )
+
+
+# Nombres de color frecuentes (es/en) -> tono de muestra. Lo desconocido usa
+# una escala neutra; el texto siempre nombra el color.
+_NAMED = {
+    "crema": "#efe6d2",
+    "cream": "#efe6d2",
+    "blanco": "#f7f5f0",
+    "white": "#f7f5f0",
+    "beige": "#d9c7a7",
+    "verde": "#6fbf9f",
+    "green": "#6fbf9f",
+    "rosa": "#cf9182",
+    "pink": "#cf9182",
+    "gris": "#a9adb0",
+    "grey": "#a9adb0",
+    "gray": "#a9adb0",
+    "azul": "#6f8fbf",
+    "blue": "#6f8fbf",
+    "rojo": "#c0504d",
+    "red": "#c0504d",
+    "amarillo": "#e8c95a",
+    "yellow": "#e8c95a",
+    "naranja": "#e39252",
+    "orange": "#e39252",
+    "violeta": "#9a7cc0",
+    "lila": "#b9a2d6",
+    "purple": "#9a7cc0",
+    "negro": "#3b3b3b",
+    "black": "#3b3b3b",
+    "marron": "#8a6247",
+    "marrón": "#8a6247",
+    "brown": "#8a6247",
+    "celeste": "#9cc9e3",
+    "mostaza": "#c9a13b",
+    "terracota": "#b8653f",
+}
+_NEUTRAL = ["#efe6d2", "#d9c7a7", "#c4ad8a", "#a88f6d"]
+
+
+def swatch(name: str, index: int = 0) -> str:
+    """Tono del color nombrado; tambien "verde salvia" o "sage_green" (por
+    la palabra conocida que aparezca)."""
+    key = name.strip().lower()
+    if re.fullmatch(r"#[0-9a-f]{6}", key):
+        return key
+    if key in _NAMED:
+        return _NAMED[key]
+    for word in key.replace("_", " ").replace("-", " ").split():
+        if word in _NAMED:
+            return _NAMED[word]
+    return _NEUTRAL[index % len(_NEUTRAL)]

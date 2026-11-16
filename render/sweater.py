@@ -24,6 +24,7 @@ from render.draw import (
     clip_group,
     label,
     svg_document,
+    swatch,
     title_block,
 )
 
@@ -39,7 +40,9 @@ def _value(pattern: Pattern, key: str) -> float | None:
     return next((m.value_cm for m in pattern.measurements if m.key == key), None)
 
 
-def _dim(x1: float, y1: float, x2: float, y2: float, text: str, *, dx: float = 0, dy: float = -8) -> list[str]:
+def _dim(
+    x1: float, y1: float, x2: float, y2: float, text: str, *, dx: float = 0, dy: float = -8
+) -> list[str]:
     """Linea de cota con topes perpendiculares y rotulo en el medio."""
     length = math.hypot(x2 - x1, y2 - y1) or 1.0
     nx, ny = -(y2 - y1) / length * 5, (x2 - x1) / length * 5
@@ -69,7 +72,7 @@ def _yoke_band_stripes(pattern: Pattern, depth_cm: float) -> list[tuple[float, f
         if step.note_key != "pattern.note.yoke_chart":
             continue
         contrast = ord(dict(step.note_params).get("fg", "B")) - 65
-        color = colors[contrast] if 0 <= contrast < len(colors) else STROKE
+        color = swatch(colors[contrast], contrast) if 0 <= contrast < len(colors) else STROKE
         y0, y1 = depth_cm * index / rows, depth_cm * (index + 1) / rows
         if stripes and stripes[-1][2] == color and abs(stripes[-1][1] - y0) < 1e-9:
             stripes[-1] = (stripes[-1][0], y1, color)
@@ -118,7 +121,11 @@ def render_sweater_svg(pattern: Pattern, lang: str, *, values: bool) -> str:
     # agujas lleva escote en V salvo que la foto muestre uno redondo/alto.
     v_neck = family == "cardigan" and escote not in {"crew", "turtleneck", "funnel"}
     neck_depth = 6.0
-    shoulder = (half, shoulder_drop) if sleeve > 0 or not family.endswith("vest") else (half * 0.8, shoulder_drop)
+    shoulder = (
+        (half, shoulder_drop)
+        if sleeve > 0 or not family.endswith("vest")
+        else (half * 0.8, shoulder_drop)
+    )
     underarm = (half, yoke)
     ux, uy = math.cos(_SLEEVE_ANGLE), math.sin(_SLEEVE_ANGLE)
     sleeve_pts: list[tuple[float, float]] = []
@@ -147,7 +154,9 @@ def render_sweater_svg(pattern: Pattern, lang: str, *, values: bool) -> str:
         nb = p(0, neck_depth * 2)
         d += f" Q {_f(nb[0])} {_f(nb[1])} {_f(nr[0])} {_f(nr[1])} Z"
         neck_bottom = neck_depth
-    parts = [f'<path d="{d}" fill="{FILL}" stroke="{STROKE}" stroke-width="1.8" stroke-linejoin="round"/>']
+    parts = [
+        f'<path d="{d}" fill="{FILL}" stroke="{STROKE}" stroke-width="1.8" stroke-linejoin="round"/>'
+    ]
     stripes = _yoke_band_stripes(pattern, yoke)
     if stripes:  # guardas de jacquard del canesu, a su altura y en su color
         x0, x1 = p(-total_w / 2, 0)[0], p(total_w / 2, 0)[0]
@@ -157,7 +166,9 @@ def render_sweater_svg(pattern: Pattern, lang: str, *, values: bool) -> str:
             for y0, y1, color in stripes
         ]
         parts += clip_group("yoke-bands", f'<path d="{d}"/>', rects)
-        parts.append(f'<path d="{d}" fill="none" stroke="{STROKE}" stroke-width="1.8" stroke-linejoin="round"/>')
+        parts.append(
+            f'<path d="{d}" fill="none" stroke="{STROKE}" stroke-width="1.8" stroke-linejoin="round"/>'
+        )
     if cardigan:  # abertura del frente con su tapa de botones
         top_y, hem_y = p(0, neck_bottom)[1], p(0, body_len)[1]
         band = 1.5 * scale
@@ -165,7 +176,9 @@ def render_sweater_svg(pattern: Pattern, lang: str, *, values: bool) -> str:
             f'<rect x="{_f(cx - band)}" y="{_f(top_y)}" width="{_f(2 * band)}" height="{_f(hem_y - top_y)}" '
             f'fill="none" stroke="{STROKE}" stroke-width="1" stroke-dasharray="4 3"/>'
         )
-        parts.append(f'<line x1="{_f(cx)}" y1="{_f(top_y)}" x2="{_f(cx)}" y2="{_f(hem_y)}" stroke="{STROKE}" stroke-width="1.4"/>')
+        parts.append(
+            f'<line x1="{_f(cx)}" y1="{_f(top_y)}" x2="{_f(cx)}" y2="{_f(hem_y)}" stroke="{STROKE}" stroke-width="1.4"/>'
+        )
 
     # Cotas.
     if "neck" in letters:
@@ -173,11 +186,21 @@ def render_sweater_svg(pattern: Pattern, lang: str, *, values: bool) -> str:
         parts += _dim(nl[0], y, nr[0], y, tag("neck"))
     if "bust" in letters:
         y = p(0, yoke + 3)[1]
-        parts += _dim(p(-half, 0)[0] + 4, y, p(half, 0)[0] - 4, y, tag("bust"), dx=half * scale / 2 if cardigan else 0, dy=-6)
+        parts += _dim(
+            p(-half, 0)[0] + 4,
+            y,
+            p(half, 0)[0] - 4,
+            y,
+            tag("bust"),
+            dx=half * scale / 2 if cardigan else 0,
+            dy=-6,
+        )
     if "body_length" in letters:
         x = p(-half * 0.45, 0)[0]
         parts += _dim(x, p(0, shoulder_drop)[1], x, p(0, body_len)[1], tag("body_length"), dy=0)
-    depth_key = "yoke_depth" if "yoke_depth" in letters else ("armhole" if "armhole" in letters else None)
+    depth_key = (
+        "yoke_depth" if "yoke_depth" in letters else ("armhole" if "armhole" in letters else None)
+    )
     if depth_key:
         x = p(half * 0.45, 0)[0]
         parts += _dim(x, p(0, 0)[1], x, p(0, yoke)[1], tag(depth_key), dy=0)
@@ -191,17 +214,29 @@ def render_sweater_svg(pattern: Pattern, lang: str, *, values: bool) -> str:
         if "sleeve_length" in letters:
             ox, oy = -uy * 14, ux * 14
             a, b = p(*shoulder), p(*sleeve_pts[0])
-            parts += _dim(a[0] - ox, a[1] - oy, b[0] - ox, b[1] - oy, tag("sleeve_length"), dx=18, dy=-6)
+            parts += _dim(
+                a[0] - ox, a[1] - oy, b[0] - ox, b[1] - oy, tag("sleeve_length"), dx=18, dy=-6
+            )
 
     title = t(pattern.meta.title_key, lang)
-    subtitle = t("schematic.letters_note", lang) if not values else t(
-        "schematic.size_measures_in", lang, size=pattern.meta.size, unit=unit
+    subtitle = (
+        t("schematic.letters_note", lang)
+        if not values
+        else t("schematic.size_measures_in", lang, size=pattern.meta.size, unit=unit)
     )
     head = title_block(WIDTH, 42, title, subtitle)
     entries = [f"{letters[k]}: {t(f'measure.{k}', lang)}" for k in letters]
     legend = [
-        label(WIDTH / 2, HEIGHT - 62 + row * 15, "   ".join(entries[row * 4 : row * 4 + 4]), size=10, color=TEXT_SOFT)
+        label(
+            WIDTH / 2,
+            HEIGHT - 62 + row * 15,
+            "   ".join(entries[row * 4 : row * 4 + 4]),
+            size=10,
+            color=TEXT_SOFT,
+        )
         for row in range((len(entries) + 3) // 4)
     ]
     tail = [caption(WIDTH, HEIGHT - 20, t("schematic.caption", lang))]
-    return svg_document(WIDTH, HEIGHT, title, t("pattern.schematic", lang), head + parts + legend + tail)
+    return svg_document(
+        WIDTH, HEIGHT, title, t("pattern.schematic", lang), head + parts + legend + tail
+    )

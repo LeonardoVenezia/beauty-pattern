@@ -227,8 +227,10 @@ def test_chart_svg_has_colors_symbols_numbers_and_legend() -> None:
     assert 'fill="#1f3a5f"' in svg and 'fill="#f2eee0"' in svg
     assert "<line" in svg  # simbolo del contraste para imprimir en B/N
     assert "repetición de 6 pts" in svg
-    assert "A: crudo (#f2eee0) \u2013 fondo" in svg
-    assert "B: azul oscuro (#1f3a5f)" in svg
+    assert "A: crudo \u2013 fondo" in svg
+    assert "B: azul oscuro" in svg
+    named = render_colorwork_chart_svg(chart, ("azul denim", "blanco"), lang="es")
+    assert "A: azul denim" in named and 'fill="#6f8fbf"' in named  # la IA nombra los colores con palabras
     for row in range(1, chart.height + 1):
         assert f">{row}</text>" in svg
 

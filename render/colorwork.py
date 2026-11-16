@@ -12,6 +12,7 @@ from xml.sax.saxutils import escape
 
 from engine.colorwork import ColorworkChart, color_letter, color_name
 from engine.i18n import t
+from render.draw import swatch
 
 CELL = 22
 MARGIN_LEFT = 24
@@ -78,7 +79,7 @@ def render_colorwork_chart_svg(chart: ColorworkChart, palette: tuple[str, ...], 
     """Grafico de una guarda de jacquard (una repeticion)."""
 
     def fill(index: int) -> str:
-        return palette[index] if index < len(palette) else "#ffffff"
+        return swatch(palette[index], index) if index < len(palette) else "#ffffff"
 
     grid_w = chart.width * CELL
     grid_h = chart.height * CELL
@@ -132,8 +133,9 @@ def render_colorwork_chart_svg(chart: ColorworkChart, palette: tuple[str, ...], 
             f'stroke="{GRID}" stroke-width="0.6"/>'
         )
         parts.append(_symbol(index, MARGIN_LEFT, y, 18, _ink(fill(index))))
-        hex_color = fill(index)
-        label = f"{color_letter(index)}: {color_name(hex_color, lang)} ({hex_color})"
+        given = palette[index] if index < len(palette) else ""
+        named = given if given and not given.startswith("#") else color_name(fill(index), lang)
+        label = f"{color_letter(index)}: {named}"
         if index == chart.background:
             label += f" \u2013 {t('chart.colorwork_background', lang)}"
         parts.append(_text(MARGIN_LEFT + 26, y + 13, label, size=10.5))

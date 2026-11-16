@@ -13,7 +13,7 @@ from engine.stitches.kinds import StitchKind
 from render.crochet_chart import draw_rounds, start_angle
 from render.crochet_chart import legend as chart_legend
 from render.draw import STROKE, TEXT_SOFT, _f, caption, label, svg_document, title_block
-from render.granny import _hex
+from render.draw import swatch as _hex
 
 WIDTH, HEIGHT = 900.0, 800.0
 # Legibilidad (mucha gente que teje es mayor): si un simbolo quedaria de menos
