@@ -197,3 +197,13 @@ Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.
   (2 pad, 2 cad, 2 pad) en un pt y lados escalonados pad/pa/mpa/pb (12 %
   de cada uno); después, esquinas de 2 cad. En la parte cuadrada, los puntos
   calados se tejen como pa.
+
+## Terminología en francés, alemán e italiano (engine/i18n/fr.py, de.py, it.py)
+
+Abreviaturas y términos tal como aparecen en patrones publicados en cada idioma. ASUNCIÓN: las traducciones las hizo un agente a partir de convenciones conocidas; falta revisión de una tejedora nativa de cada idioma.
+- DROPS Design (patrones y glosarios en fr/de/it): https://www.garnstudio.com/
+- Wikipedia FR, "Glossaire du tricot": https://fr.wikipedia.org/wiki/Glossaire_du_tricot
+- Wikipedia IT, "Lavoro a maglia" y "Uncinetto": https://it.wikipedia.org/wiki/Lavoro_a_maglia
+- Craft Yarn Council, abreviaturas internacionales que se conservan (ssk, m1l/m1r, kfb): https://www.craftyarncouncil.com/standards/knitting-abbreviations
+- DROPS, diccionario de tejido alemán: https://www.garnstudio.com/dictionary.php?lang=de
+- für Sie, "Strickschrift lesen" (símbolos y abreviaturas en alemán): https://www.fuersie.de/stricken/strickschrift-lesen-das-bedeuten-die-zeichen-122.html

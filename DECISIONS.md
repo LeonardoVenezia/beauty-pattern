@@ -658,3 +658,15 @@ Decisiones:
 - **Texto multitalle** (`tests/test_exactness.py`): se proyecta el texto fusionado a cada talle y los conteos `[N pts]` tienen que ser, en orden, los de la IR de ese talle. 7 familias × 3 grosores.
 - **Redactor de IA**: la versión reescrita tiene que tener exactamente la misma secuencia de números que el patrón calculado (antes alcanzaba con que cada número existiera en el patrón: "12 vueltas" cambiado por "8 vueltas" pasaba). Si no, se repara o se entrega la plantilla.
 - Comprobado además por muestreo: 3108 vueltas cuadradas de 400 motivos al azar, todos con lados iguales; todas las piezas pares de 8 familias × 7 talles × 3 grosores, iguales.
+
+## D035 — Idiomas, PDF ajustable al final y dibujo de puntos coherente (2026-11-16)
+
+Contexto: la persona vende para el mercado hispano e internacional (sobre todo en inglés). Pidió elegir cosas al descargar el PDF, todas sus fotos en la portada, gráficos arriba, nada de "créditos y legales" (lo consultó con un abogado) y poder firmarse como creadora.
+
+Decisiones:
+- **Cinco idiomas del patrón**: es, en, fr, de, it (`engine/i18n/`, mismas claves y mismos `{parámetros}` en todos; test). El idioma se elige al descargar: el patrón guardado se regenera con ese idioma y vuelve a pasar por el simulador (los números no dependen del idioma, pero algunos textos se fijan al generar).
+- **Costo de IA**: la guía humana se pide solo para el idioma que se descarga, una vez, y queda en caché por (patrón, idioma). Alternativa descartada: pedir los cinco idiomas en una sola consulta (paga cinco veces la salida aunque se use uno, y una respuesta larga falla más la validación). Los números escritos en palabras se prohíben por idioma ("dos" es número en es y "la espalda" en fr).
+- **Último paso**: idioma, talle resaltado y grosor del hilo se cambian ahí (talle e hilo recalculan y verifican al instante), más papel, guía sí/no, fotos de portada y "Diseñado por" (opcional, máx. 80 caracteres; va en portada, pie y metadatos del PDF).
+- **PDF**: portada con todas las fotos elegidas (una grande o grilla de 2); el esquema y los gráficos van primero; sin sección de créditos/legales ni la nota "diseño propio"; sin salto de página forzado antes de las instrucciones.
+- **Interfaz web** en los cinco idiomas, inglés por defecto (o el del navegador).
+- **Cuándo hay dibujo con cada punto** (regla de coherencia): se dibuja punto por punto donde la posición de cada punto no es obvia por el texto: motivos y cuadrados de crochet, texturas y trenzas, jacquard y, nuevo, las vueltas de aumento del amigurumi al crochet (`render/toy.py::render_round_chart_svg`). El dibujo lista solo las piezas que se tejen exactamente igual, vuelta por vuelta (`engine/document.py::_round_chart_pieces`). No se dibuja punto por punto el jersey liso (todas las casillas serían iguales: los patrones comerciales dan esquema y medidas) ni el amigurumi a dos agujas (sus vueltas son "tejer todo" o aumentos repartidos que el texto ya ubica).

@@ -41,6 +41,8 @@ def expand(item: Item, base: StitchKind, spaced: bool = False) -> list[StitchKin
         one = [base, K.CH] * (width // 2) if spaced else [base] * width
     elif op.kind is K.SKIP:
         one = []
+    elif op.kind is K.MAGIC_RING:  # anillo magico con 6 pb
+        one = [K.SC] * 6
     elif op.kind is K.CROCHET_INC:
         one = [base, base]
     elif op.kind is K.CORNER_SC:  # (1 pb, 2 cad, 1 pb)

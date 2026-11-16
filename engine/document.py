@@ -26,7 +26,7 @@ from engine.blocks import (
 from engine.colorwork import ColorworkChart, color_name
 from engine.garments.panels import build_panel, panel_for, texture_motif
 from engine.i18n import has_key, t
-from engine.ir import Pattern
+from engine.ir import Pattern, Step
 from engine.multisize import format_values, merge_size_blocks, size_note
 from engine.rounding import round_half_up
 from engine.sizes import BODY_SIZES
@@ -171,6 +171,31 @@ def _merged(values: list[str]) -> str:
     return format_values(tuple(values))
 
 
+def growth_rounds(steps: tuple[Step, ...]) -> list[Step]:
+    """Las vueltas del principio mientras la pieza crece."""
+    grow = list(steps[:1])
+    for step in steps[1:]:
+        if step.stitch_count_end <= grow[-1].stitch_count_end:
+            break
+        grow.append(step)
+    return grow
+
+
+def _round_chart_pieces(pattern: Pattern, lang: str) -> list[str]:
+    """Piezas que se tejen exactamente como el dibujo (el de la primera):
+    mismas vueltas de aumento, en orden, y sin volver a aumentar despues."""
+    chart = [step.items for step in growth_rounds(pattern.sections[0].steps)]
+    names: list[str] = []
+    for section in pattern.sections:
+        grow = growth_rounds(section.steps)
+        same = [step.items for step in grow] == chart[: len(grow)]
+        if same and max(s.stitch_count_end for s in section.steps) == grow[-1].stitch_count_end:
+            name = t(section.name_key, lang)
+            if name not in names:
+                names.append(name)
+    return names
+
+
 def build_document(
     patterns: list[Pattern],
     *,
@@ -231,6 +256,11 @@ def build_document(
         from engine.garments.yoke import yoke_bands
 
         colorwork = [band.chart for band in yoke_bands(base.spec, base.params)]
+    # Amigurumi al crochet: el dibujo de los aumentos (donde va cada punto).
+    if base.meta.family == "amigurumi" and is_crochet and base.sections:
+        heading("doc.charts")
+        blocks.append(Block(BlockKind.ROUND_CHART, base.sections[0].id))
+        line(t("doc.round_chart_note", language, pieces=", ".join(_round_chart_pieces(base, language))))
     if colorwork and not charts:
         heading("doc.charts")
     for index, chart in enumerate(colorwork):

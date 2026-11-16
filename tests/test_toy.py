@@ -218,3 +218,22 @@ def test_pdf_and_serialization() -> None:
     assert again.finishing == pattern.finishing
     assert again.sections == pattern.sections
     assert simulate(again).ok
+
+
+def test_round_chart_lists_only_pieces_worked_exactly_like_it() -> None:
+    """El dibujo de aumentos vale solo para las piezas que se tejen igual,
+    vuelta por vuelta: la oreja del gato (con una vuelta pareja en el medio)
+    no puede figurar. Y cada vuelta dibuja tantos simbolos como puntos."""
+    from engine.blocks import BlockKind
+    from engine.document import build_document, growth_rounds
+    from engine.stitches.kinds import StitchKind
+    from render.crochet_chart import expand
+    from render.toy import render_round_chart_svg
+
+    cat = generate(GarmentSpec(categoria=Category.AMIGURUMI, tecnica=Technique.CROCHET, figura="cat"), PatternParams())
+    blocks = build_document([cat]).blocks
+    at = next(i for i, b in enumerate(blocks) if b.kind is BlockKind.ROUND_CHART)
+    assert "Cuerpo" in blocks[at + 1].text and "Orejas" not in blocks[at + 1].text
+    for step in growth_rounds(cat.sections[0].steps):
+        assert sum(len(expand(item, StitchKind.SC)) for item in step.items) == step.stitch_count_end
+    assert "<svg" in (render_round_chart_svg(cat, cat.sections[0].id, "es") or "")

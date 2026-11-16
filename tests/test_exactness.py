@@ -14,7 +14,8 @@ import re
 import pytest
 
 from engine.document import build_document
-from engine.garments import generate_size_set
+from engine.garments import generate, generate_size_set
+from engine.simulator import simulate
 from engine.spec import (
     Category,
     Colorwork,
@@ -81,3 +82,31 @@ def test_mirrored_fronts_may_be_one_row_apart_but_never_one_stitch() -> None:
     assert _mirrored(left, [60, 60, 60, 55, 55, 50])  # cierre una hilera despues: correcto
     assert not _mirrored(left, [60, 60, 55, 56, 50, 50])  # un punto de mas
     assert not _mirrored(left, [60, 60, 55, 55, 50, 51])  # termina distinto
+
+
+@pytest.mark.parametrize(
+    "category,technique",
+    [
+        (Category.PULLOVER, Technique.NEEDLES),
+        (Category.HAT, Technique.NEEDLES),
+        (Category.AMIGURUMI, Technique.CROCHET),
+        (Category.GRANNY_SQUARE, Technique.CROCHET),
+    ],
+)
+def test_every_language_gives_the_same_numbers(category: Category, technique: Technique) -> None:
+    """Cambiar el idioma al descargar no puede mover ni un punto: misma IR
+    verificada en los cinco idiomas, y el PDF sale en cada uno."""
+    from engine.spec import LANGUAGES
+    from render.pdf import render_pattern_pdf
+
+    spec = GarmentSpec(categoria=category, tecnica=technique)
+
+    def counts(lang: str) -> list[list[int]]:
+        pattern = generate(spec, PatternParams(idioma=lang))
+        assert simulate(pattern).ok
+        assert render_pattern_pdf(pattern, all_sizes=False).startswith(b"%PDF")
+        return [[s.stitch_count_end for s in section.steps] for section in pattern.sections]
+
+    reference = counts("es")
+    for lang in LANGUAGES[1:]:
+        assert counts(lang) == reference, lang

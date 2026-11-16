@@ -270,3 +270,30 @@ def render_toy_svg(pattern: Pattern, lang: str) -> str:
         caption(WIDTH, HEIGHT - 20, t("schematic.toy_note", lang)),
     ]
     return svg_document(WIDTH, HEIGHT, title, t("pattern.schematic", lang), parts)
+
+
+def render_round_chart_svg(pattern: Pattern, section_id: str, lang: str) -> str | None:
+    """Grafico de simbolos de las vueltas de aumento de una pieza al crochet
+    (anillo magico y aumentos repartidos), como el de los motivos: cada
+    simbolo sale del punto donde se teje. Las vueltas parejas y las
+    disminuciones siguen en el texto."""
+    from engine.document import growth_rounds
+    from engine.stitches.kinds import StitchKind
+    from render.crochet_chart import draw_rounds
+    from render.crochet_chart import legend as chart_legend
+
+    section = next((s for s in pattern.sections if s.id == section_id), None)
+    if section is None or not section.steps:
+        return None
+    grow = growth_rounds(section.steps)
+    width, size = 900.0, 640.0
+    fills = [FILL if index % 2 else FILL_ALT for index in range(len(grow))]
+    parts, used = draw_rounds(
+        grow, [StitchKind.SC] * len(grow), [False] * len(grow), fills, width / 2, 110 + size / 2, size / 2
+    )
+    y = 110 + size + 40
+    parts.append(label(width / 2, y, t("chart.round_inc", lang), size=12, color=TEXT_SOFT))
+    parts += chart_legend(used, lang, 90, y + 44, width - 180)
+    title = t(section.name_key, lang)
+    head = title_block(width, 42, title, t("doc.round_chart_sub", lang, n=len(grow)))
+    return svg_document(width, y + 110, title, t("doc.charts", lang), head + parts)

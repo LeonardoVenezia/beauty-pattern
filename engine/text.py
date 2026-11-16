@@ -26,6 +26,8 @@ def render_blocks_text(blocks: tuple[Block, ...]) -> str:
             lines.append(f"{block.label} = {block.value}")
         elif block.kind is BlockKind.WARNING:
             lines.append(f"- {block.text}")
+        elif block.kind is BlockKind.ROUND_CHART:
+            continue  # dibujo: solo en el PDF
         else:
             lines.append(block.text)
     return "\n".join(lines)

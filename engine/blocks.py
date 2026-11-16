@@ -60,6 +60,7 @@ class BlockKind(Enum):
     SCHEMATIC = auto()  # lugar del esquema; el render inserta el dibujo
     CHART = auto()  # grafico de puntos; text = indice en PatternDocument.charts
     COLORWORK_CHART = auto()  # jacquard; text = indice en PatternDocument.colorwork_charts
+    ROUND_CHART = auto()  # aumentos de una pieza en redondo de crochet; text = id de seccion
     PAGE_BREAK = auto()
 
 
