@@ -24,6 +24,7 @@ from reportlab.pdfgen.canvas import Canvas  # type: ignore[import-untyped]
 from reportlab.platypus import (  # type: ignore[import-untyped]
     Flowable,
     Frame,
+    Image,
     KeepTogether,
     PageBreak,
     PageTemplate,
@@ -238,8 +239,19 @@ def _numbered_canvas(document: PatternDocument) -> type[Canvas]:
     return NumberedCanvas
 
 
+def _photo(data: bytes, max_w: float, max_h: float) -> Flowable | None:
+    """La foto de la persona en la portada, como en los patrones impresos."""
+    try:
+        image = Image(BytesIO(data))
+    except Exception:  # noqa: BLE001 - una foto ilegible no impide el PDF
+        return None
+    scale = min(max_w / image.imageWidth, max_h / image.imageHeight)
+    image.drawWidth, image.drawHeight = image.imageWidth * scale, image.imageHeight * scale
+    return image
+
+
 def render_document_pdf(
-    document: PatternDocument, *, paper: Paper = "A4", print_mode: bool = False
+    document: PatternDocument, *, paper: Paper = "A4", print_mode: bool = False, photo: bytes | None = None
 ) -> bytes:
     lang = document.language
     buffer = BytesIO()
@@ -272,8 +284,18 @@ def render_document_pdf(
     story.append(Paragraph("Tejedora", styles["cover_sub"]))
     story.append(Spacer(1, 1 * cm))
     multi = len(document.sizes) > 1
+    picture = _photo(photo, width * 0.7, doc.height * 0.38) if photo else None
+    if picture is not None:
+        story.append(picture)
+        story.append(Spacer(1, 4))
+        story.append(Paragraph(_esc(t("doc.cover_photo", lang)), styles["cover_sub"]))
+        story.append(Spacer(1, 0.6 * cm))
     cover = _drawing(
-        document.schematic, lang, width, doc.height * (0.45 if print_mode else 0.6), letters_only=multi
+        document.schematic,
+        lang,
+        width,
+        doc.height * (0.3 if picture is not None else 0.45 if print_mode else 0.6),
+        letters_only=multi,
     )
     if cover is not None:
         story.append(cover)
@@ -348,6 +370,7 @@ def render_pattern_pdf(
     paper: Paper = "A4",
     print_mode: bool = False,
     all_sizes: bool = True,
+    photo: bytes | None = None,
 ) -> bytes:
     """PDF de un patron. Las prendas incluyen todos los talles verificados,
     con el talle del patron resaltado; si no se pueden regenerar, solo el suyo.
@@ -370,4 +393,4 @@ def render_pattern_pdf(
             for p in patterns
         ]
     document = build_document(patterns, highlight=pattern.meta.size, lang=lang)
-    return render_document_pdf(document, paper=paper, print_mode=print_mode)
+    return render_document_pdf(document, paper=paper, print_mode=print_mode, photo=photo)

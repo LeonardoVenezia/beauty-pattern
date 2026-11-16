@@ -460,6 +460,7 @@ ES: dict[str, str] = {
     "doc.colors": "Colores: {colors}",
     "doc.gauge_line": "{sts} pts y {rows} vtas = 10 x 10 cm en {stitch} con {tool}, después del bloqueo.",
     "doc.gauge_stitch_knit": "punto jersey",
+    "doc.cover_photo": "La pieza de la foto que subiste.",
     "doc.gauge_stitch_sc": "punto bajo",
     "doc.gauge_stitch_crochet": "el punto base del patrón",
     "doc.needle": "aguja de {mm} mm",

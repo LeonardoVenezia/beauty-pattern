@@ -236,13 +236,18 @@ async def get_pattern(pattern_id: str) -> dict[str, object]:
 
 @app.get("/pattern/{pattern_id}/pdf")
 async def get_pattern_pdf(
-    pattern_id: str, papel: Literal["A4", "Letter"] = "A4", imprimir: bool = False
+    pattern_id: str, papel: Literal["A4", "Letter"] = "A4", imprimir: bool = False, foto: str | None = None
 ) -> Response:
-    record = database_from_env().get_pattern(pattern_id)
+    database = database_from_env()
+    record = database.get_pattern(pattern_id)
     if record is None:
         raise HTTPException(status_code=404, detail="patron no encontrado")
     pattern = pattern_from_dict(record.pattern)
-    pdf = render_pattern_pdf(pattern, paper=papel, print_mode=imprimir)
+    # ponytail: la foto vive lo que dura la imagen guardada (IMAGE_TTL_HOURS);
+    # despues el PDF sale sin foto. Guardarla con el patron si hace falta mas.
+    image = database.get_image(foto) if foto else None
+    photo = prepare_image(image[0]).main if image else None  # sin EXIF y achicada
+    pdf = render_pattern_pdf(pattern, paper=papel, print_mode=imprimir, photo=photo)
     return Response(
         content=pdf,
         media_type="application/pdf",

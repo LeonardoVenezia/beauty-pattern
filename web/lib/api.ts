@@ -198,8 +198,8 @@ export async function createPattern(
   return (await response.json()) as PatternResponse;
 }
 
-export function patternPdfUrl(id: string): string {
-  return `${API_URL}/pattern/${id}/pdf`;
+export function patternPdfUrl(id: string, imageId?: string | null): string {
+  return `${API_URL}/pattern/${id}/pdf` + (imageId ? `?foto=${encodeURIComponent(imageId)}` : "");
 }
 
 export function patternSvgUrl(id: string): string {

@@ -458,6 +458,7 @@ EN: dict[str, str] = {
     "doc.colors": "Colours: {colors}",
     "doc.gauge_line": "{sts} sts and {rows} rows = 10 x 10 cm in {stitch} with a {tool}, after blocking.",
     "doc.gauge_stitch_knit": "stockinette stitch",
+    "doc.cover_photo": "The piece in the photo you uploaded.",
     "doc.gauge_stitch_sc": "single crochet",
     "doc.gauge_stitch_crochet": "the pattern's main stitch",
     "doc.needle": "{mm} mm needle",

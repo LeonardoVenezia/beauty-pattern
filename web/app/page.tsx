@@ -1207,7 +1207,7 @@ export default function HomePage() {
 
             <div className="mt-6 flex flex-col gap-3 sm:flex-row">
               <a
-                href={patternPdfUrl(result.id)}
+                href={patternPdfUrl(result.id, imageId)}
                 className="min-h-12 rounded-xl bg-clay px-5 py-3 text-center text-lg font-semibold text-white"
               >
                 Descargar PDF
