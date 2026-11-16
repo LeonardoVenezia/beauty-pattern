@@ -443,5 +443,25 @@ guantes con dedos; jacquard como gráfico de color; formas de pétalo
 - [x] Foto de la persona en la portada del PDF.
 - [x] Guía humana (segunda pasada de IA, sin números, validada). Probada con
   la IA real sobre el gorro.
-- [ ] Amigurumi en piezas (agujas y crochet) — en curso.
-- [ ] Gráfico de jacquard del canesú — en curso.
+- [x] Amigurumi en piezas (agujas y crochet). D033.
+- [x] Gráfico de jacquard del canesú. D032.
+
+## Amigurumi en piezas, crochet y dos agujas (2026-11-16)
+
+- Hecho: el amigurumi deja de ser una bola. Ahora es un juguete en piezas
+  (cabeza, cuerpo, 2 brazos, 2 piernas y, según la figura, 2 orejas, hocico y
+  cola) con relleno y armado calculados: posición de ojos, orejas, brazos,
+  piernas y cola en vueltas/hileras reales (`Pattern.finishing`).
+- Plantillas `bear`, `bunny`, `cat` y `generic` (`GarmentSpec.figura`, la
+  elige la IA; sin figura, muñeco sin orejas). Escalan con la altura
+  sentado (`dimensiones_cm["height"]`, o una por defecto según el hilo).
+- Crochet: espiral desde anillo mágico, ±6 pts por vuelta. Dos agujas: en
+  plano y en jersey desde 8 pts, ±8 por hilera del derecho (kfb, 2pjd),
+  extremos fruncidos y costura colchonero. Ya no se fuerza crochet.
+- Esquema del muñeco armado (`render/toy.py`) con rótulos por pieza; arregla
+  la cota "Ancho" que pisaba el dibujo.
+- Verificado: todas las plantillas x grosores x técnicas, alturas de 0,5 a 3
+  veces la de referencia (hypothesis), golden de osito en crochet y en dos
+  agujas; suite completa y `make lint` en verde. Ver D033.
+- Limitaciones: un solo color; sin ropa, pelo ni hocico para gato o conejo;
+  las proporciones son de plantilla, no medidas de la foto.

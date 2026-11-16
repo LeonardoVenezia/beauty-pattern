@@ -183,6 +183,16 @@ class YarnAppearance(BaseModel):
     aspecto: YarnLook | None = None
 
 
+class Figure(StrEnum):
+    """Plantilla de juguete (amigurumi). La IA solo elige la categoria; las
+    proporciones de cada pieza salen de engine/garments/toy.py."""
+
+    BEAR = "bear"
+    BUNNY = "bunny"
+    CAT = "cat"
+    GENERIC = "generic"  # muneco sin orejas (cuerpo de osito o de muneca)
+
+
 class MotifShape(StrEnum):
     CIRCLE = "circle"
     SQUARE = "square"
@@ -244,6 +254,7 @@ class GarmentSpec(BaseModel):
     acabados: list[Finish] = Field(default_factory=list)
     hilo_aparente: YarnAppearance | None = None
     motivo: MotifDesign | None = None
+    figura: Figure | None = None  # solo amigurumi
     incertidumbres: list[str] = Field(default_factory=list)
     no_visible: list[str] = Field(default_factory=list)
     confianza: dict[str, float] = Field(default_factory=dict)

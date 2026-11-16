@@ -568,6 +568,10 @@ def render_schematic_svg(
             from render.motif import render_motif_svg
 
             return render_motif_svg(pattern, language)
+        if fam == "amigurumi" and any(s.meta.get("toy") for s in pattern.sections):
+            from render.toy import render_toy_svg
+
+            return render_toy_svg(pattern, language)
         if fam == "hat":
             return _hat_svg(pattern, language)
         if fam == "cowl":
@@ -576,7 +580,7 @@ def render_schematic_svg(
             return _panel_svg(pattern, language)
         if fam in {"raglan_top_down", "yoke", "drop_shoulder", "cardigan", "vest", "set_in_sleeve", "set_in", "flat"}:
             return _multi_piece_svg(pattern, language)
-        # socks, mittens, amigurumi -> panel-ish with their sections
+        # socks, mittens, amigurumi viejo -> panel-ish with their sections
         if fam in {"socks", "mittens", "amigurumi"}:
             return _multi_piece_svg(pattern, language)
         return _panel_svg(pattern, language)

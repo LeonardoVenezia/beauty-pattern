@@ -21,7 +21,6 @@ from engine.garments.base import (
     UnsupportedGarmentError,
 )
 from engine.garments.crochet import (
-    generate_amigurumi,
     generate_crochet_bag,
     generate_crochet_cowl,
     generate_crochet_flat_piece,
@@ -36,6 +35,7 @@ from engine.garments.motif import generate_crochet_motif
 from engine.garments.raglan import generate_raglan_top_down
 from engine.garments.routing import route
 from engine.garments.set_in import generate_set_in
+from engine.garments.toy import generate_amigurumi
 from engine.garments.yoke import generate_yoke
 from engine.ir import Pattern, Warning
 from engine.spec import (
@@ -81,11 +81,11 @@ _MOTIF_CATEGORIES = {Category.GRANNY_SQUARE, Category.OTHER, Category.BLANKET}
 
 
 def _generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    if spec.categoria is Category.AMIGURUMI:
+        return generate_amigurumi(spec, params)
     if spec.tecnica is Technique.CROCHET:
         if spec.motivo is not None and spec.categoria in _MOTIF_CATEGORIES:
             return generate_crochet_motif(spec, params)
-        if spec.categoria is Category.AMIGURUMI:
-            return generate_amigurumi(spec, params)
         if spec.categoria is Category.SCARF:
             return generate_crochet_scarf(spec, params)
         if spec.categoria in {Category.BLANKET, Category.GRANNY_SQUARE}:

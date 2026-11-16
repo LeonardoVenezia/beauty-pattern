@@ -81,7 +81,9 @@ Para accesorios se pueden enviar medidas propias en
 `params.dimensiones_cm` (por ejemplo `{"width": 30, "length": 150}`,
 `{"head": 57}` o `{"foot_length": 26}`).
 
-En crochet se generan amigurumis (esfera, cilindro y cono), un granny square
+Los amigurumis son juguetes en piezas (cabeza, cuerpo, brazos, piernas y,
+según la figura, orejas, hocico y cola), en crochet o con dos agujas, con
+relleno y armado. En crochet también se generan un granny square
 sólido simplificado, una bufanda plana, un bolso rectangular y una pieza plana
 genérica. Si la foto muestra un cuadrado o módulo de crochet, la categoría es
 **Cuadrado / granny square** y la medida que se pide es el lado; no es un bolso
@@ -91,8 +93,9 @@ En crochet, la opción **Manta** también se genera como un módulo granny squar
 (se pide el lado del módulo); no calcula una manta completa ni la cantidad y
 unión de módulos.
 
-Para amigurumi se usan `dimensiones_cm` con `diameter` y `height`; la forma se
-elige con `spec.forma` (`straight`, `boxy`, `a_line` o `curved`). El granny
+Para amigurumi se usa `dimensiones_cm["height"]` (altura sentado; si falta,
+una por defecto según el grosor del hilo) y la figura con `spec.figura`
+(`bear`, `bunny`, `cat` o `generic`; sin figura, un muñeco sin orejas). El granny
 square usa `dimensiones_cm["size"]`; el bolso y la pieza plana usan `width` y
 `length`.
 

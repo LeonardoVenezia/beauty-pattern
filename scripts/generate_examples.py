@@ -9,6 +9,7 @@ from engine.simulator import simulate
 from engine.spec import (
     Category,
     Construction,
+    Figure,
     GarmentSpec,
     PatternParams,
     Technique,
@@ -38,7 +39,7 @@ def main() -> int:
         ),
         (
             "amigurumi",
-            GarmentSpec(categoria=Category.AMIGURUMI, tecnica=Technique.CROCHET),
+            GarmentSpec(categoria=Category.AMIGURUMI, tecnica=Technique.CROCHET, figura=Figure.BEAR),
             PatternParams(peso_hilo="dk"),
         ),
         (

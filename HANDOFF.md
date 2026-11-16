@@ -193,8 +193,10 @@ foto -> preprocesado -> extractor IA (N muestras + votación + Pydantic)
 - `engine/garments/set_in.py` — manga encajada.
 - `engine/garments/accessories.py` — gorro, bufanda, cuello, mitones, medias,
   chal, manta, bolso y pieza plana.
-- `engine/garments/crochet.py` — amigurumi, bufanda, bolso, pieza plana y
+- `engine/garments/crochet.py` — bufanda, bolso, pieza plana y
   `generate_granny_square`.
+- `engine/garments/toy.py` — amigurumi en piezas (crochet y dos agujas),
+  plantillas oso/conejo/gato/genérico; esquema en `render/toy.py`.
 - `engine/simulator/` — verificador de conteos, consumos, aumentos,
   disminuciones, medidas y uniones.
 - `engine/blocks.py` — **capa de presentación** (bloques tipados) que comparten
@@ -234,7 +236,8 @@ Dos agujas/circular:
 
 Crochet:
 
-- Amigurumi (esfera, cilindro, cono).
+- Amigurumi en piezas (oso, conejo, gato, muñeco) con relleno y armado;
+  también con dos agujas.
 - Bufanda plana, bolso rectangular y pieza plana genérica.
 - Granny square sólido simplificado (`granny_square`).
 

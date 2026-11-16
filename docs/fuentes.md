@@ -88,9 +88,19 @@ publica verificada se marca **ASUNCION**.
 - Mitones: piezas planas de mano y pulgar, sin dedos individuales (ASUNCION).
 - Medias: tubo con puno, pierna, pie y puntera; sin talon en esta version
   (ASUNCION).
-- Amigurumi: anillo magico de 6 puntos bajos, esfera/ cilindro/ cono con
-  aumentos y disminuciones de 6 puntos por vuelta; el granny square de esta
-  version es un cuadrado solido simplificado (ASUNCION).
+- Amigurumi (juguete en piezas, `engine/garments/toy.py`): en crochet, anillo
+  magico de 6 pb, espiral sin punto enano y +/-6 pts por vuelta (la
+  convencion amigurumi: un circulo plano de pb crece 6 pts por vuelta). Con
+  dos agujas, cada pieza en plano y en jersey desde 8 pts montados, +/-8 pts
+  por hilera del derecho con kfb y 2pjd, extremos fruncidos y costura con
+  punto colchonero. ASUNCIONES (D033): proporciones de las plantillas (cabeza
+  0,52 x la altura sentado, cuerpo 0,38, etc.), altura por defecto segun el
+  grosor (10-40 cm), tejido apretado (pb x 1,25 y jersey x 1,15 sobre la tabla
+  CYC, con ganchillo/agujas mas finos: DK 3 mm / 3,25 mm), 8 aumentos por
+  hilera en agujas (cerca del circulo plano en jersey: 2 pi x pts/cm /
+  hileras/cm x 2 ~ 9), posicion de ojos (56 % del alto de la cabeza),
+  orejas, brazos y piernas, y tamano de ojos de seguridad (~1 mm por cm de
+  cabeza).
 
 Todas las ASUNCIONES estan registradas tambien en `DECISIONS.md`.
 

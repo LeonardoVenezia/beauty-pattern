@@ -707,6 +707,8 @@ def glossary_blocks(pattern: Pattern, lang: str) -> tuple[Block, ...]:
 
 
 def _section_intro(section: Section, lang: str) -> str:
+    if section.meta.get("cast_on_start"):
+        return t("pattern.cast_on", lang, n=section.start_stitches)
     if section.id == "granny_square":
         return t("pattern.granny_ring", lang)
     if section.division:
@@ -1010,30 +1012,85 @@ def _panel_section_blocks(section: Section, lang: str, relative: bool) -> tuple[
     return tuple(blocks)
 
 
+def _ws_purl_blocks(steps: tuple[Step, ...], lang: str) -> tuple[Block, ...] | None:
+    """Piezas en plano con todas las hileras del reves en rev (juguetes).
+
+    Como en los patrones publicados: se escriben solo las hileras del derecho
+    ("Hileras pares: rev" va en la nota de la seccion) y los tramos sin cambios
+    van juntos ("Hileras 9-16: punto jersey"). Solo presentacion: si alguna
+    hilera par no es todo rev, devuelve None y se usa el render comun.
+    """
+    for step in steps:
+        if step.number % 2 == 0:
+            only = step.items[0] if len(step.items) == 1 else None
+            if not (isinstance(only, Op) and only.kind is StitchKind.PURL and only.times == step.consumes):
+                return None
+    blocks: list[Block] = []
+
+    def plain_knit(step: Step) -> bool:
+        return _is_plain(step) and isinstance(step.items[0], Op) and step.items[0].kind is StitchKind.KNIT
+
+    index = 0
+    while index < len(steps):
+        step = steps[index]
+        if step.number % 2 == 0:
+            if index == len(steps) - 1:  # la ultima hilera se escribe siempre
+                blocks.append(Block(BlockKind.STEP, format_step_line(step, "flat", lang)))
+            index += 1
+            continue
+        if plain_knit(step):
+            end = index + 1
+            while end < len(steps) and (steps[end].number % 2 == 0 or plain_knit(steps[end])):
+                end += 1
+            last = steps[end - 1]
+            if last.number > step.number:
+                label = t("pattern.rows_range", lang, a=step.number, b=last.number)
+                body = t("pattern.stockinette_short", lang)
+            else:
+                label = t("pattern.row", lang, n=step.number)
+                body = _step_body(step, lang)
+            blocks.append(Block(BlockKind.STEP, f"{label}: {body} {_count_text(last, lang)}"))
+            index = end
+            continue
+        blocks.append(Block(BlockKind.STEP, format_step_line(step, "flat", lang)))
+        index += 1
+    return tuple(blocks)
+
+
 def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
     """Instrucciones por seccion (sin encabezado de documento)."""
     blocks: list[Block] = []
     for section in pattern.sections:
         blocks.append(Block(BlockKind.SECTION_HEADING, t(section.name_key, language)))
         intro = _section_intro(section, language)
+        if section.meta.get("toy") and pattern.spec.tecnica.value == "crochet":
+            intro = ""  # "Vuelta 1: anillo magico + 6 pb" ya lo dice
         if intro:
             blocks.append(Block(BlockKind.LINE, intro))
         for note_key in section.note_keys:
             blocks.append(Block(BlockKind.LINE, t(note_key, language)))
         steps = section.steps[1:] if section.division else section.steps
+        toy = bool(section.meta.get("toy"))
         panel = _panel_section_blocks(section, language, pattern.spec.tecnica.value != "crochet")
+        ws_purl = _ws_purl_blocks(steps, language) if section.meta.get("ws_purl") else None
         if panel is not None:
             blocks.extend(panel)
+        elif ws_purl is not None:
+            blocks.extend(ws_purl)
         else:
             blocks.extend(
                 render_step_lines(
                     compress_steps(steps),
                     section.mode,
                     language,
-                    relative=pattern.spec.tecnica.value != "crochet",
+                    relative=pattern.spec.tecnica.value != "crochet" and not toy,
                     markers=section.id == "yoke" and pattern.meta.family == "raglan_top_down",
                 )
             )
+        for note_key in section.end_note_keys:
+            blocks.append(Block(BlockKind.LINE, t(note_key, language, n=section.end_stitches)))
+        if toy:
+            continue
         if section.target is not None and section.target.dimension == "length" and section.steps:
             blocks.append(
                 Block(
@@ -1060,6 +1117,13 @@ def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
                     Block(BlockKind.LINE, t(bind_key, language, n=section.end_stitches))
                 )
     return tuple(blocks)
+
+
+def finishing_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
+    """Armado propio del patron (numeros ya calculados por el motor)."""
+    return tuple(
+        Block(BlockKind.STEP, t(note.key, language, **note.params)) for note in pattern.finishing
+    )
 
 
 def build_pattern_blocks(
@@ -1155,6 +1219,8 @@ def build_pattern_blocks(
     blocks.extend(instruction_blocks(pattern, language))
 
     blocks.append(Block(BlockKind.DOC_HEADING, t("pattern.finished", language)))
-    blocks.append(Block(BlockKind.LINE, t("pattern.block", language)))
+    blocks.extend(finishing_blocks(pattern, language))
+    if not pattern.finishing:
+        blocks.append(Block(BlockKind.LINE, t("pattern.block", language)))
     blocks.append(Block(BlockKind.LINE, t("pattern.sample_reminder", language)))
     return tuple(blocks)

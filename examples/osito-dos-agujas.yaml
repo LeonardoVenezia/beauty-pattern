@@ -1,0 +1,8 @@
+# Osito con dos agujas: cada pieza en plano y en jersey, se frunce y se cose.
+spec:
+  categoria: amigurumi
+  tecnica: needles
+  figura: bear
+params:
+  peso_hilo: dk
+  dimensiones_cm: {height: 22}

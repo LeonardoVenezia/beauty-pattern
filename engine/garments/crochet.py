@@ -1,9 +1,8 @@
-"""Crochet: amigurumi y piezas planas.
+"""Crochet: piezas planas, gorro, granny square y prendas en rectangulos.
 
-Las formas de amigurumi se generan con anillo magico y aumentos/disminuciones
-de 6 puntos por vuelta. El granny square es el clasico en redondo (grupos de
-3 pa y esquinas de 2 cad); no reproduce motivos complejos de la foto y lo
-declara en una advertencia.
+El amigurumi (juguete en piezas) vive en engine/garments/toy.py. El granny
+square es el clasico en redondo (grupos de 3 pa y esquinas de 2 cad); no
+reproduce motivos complejos de la foto y lo declara en una advertencia.
 """
 
 from __future__ import annotations
@@ -15,7 +14,6 @@ from math import pi
 
 from engine import ENGINE_VERSION
 from engine.distribution import split_even
-from engine.garments.base import ImpossibleProportionsError
 from engine.gauge import crochet_gauge
 from engine.ir import (
     CountRef,
@@ -38,9 +36,7 @@ from engine.rounding import round_half_up
 from engine.spec import (
     GarmentSpec,
     PatternParams,
-    Shape,
     StitchPatternName,
-    Technique,
     resolve_gauge,
 )
 from engine.stitches.catalog import adjust_stitches, catalog_id_for_name, expand_row, get_stitch
@@ -145,167 +141,6 @@ def _increase_round(
             ops.append(Op(kind, times=group))
         ops.append(Op(StitchKind.CROCHET_INC))
     return ops, stitches + increases
-
-
-def _decrease_round(
-    stitches: int, decreases: int, kind: StitchKind
-) -> tuple[list[Op], int]:
-    if decreases < 0:
-        raise ValueError("decreases no puede ser negativo")
-    if decreases == 0:
-        return ([Op(kind, times=stitches)] if stitches else []), stitches
-    if decreases * 2 > stitches:
-        raise ValueError(
-            f"no se pueden hacer {decreases} disminuciones en {stitches} puntos"
-        )
-    remaining = stitches - 2 * decreases
-    groups = split_even(remaining, decreases)
-    ops: list[Op] = []
-    for group in groups:
-        if group:
-            ops.append(Op(kind, times=group))
-        ops.append(Op(StitchKind.CROCHET_DEC))
-    return ops, stitches - decreases
-
-
-def _amigurumi_shape(spec: GarmentSpec) -> str:
-    if spec.forma is Shape.BOXY:
-        return "cylinder"
-    if spec.forma in {Shape.A_LINE, Shape.CURVED}:
-        return "cone"
-    return "sphere"
-
-
-def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
-    params = _with_crochet_gauge(spec, params)
-    if spec.tecnica is not Technique.CROCHET:
-        raise ImpossibleProportionsError(
-            "error.unsupported_technique", technique=spec.tecnica.value
-        )
-    gauge = resolve_gauge(params)
-    diameter = params.dimensiones_cm.get("diameter", params.medidas_cm.get("diameter", 8.0))
-    height = params.dimensiones_cm.get("height", params.medidas_cm.get("height", diameter))
-    shape = _amigurumi_shape(spec)
-    base_circumference = pi * diameter
-    target = adjust_stitches(
-        max(6, round_half_up(base_circumference * gauge.stitches_per_cm)),
-        6,
-        mode="nearest",
-    )
-    if abs(gauge.cm_for_stitches(target) - base_circumference) > 0.1 * base_circumference:
-        raise ImpossibleProportionsError(
-            "error.too_small_for_yarn",
-            weight=params.peso_hilo.value,
-            target=round(diameter, 1),
-        )
-    increase_rounds = (target - 6) // 6
-    height_rows = max(1, gauge.rows_for_cm(height))
-    if shape == "sphere":
-        decrease_rounds = increase_rounds
-        straight_rows = max(0, height_rows - increase_rounds - decrease_rounds)
-    elif shape == "cylinder":
-        decrease_rounds = 0
-        straight_rows = max(1, height_rows - increase_rounds)
-    else:
-        decrease_rounds = 0
-        straight_rows = max(0, height_rows - increase_rounds)
-
-    pattern_id = _pattern_id(spec)
-    kind = _kind(pattern_id)
-    steps: list[Step] = [
-        build_step(1, 0, (Op(StitchKind.MAGIC_RING),))
-    ]
-    current = 6
-    number = 2
-    for _ in range(increase_rounds):
-        before = current
-        items, current = _increase_round(current, 6, kind)
-        steps.append(
-            build_step(number, before, items, note_key="pattern.note.amigurumi_increase")
-        )
-        number += 1
-    for _ in range(straight_rows):
-        steps.append(
-            build_step(number, current, (Op(kind, times=current),), note_key="pattern.note.plain")
-        )
-        number += 1
-    for _ in range(decrease_rounds):
-        dec_items, current = _decrease_round(current, 6, kind)
-        steps.append(
-            build_step(number, current + 6, dec_items, note_key="pattern.note.amigurumi_decrease")
-        )
-        number += 1
-    if shape == "sphere" and current != 6:
-        raise RuntimeError(f"amigurumi: termina con {current} puntos, se esperaban 6")
-
-    total_rows = len(steps)
-    actual_height = gauge.cm_for_rows(total_rows)
-    if abs(actual_height - height) > 1.5:
-        raise ImpossibleProportionsError(
-            "error.too_small_for_yarn",
-            weight=params.peso_hilo.value,
-            target=round(height, 1),
-        )
-    target_circumference = gauge.cm_for_stitches(target)
-    actual_diameter = target_circumference / pi
-    section = Section(
-        id="amigurumi",
-        name_key="section.amigurumi",
-        mode="round",
-        steps=tuple(steps),
-        start_stitches=0,
-        end_stitches=current,
-        target=(
-            None
-            if shape == "sphere"
-            else SectionTarget(
-                measurement_key="circumference",
-                target_cm=base_circumference,
-                tolerance_cm=2.5,
-                dimension="circumference",
-            )
-        ),
-        meta={"row_count": total_rows, "base_stitches": target},
-        bind_off=True,
-    )
-    area = (
-        4.0 * pi * (diameter / 2.0) ** 2
-        if shape == "sphere"
-        else pi * diameter * height
-    )
-    warnings = _warnings(params)
-    warnings.append(
-        Warning("amigurumi_approx", "warning.amigurumi_approx", severity="warning")
-    )
-    return Pattern(
-        meta=_meta(spec, params, "amigurumi", "title.amigurumi"),
-        spec=spec,
-        params=params,
-        sections=(section,),
-        measurements=(
-            Measurement(
-                key="diameter",
-                value_cm=actual_diameter,
-                target_cm=diameter,
-                tolerance_cm=1.5,
-                kind="circumference",
-            ),
-            Measurement(
-                key="height",
-                value_cm=actual_height,
-                target_cm=height,
-                tolerance_cm=1.5,
-                kind="length",
-            ),
-        ),
-        materials=_materials(
-            spec,
-            params,
-            area,
-            ("notion.crochet_hook", "notion.stitch_markers", "notion.tapestry_needle"),
-        ),
-        warnings=tuple(warnings),
-    )
 
 
 def _flat_section(
