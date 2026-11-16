@@ -747,7 +747,7 @@ def _section_intro(section: Section, lang: str) -> str:
             front=meta.get("front_final", section.start_stitches),
             sleeve=meta.get("sleeve_final", section.start_stitches),
         )
-    if section.id == "body":
+    if section.id == "body" and "underarm" in section.meta:
         meta = section.meta
         return t(
             "pattern.separation_summary",
@@ -1040,6 +1040,8 @@ def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
                     ),
                 )
             )
+        if section.meta.get("gather"):
+            blocks.append(Block(BlockKind.LINE, t("pattern.gather_off", language, n=section.end_stitches)))
         if section.bind_off:
             bind_key = (
                 "pattern.bind_off_crochet"

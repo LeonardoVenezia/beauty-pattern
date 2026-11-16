@@ -61,7 +61,8 @@ def test_hat_has_brim_body_and_crown() -> None:
     assert simulate(pattern).ok
     assert pattern.meta.family == "hat"
     assert [section.id for section in pattern.sections] == ["brim", "body", "crown"]
-    assert pattern.sections[-1].end_stitches == 4
+    crown = pattern.sections[-1]
+    assert crown.end_stitches in range(4, 11) and crown.meta.get("gather") == 1
 
 
 def test_socks_are_tube_with_declared_heel_limitation() -> None:

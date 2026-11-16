@@ -243,7 +243,7 @@ def _photo(data: bytes, max_w: float, max_h: float) -> Flowable | None:
     """La foto de la persona en la portada, como en los patrones impresos."""
     try:
         image = Image(BytesIO(data))
-    except Exception:  # noqa: BLE001 - una foto ilegible no impide el PDF
+    except Exception:  # una foto ilegible no impide el PDF
         return None
     scale = min(max_w / image.imageWidth, max_h / image.imageHeight)
     image.drawWidth, image.drawHeight = image.imageWidth * scale, image.imageHeight * scale

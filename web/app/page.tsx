@@ -231,7 +231,7 @@ const sectionLabels: Record<string, string> = {
 const noteLabels: Record<string, string> = {
   "pattern.note.cast_on_panel": "Montá los puntos y tejé en plano.",
   "pattern.note.cuff": "Puño en elástico.",
-  "pattern.note.hat_crown": "Disminuí 4 puntos repartidos por vuelta.",
+  "pattern.note.hat_crown": "Disminuí 1 punto en cada gajo.",
   "pattern.note.toe": "Disminuí 4 puntos repartidos por vuelta.",
   "pattern.note.flat_panel": "Tejé en jersey, de ida y vuelta.",
   "pattern.note.crochet_foundation": "Hacé la cadena inicial.",
