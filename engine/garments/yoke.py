@@ -24,7 +24,22 @@ from engine.distribution import (
     split_even,
 )
 from engine.garments.base import ImpossibleProportionsError
+from engine.garments.options import body_length_cm as _body_length_cm
+from engine.garments.options import effective_sleeve, hem_circumference_cm, sleeve_style
+from engine.garments.options import neck_cm as _neck_cm
+from engine.garments.options import neckband_cm as _neckband_cm
+from engine.garments.options import sleeve_length_cm as _sleeve_length_cm
 from engine.garments.panels import body_round_with_panels, compensation, panel_for, texture_motif
+from engine.garments.shaping import flared_round_body
+from engine.garments.sleeves import (
+    CAP_BAND_CM,
+    bell_round_sleeve,
+    bell_width,
+    cap_round_sleeve,
+    gather_rounds,
+    puff_round_sleeve,
+    puff_width,
+)
 from engine.gauge import Gauge
 from engine.i18n import t
 from engine.ir import (
@@ -48,12 +63,11 @@ from engine.materials import default_needle_mm, estimate_yarn
 from engine.rounding import round_half_up
 from engine.sizes import BODY_SIZES, BodySize, ease_for_fit, resolve_body_size
 from engine.spec import (
-    BodyLength,
     ColorworkType,
     GarmentSpec,
-    Neckline,
     PatternParams,
     SleeveLength,
+    SleeveStyle,
     StitchPatternName,
     resolve_gauge,
 )
@@ -115,49 +129,9 @@ class YokePlan:
     sleeve_length_cm: float
     bust_target_cm: float
     neck_target_cm: float
-
-
-def _body_length_cm(spec: GarmentSpec, size: BodySize) -> float:
-    length = spec.largo_cuerpo or BodyLength.HIP
-    if length is BodyLength.CROPPED:
-        return max(20.0, size.body_length_cm - 15.0)
-    if length is BodyLength.TUNIC:
-        return size.body_length_cm + 8.0
-    if length is BodyLength.LONG:
-        return size.body_length_cm + 15.0
-    return size.body_length_cm
-
-
-def _sleeve_length_cm(spec: GarmentSpec, size: BodySize) -> float:
-    length = spec.largo_manga or SleeveLength.LONG
-    if length is SleeveLength.LONG:
-        return size.sleeve_length_cm
-    if length is SleeveLength.THREE_QUARTER:
-        return size.sleeve_length_cm * 0.75
-    if length is SleeveLength.SHORT:
-        return size.sleeve_length_cm * 0.45
-    raise ImpossibleProportionsError(
-        "error.unsupported_sleeve", length=length.value
-    )
-
-
-def _neck_cm(spec: GarmentSpec, size: BodySize) -> float:
-    neckline = spec.escote
-    if neckline is Neckline.BOAT:
-        return size.neck_cm + 6.0
-    if neckline in {Neckline.V_NECK, Neckline.SQUARE}:
-        return size.neck_cm + 2.0
-    if neckline in {Neckline.TURTLENECK, Neckline.FUNNEL}:
-        return size.neck_cm - 1.0
-    if neckline is Neckline.HOOD:
-        return size.neck_cm + 4.0
-    return size.neck_cm
-
-
-def _neckband_cm(spec: GarmentSpec) -> float:
-    if spec.escote in {Neckline.TURTLENECK, Neckline.FUNNEL}:
-        return 8.0
-    return NECKBAND_CM
+    hem_sts: int = 0
+    sleeve_style: SleeveStyle = SleeveStyle.STRAIGHT
+    cuff_cm: float = CUFF_CM
 
 
 def plan_yoke(
@@ -198,10 +172,16 @@ def plan_yoke(
         raise ImpossibleProportionsError(
             "error.impossible_proportions", yoke=0, body=body_target, sleeve=sleeve_target
         )
+    style = sleeve_style(spec)
     yoke_depth_cm = size.armhole_cm + YOKE_EASE_CM
-    if (spec.largo_manga or SleeveLength.LONG) is SleeveLength.SHORT:
+    if effective_sleeve(spec) is SleeveLength.SHORT and style is not SleeveStyle.CAP:
         yoke_depth_cm = max(16.0, sleeve_length_cm - CUFF_CM - 4.0)
     yoke_rows = max(1, gauge.rows_for_cm(yoke_depth_cm))
+    cuff_cm = CAP_BAND_CM if style is SleeveStyle.CAP else CUFF_CM
+    if style is SleeveStyle.CAP:
+        # Casquillo: apenas la tira debajo de la axila.
+        cap_rows = 1 if sleeve_target % 4 == 0 else 2
+        sleeve_length_cm = gauge.cm_for_rows(yoke_rows + cap_rows) + cuff_cm
     if body_length_cm <= yoke_depth_cm + HEM_CM + 2:
         raise ImpossibleProportionsError(
             "error.impossible_proportions",
@@ -209,7 +189,7 @@ def plan_yoke(
             body=body_length_cm,
             sleeve=sleeve_length_cm,
         )
-    if sleeve_length_cm <= yoke_depth_cm + CUFF_CM + 2:
+    if style is not SleeveStyle.CAP and sleeve_length_cm <= yoke_depth_cm + CUFF_CM + 2:
         raise ImpossibleProportionsError(
             "error.impossible_proportions",
             yoke=round(yoke_depth_cm, 1),
@@ -220,20 +200,42 @@ def plan_yoke(
     body_underarm_cm = body_length_cm - yoke_depth_cm - HEM_CM
     body_rows = max(1, gauge.rows_for_cm(body_underarm_cm))
     hem_rows = max(1, gauge.rows_for_cm(HEM_CM))
-    sleeve_underarm_cm = sleeve_length_cm - yoke_depth_cm - CUFF_CM
+    sleeve_underarm_cm = sleeve_length_cm - gauge.cm_for_rows(yoke_rows) - cuff_cm
+    if style is not SleeveStyle.CAP:
+        sleeve_underarm_cm = sleeve_length_cm - yoke_depth_cm - CUFF_CM
     sleeve_rows = max(1, gauge.rows_for_cm(sleeve_underarm_cm))
-    cuff_rows = max(1, gauge.rows_for_cm(CUFF_CM))
+    cuff_rows = max(1, gauge.rows_for_cm(cuff_cm))
+    # Vestido y linea A: aumentos en los costados del cuerpo (sin panel).
+    hem_target = hem_circumference_cm(spec, size, ease) * gauge.stitches_per_cm
+    flare = max(0, round_half_up((hem_target - body_target) / 4))
+    flare = min(flare, max(0, body_rows - 2))
+    if texture_motif(spec) is not None:
+        flare = 0
 
-    sleeve_kind = spec.largo_manga or SleeveLength.LONG
+    sleeve_kind = effective_sleeve(spec)
     cuff_target_cm = size.wrist_cm + CUFF_EASE_CM
     if sleeve_kind is SleeveLength.THREE_QUARTER:
         cuff_target_cm += 2.0
+    if sleeve_kind is SleeveLength.ELBOW or (style is SleeveStyle.PUFF and sleeve_kind is SleeveLength.SHORT):
+        cuff_target_cm = (size.wrist_cm + size.upper_arm_cm) / 2 + CUFF_EASE_CM  # ASUNCION
     cuff_sts = max(
         4, round_half_up(cuff_target_cm * gauge.stitches_per_cm / 4.0) * 4
     )
     if cuff_sts >= sleeve_target:
         cuff_sts = max(4, sleeve_target - (sleeve_target % 4))
-    sleeve_decreases = sleeve_target - cuff_sts
+    if style is SleeveStyle.CAP:
+        sleeve_rows = 1 if sleeve_target % 4 == 0 else 2
+        cuff_sts = sleeve_target - sleeve_target % 4
+    elif style is SleeveStyle.BELL:
+        bell = min(bell_width(sleeve_target), sleeve_target + 2 * (sleeve_rows - 1))
+        bell -= bell % 4
+        if bell > sleeve_target:
+            cuff_sts = bell
+        else:
+            style = SleeveStyle.STRAIGHT
+    elif style is SleeveStyle.PUFF and sleeve_rows < 3 + len(gather_rounds(puff_width(sleeve_target), cuff_sts)):
+        style = SleeveStyle.STRAIGHT
+    sleeve_decreases = sleeve_target - cuff_sts if style is SleeveStyle.STRAIGHT else 0
 
     increase_rounds = max(1, min(YOKE_INCREASE_ROUNDS, (yoke_rows - 1) // 2, total_increases))
     plan = YokePlan(
@@ -261,6 +263,9 @@ def plan_yoke(
         sleeve_length_cm=sleeve_length_cm,
         bust_target_cm=size.bust_cm + ease,
         neck_target_cm=neck_cm,
+        hem_sts=body_target + 4 * flare,
+        sleeve_style=style,
+        cuff_cm=cuff_cm,
     )
     return plan, gauge, size
 
@@ -534,7 +539,9 @@ def _body_section(plan: YokePlan, spec: GarmentSpec, params: PatternParams) -> S
             extra = 0
     last_round = plan.body_rows
     steps: list[Step] = [first]
-    for number in range(2, plan.body_rows + 1):
+    if plan.hem_sts > plan.body_sts:
+        steps = flared_round_body(division, plan.body_before, plan.body_sts, plan.body_rows, plan.hem_sts)
+    for number in range(2 if len(steps) == 1 else plan.body_rows + 1, plan.body_rows + 1):
         steps.append(
             build_step(
                 number,
@@ -566,7 +573,7 @@ def _body_section(plan: YokePlan, spec: GarmentSpec, params: PatternParams) -> S
         mode="round",
         steps=tuple(steps),
         start_stitches=plan.body_before,
-        end_stitches=plan.body_sts,
+        end_stitches=steps[-1].stitch_count_end,
         target=SectionTarget(
             measurement_key="body_underarm_length",
             target_cm=plan.body_underarm_cm,
@@ -591,11 +598,12 @@ def _body_section(plan: YokePlan, spec: GarmentSpec, params: PatternParams) -> S
 
 def _hem_section(plan: YokePlan) -> Section:
     rib = get_stitch("rib_2x2")
+    hem = max(plan.hem_sts, plan.body_sts)
     steps = tuple(
         build_step(
             number,
-            plan.body_sts,
-            expand_row(rib, plan.body_sts, number, in_the_round=True),
+            hem,
+            expand_row(rib, hem, number, in_the_round=True),
             note_key="pattern.note.hem" if number == 1 else None,
         )
         for number in range(1, plan.hem_rows + 1)
@@ -605,8 +613,8 @@ def _hem_section(plan: YokePlan) -> Section:
         name_key="section.hem",
         mode="round",
         steps=steps,
-        start_stitches=plan.body_sts,
-        end_stitches=plan.body_sts,
+        start_stitches=hem,
+        end_stitches=hem,
         target=SectionTarget(
             measurement_key="hem_length",
             target_cm=HEM_CM,
@@ -633,7 +641,17 @@ def _sleeve_section(side: str, plan: YokePlan) -> Section:
     steps: list[Step] = []
     current = plan.sleeve_sts
     next_count = 0
-    for number in range(1, plan.sleeve_rows + 1):
+    rows = plan.sleeve_rows
+    if plan.sleeve_style is SleeveStyle.PUFF:
+        steps = puff_round_sleeve(current, rows, plan.cuff_sts)
+    elif plan.sleeve_style is SleeveStyle.BELL:
+        steps = bell_round_sleeve(current, rows, plan.cuff_sts)
+    elif plan.sleeve_style is SleeveStyle.CAP:
+        steps, _ = cap_round_sleeve(current)
+        rows = len(steps)
+    if steps:
+        current = steps[-1].stitch_count_end
+    for number in range(1 if not steps else rows + 1, rows + 1):
         if number in positions:
             count = counts[next_count]
             next_count += 1
@@ -674,7 +692,7 @@ def _sleeve_section(side: str, plan: YokePlan) -> Section:
             dimension="length",
         ),
         meta={
-            "row_count": plan.sleeve_rows,
+            "row_count": len(steps),
             "picked_up": plan.underarm_sts,
             "decreases": plan.sleeve_decreases,
         },
@@ -682,7 +700,7 @@ def _sleeve_section(side: str, plan: YokePlan) -> Section:
 
 
 def _cuff_section(side: str, plan: YokePlan) -> Section:
-    rib = get_stitch("rib_2x2")
+    rib = get_stitch("garter" if plan.sleeve_style is SleeveStyle.BELL else "rib_2x2")
     steps = tuple(
         build_step(
             number,
@@ -701,7 +719,7 @@ def _cuff_section(side: str, plan: YokePlan) -> Section:
         end_stitches=plan.cuff_sts,
         target=SectionTarget(
             measurement_key="cuff_length",
-            target_cm=CUFF_CM,
+            target_cm=plan.cuff_cm,
             tolerance_cm=0.5,
             dimension="length",
         ),

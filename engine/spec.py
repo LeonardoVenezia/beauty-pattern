@@ -345,6 +345,11 @@ class SleeveStyle(StrEnum):
     CAP = "cap"  # casquillo
 
 
+class PonchoStyle(StrEnum):
+    CLASSIC = "classic"  # dos rectangulos cosidos, punta adelante (en V)
+    RUANA = "ruana"  # un rectangulo abierto adelante (ruana, capa abierta)
+
+
 class BlanketStyle(StrEnum):
     GRANNY_JOINED = "granny_joined"
     GRANNY_GIANT = "granny_giant"
@@ -420,6 +425,7 @@ class GarmentSpec(BaseModel):
     forma_plana: FlatShape | None = None  # flat_item, rug, pillow, basket
     objeto_funda: CozyItem | None = None  # solo cozy
     estilo_manta: BlanketStyle | None = None  # solo blanket
+    estilo_poncho: PonchoStyle | None = None  # solo poncho
     incertidumbres: list[str] = Field(default_factory=list)
     no_visible: list[str] = Field(default_factory=list)
     confianza: dict[str, float] = Field(default_factory=dict)

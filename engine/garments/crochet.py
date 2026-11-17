@@ -490,8 +490,9 @@ def generate_crochet_garment(spec: GarmentSpec, params: PatternParams, kind: str
     mangas rectas, cuello barco al coser los hombros). ASUNCION: abertura del
     cuello = 65 % del contorno de cuello, minimo 24 cm. Ver docs/fuentes.md.
     """
-    from engine.garments.flat import _body_length_cm, _sleeve_length_cm
+    from engine.garments.options import body_length_cm, has_sleeves, sleeve_length_cm, sleeve_style
     from engine.sizes import ease_for_fit, resolve_body_size
+    from engine.spec import Category, Shape, SleeveStyle
 
     stitch_id = _garment_stitch(spec)
     spec_g = spec.model_copy(update={"punto_base": StitchPatternName(stitch_id)})
@@ -500,20 +501,28 @@ def generate_crochet_garment(spec: GarmentSpec, params: PatternParams, kind: str
     size = resolve_body_size(params.talla, params.medidas_cm)
     ease = params.ease_cm if params.ease_cm is not None else ease_for_fit(spec.ajuste)
     multiple = get_stitch(stitch_id).multiple
-    body_cm = _body_length_cm(spec, size)
-    half = adjust_stitches(max(8, gauge.stitches_for_cm((size.bust_cm + ease) / 2)), 2 * multiple, mode="nearest")
+    body_cm = body_length_cm(spec, size)
+    # Un vestido tiene que pasar la cadera: rectangulos rectos del ancho mayor.
+    width_cm = size.bust_cm + ease
+    if spec.categoria is Category.DRESS:
+        width_cm = max(width_cm, size.hip_cm + ease)
+    # Un solo redondeo (antes se redondeaba dos veces y en hilos gruesos el
+    # contorno se pasaba de la tolerancia).
+    unit = 2 * multiple
+    half = max(unit, round_half_up(width_cm / 2 * gauge.stitches_per_cm / unit) * unit)
     rows = max(2, gauge.rows_for_cm(body_cm))
-    neck_open = min(half - 4, adjust_stitches(gauge.stitches_for_cm(max(24.0, size.neck_cm * 0.65)), 2, mode="nearest"))
+    real_cm = gauge.cm_for_rows(rows)
+    neck_open = min(half - 4, 2 * round_half_up(max(24.0, size.neck_cm * 0.65) * gauge.stitches_per_cm / 2))
     shoulder = (half - neck_open) // 2
-    sections = [_flat_section("back", "section.back", half, rows, stitch_id, body_cm, note_key="pattern.note.crochet_flat")]
+    sections = [_flat_section("back", "section.back", half, rows, stitch_id, real_cm, note_key="pattern.note.crochet_flat")]
     sections[0] = replace(sections[0], meta={**sections[0].meta, "shoulder": shoulder})
     if kind == "cardigan":
         for side in ("left", "right"):
-            sections.append(_flat_section(f"{side}_front", f"section.{side}_front", half // 2, rows, stitch_id, body_cm, note_key="pattern.note.crochet_flat"))
+            sections.append(_flat_section(f"{side}_front", f"section.{side}_front", half // 2, rows, stitch_id, real_cm, note_key="pattern.note.crochet_flat"))
     else:
-        sections.append(_flat_section("front", "section.front", half, rows, stitch_id, body_cm, note_key="pattern.note.crochet_flat"))
+        sections.append(_flat_section("front", "section.front", half, rows, stitch_id, real_cm, note_key="pattern.note.crochet_flat"))
     measurements = [
-        Measurement(key="bust", value_cm=gauge.cm_for_stitches(2 * half), target_cm=size.bust_cm + ease, tolerance_cm=3.0, kind="circumference"),
+        Measurement(key="bust", value_cm=gauge.cm_for_stitches(2 * half), target_cm=width_cm, tolerance_cm=3.0, kind="circumference"),
         Measurement(key="body_length", value_cm=gauge.cm_for_rows(rows), target_cm=body_cm, tolerance_cm=1.5, kind="length"),
         Measurement(key="neck", value_cm=2 * gauge.cm_for_stitches(neck_open), target_cm=2 * max(24.0, size.neck_cm * 0.65), tolerance_cm=3.0, kind="circumference"),
     ]
@@ -525,12 +534,13 @@ def generate_crochet_garment(spec: GarmentSpec, params: PatternParams, kind: str
         )
     ]
     area = gauge.cm_for_stitches(2 * half) * body_cm
-    if kind != "vest":
-        sleeve_cm = _sleeve_length_cm(spec, size)
+    sleeved = kind != "vest" and has_sleeves(spec)
+    if sleeved:
+        sleeve_cm = sleeve_length_cm(spec, size)
         sleeve = adjust_stitches(max(8, gauge.stitches_for_cm(size.upper_arm_cm + CROCHET_SLEEVE_EASE_CM)), multiple, mode="nearest")
         sleeve_rows = max(2, gauge.rows_for_cm(sleeve_cm))
         for side in ("left", "right"):
-            sections.append(_flat_section(f"sleeve_{side}", f"section.sleeve_{side}", sleeve, sleeve_rows, stitch_id, sleeve_cm, note_key="pattern.note.crochet_flat"))
+            sections.append(_flat_section(f"sleeve_{side}", f"section.sleeve_{side}", sleeve, sleeve_rows, stitch_id, gauge.cm_for_rows(sleeve_rows), note_key="pattern.note.crochet_flat"))
         measurements += [
             Measurement(key="sleeve_length", value_cm=gauge.cm_for_rows(sleeve_rows), target_cm=sleeve_cm, tolerance_cm=1.5, kind="length"),
             Measurement(key="upper_arm", value_cm=gauge.cm_for_stitches(sleeve), target_cm=size.upper_arm_cm + CROCHET_SLEEVE_EASE_CM, tolerance_cm=3.0, kind="circumference"),
@@ -538,6 +548,12 @@ def generate_crochet_garment(spec: GarmentSpec, params: PatternParams, kind: str
         area += 2 * gauge.cm_for_stitches(sleeve) * sleeve_cm
     warnings = _warnings(params)
     warnings.append(Warning("crochet_garment", "warning.crochet_garment"))
+    if not sleeved and kind != "vest":
+        warnings.append(Warning("vest_armhole", "warning.vest_armhole"))
+    if sleeved and sleeve_style(spec) is not SleeveStyle.STRAIGHT:
+        warnings.append(Warning("sleeve_style_straight", "garments.warning.sleeve_style_straight"))
+    if spec.forma is Shape.A_LINE:
+        warnings.append(Warning("a_line_straight", "garments.warning.a_line_straight"))
     return Pattern(
         meta=_meta(spec_g, params, f"crochet_{kind}", f"title.{kind}_crochet"),
         spec=spec_g,

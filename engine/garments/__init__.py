@@ -36,6 +36,12 @@ from engine.garments.raglan import generate_raglan_top_down
 from engine.garments.routing import route
 from engine.garments.set_in import generate_set_in
 from engine.garments.toy import generate_amigurumi
+from engine.garments.wraps import (
+    generate_crochet_poncho,
+    generate_crochet_shrug,
+    generate_poncho,
+    generate_shrug,
+)
 from engine.garments.yoke import generate_yoke
 from engine.ir import Pattern, Warning
 from engine.spec import (
@@ -83,6 +89,18 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
 
 
 _MOTIF_CATEGORIES = {Category.GRANNY_SQUARE, Category.OTHER, Category.BLANKET}
+# Prendas de crochet que son un pullover o un cardigan con otro largo/titulo.
+_CROCHET_TITLED = {
+    Category.TOP: ("pullover", "title.top_crochet"),
+    Category.DRESS: ("pullover", "title.dress_crochet"),
+    Category.COAT: ("cardigan", "title.coat_crochet"),
+}
+
+
+def _titled(pattern: Pattern, title_key: str) -> Pattern:
+    """La misma familia verificada, con el titulo de la prenda (top,
+    vestido, saco): el calculo ya uso el largo de esa categoria."""
+    return replace(pattern, meta=replace(pattern.meta, title_key=title_key))
 
 
 def _generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
@@ -105,6 +123,13 @@ def _generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
             return generate_crochet_shawl(spec, params)
         if spec.categoria in {Category.PULLOVER, Category.CARDIGAN, Category.VEST}:
             return generate_crochet_garment(spec, params, spec.categoria.value)
+        if spec.categoria in _CROCHET_TITLED:
+            kind, title = _CROCHET_TITLED[spec.categoria]
+            return _titled(generate_crochet_garment(spec, params, kind), title)
+        if spec.categoria is Category.SHRUG:
+            return generate_crochet_shrug(spec, params)
+        if spec.categoria is Category.PONCHO:
+            return generate_crochet_poncho(spec, params)
         if spec.categoria is Category.OTHER:
             return generate_crochet_flat_piece(spec, params)
         raise UnsupportedGarmentError(
@@ -134,18 +159,28 @@ def _generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
         return generate_flat_piece(spec, params)
     if spec.categoria is Category.CARDIGAN:
         return generate_flat(spec, params, "cardigan")
+    if spec.categoria is Category.COAT:
+        return _titled(generate_flat(spec, params, "cardigan"), "title.coat")
     if spec.categoria is Category.VEST:
         return generate_flat(spec, params, "vest")
-    if spec.categoria is Category.PULLOVER:
+    if spec.categoria is Category.SHRUG:
+        return generate_shrug(spec, params)
+    if spec.categoria is Category.PONCHO:
+        return generate_poncho(spec, params)
+    if spec.categoria in {Category.PULLOVER, Category.TOP, Category.DRESS}:
         construction = spec.construccion or Construction.RAGLAN_TOP_DOWN
+        pattern: Pattern | None = None
         if construction is Construction.RAGLAN_TOP_DOWN:
-            return generate_raglan_top_down(spec, params)
-        if construction is Construction.DROP_SHOULDER:
-            return generate_flat(spec, params, "drop_shoulder")
+            pattern = generate_raglan_top_down(spec, params)
+        if construction in {Construction.DROP_SHOULDER, Construction.MODIFIED_DROP_SHOULDER}:
+            pattern = generate_flat(spec, params, "drop_shoulder")
         if construction is Construction.YOKE:
-            return generate_yoke(spec, params)
+            pattern = generate_yoke(spec, params)
         if construction is Construction.SET_IN_SLEEVE:
-            return generate_set_in(spec, params)
+            pattern = generate_set_in(spec, params)
+        if pattern is not None:
+            titles = {Category.TOP: "title.top", Category.DRESS: "title.dress"}
+            return _titled(pattern, titles[spec.categoria]) if spec.categoria in titles else pattern
     raise UnsupportedGarmentError(
         "error.unsupported_garment",
         category=spec.categoria.value,
@@ -179,7 +214,15 @@ __all__ = [
 ]
 
 
-_SIZED = {Category.PULLOVER, Category.CARDIGAN, Category.VEST}
+_SIZED = {
+    Category.PULLOVER,
+    Category.CARDIGAN,
+    Category.VEST,
+    Category.TOP,
+    Category.DRESS,
+    Category.COAT,
+    Category.SHRUG,
+}
 
 
 def generate_size_set(spec: GarmentSpec, params: PatternParams) -> list[Pattern]:

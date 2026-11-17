@@ -248,13 +248,16 @@ def neck_side(stitches: int, decreases: int, rows: int, *, neck_at_start: bool) 
 NECK_DEPTH_CM = 7.0
 
 
-def plan_crew_neck(neck_center: int, rows_available: int, rows_per_cm: float) -> tuple[int, int, int]:
+def plan_crew_neck(
+    neck_center: int, rows_available: int, rows_per_cm: float, depth_cm: float = NECK_DEPTH_CM
+) -> tuple[int, int, int]:
     """(hileras de escote, disminuciones por lado, pts centrales a cerrar).
 
-    ASUNCION: 7 cm de profundidad; 20 % del ancho del escote se disminuye por
-    lado (1 pt por hilera del LD) y el resto se cierra de una vez.
+    ASUNCION: 7 cm de profundidad (12 en el escote amplio, `depth_cm`); 20 %
+    del ancho del escote se disminuye por lado (1 pt por hilera del LD) y el
+    resto se cierra de una vez.
     """
-    depth = min(max(1, round(NECK_DEPTH_CM * rows_per_cm)), rows_available)
+    depth = min(max(1, round(depth_cm * rows_per_cm)), rows_available)
     if depth < 4 or neck_center < 4:
         raise ValueError("no hay lugar para el escote")
     decs = max(1, min(round(neck_center * 0.2), (depth - 2) // 2, (neck_center - 2) // 2))
@@ -309,12 +312,17 @@ def front_neck_rows(
     tramo (escote en V, `spread`).
     """
     end = len(flat.steps) - 1 + rows
+    # Las disminuciones caen en las mismas hileras en los dos delanteros: la
+    # primera, en la primera hilera del LD que este 2 hileras despues del
+    # comienzo del escote. Asi el delantero que cierra en el LR (una hilera
+    # despues) nunca queda dos hileras corrido respecto del otro.
+    first_dec = flat.number + 2 if bind_off else flat.number
     if bind_off:
         if flat.right_side != neck_at_start:
             flat.plain()
         flat.row(bind_off=bind_off, note="pattern.note.front_neck_bind_off")
     remaining = end - (len(flat.steps) - 1)
-    rs_rows = [n for n in range(flat.number, flat.number + remaining) if n % 2 == 1]
+    rs_rows = [n for n in range(max(flat.number, first_dec), flat.number + remaining) if n % 2 == 1]
     if decreases > len(rs_rows):
         raise ValueError("no entran las disminuciones del escote")
     if spread:

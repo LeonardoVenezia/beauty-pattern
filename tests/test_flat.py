@@ -4,7 +4,7 @@ from itertools import pairwise, product
 
 import pytest
 
-from engine.garments import ImpossibleProportionsError, generate
+from engine.garments import generate
 from engine.simulator import simulate
 from engine.sizes import BODY_SIZES
 from engine.spec import (
@@ -131,12 +131,13 @@ def test_drop_shoulder_variants(
     assert simulate(pattern).ok
 
 
-def test_flat_sleeveless_pullover_is_rejected() -> None:
+def test_flat_sleeveless_pullover_is_knitted_with_armholes() -> None:
     spec = spec_for(Category.PULLOVER, Construction.DROP_SHOULDER).model_copy(
         update={"largo_manga": SleeveLength.SLEEVELESS}
     )
-    with pytest.raises(ImpossibleProportionsError):
-        generate(spec, PatternParams(talla="M"))
+    pattern = generate(spec, PatternParams(talla="M"))
+    assert simulate(pattern).ok
+    assert {"armhole_band_left", "armhole_band_right"} <= {s.id for s in pattern.sections}
 
 
 def test_flat_text_svg_and_pdf() -> None:

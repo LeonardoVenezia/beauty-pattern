@@ -7,6 +7,7 @@ parecida y el patron lo dice en una advertencia ("se aproximo X con Y").
 
 from __future__ import annotations
 
+from engine.garments.options import has_sleeves
 from engine.spec import (
     BodyLength,
     Category,
@@ -30,23 +31,23 @@ _PULLOVER = {
     Construction.ROUND_TUBE: Construction.RAGLAN_TOP_DOWN,
     Construction.MODULES: Construction.DROP_SHOULDER,
     Construction.OTHER: Construction.RAGLAN_TOP_DOWN,
-    Construction.MODIFIED_DROP_SHOULDER: Construction.DROP_SHOULDER,
     Construction.SADDLE_SHOULDER: Construction.SET_IN_SLEEVE,
     Construction.DOLMAN: Construction.DROP_SHOULDER,
-    Construction.T_SHAPE: Construction.DROP_SHOULDER,
     Construction.SIDE_TO_SIDE: Construction.DROP_SHOULDER,
 }
+# Construcciones que SON otra familia con otro nombre (sin aviso): la
+# construccion en T son rectangulos cosidos, o sea hombro caido.
+_SAME = {Construction.T_SHAPE: Construction.DROP_SHOULDER}
+# Prendas que se calculan como pullover (con su largo y su titulo).
+PULLOVER_LIKE = frozenset({Category.PULLOVER, Category.TOP, Category.DRESS})
+CARDIGAN_LIKE = frozenset({Category.CARDIGAN, Category.COAT})
+_ROUND = {Construction.RAGLAN_TOP_DOWN, Construction.YOKE}
 
 # Ampliacion D037: opciones que la IA ya reconoce pero que todavia no tienen
 # calculo propio. Cada una va a la familia verificada mas parecida y el patron
 # lo avisa ("warning.approx.<codigo>"). Al implementar una opcion, se borra
 # de estas tablas.
 CATEGORY_APPROX: dict[Category, Category] = {
-    Category.TOP: Category.PULLOVER,
-    Category.COAT: Category.CARDIGAN,
-    Category.DRESS: Category.PULLOVER,
-    Category.PONCHO: Category.SHAWL,
-    Category.SHRUG: Category.CARDIGAN,
     Category.FINGERLESS_MITTS: Category.MITTENS,
     Category.BALACLAVA: Category.HAT,
     Category.HEADBAND: Category.COWL,
@@ -67,10 +68,13 @@ NECKLINE_APPROX: dict[Neckline, Neckline] = {
     Neckline.SHAWL_COLLAR: Neckline.V_NECK,
     Neckline.COWL_NECK: Neckline.TURTLENECK,
 }
-BODY_LENGTH_APPROX: dict[BodyLength, BodyLength] = {BodyLength.WAIST: BodyLength.CROPPED}
-SLEEVE_LENGTH_APPROX: dict[SleeveLength, SleeveLength] = {
-    SleeveLength.ELBOW: SleeveLength.THREE_QUARTER
-}
+# Escotes con calculo propio en cada tipo de familia (garments, D038); el
+# resto de NECKLINE_APPROX se aproxima en esa familia.
+_NECK_ROUND = frozenset({Neckline.MOCK_NECK, Neckline.SCOOP, Neckline.COWL_NECK})
+_NECK_FLAT = _NECK_ROUND | {Neckline.HENLEY, Neckline.POLO}
+_NECK_CARDIGAN = _NECK_ROUND | {Neckline.SHAWL_COLLAR}
+BODY_LENGTH_APPROX: dict[BodyLength, BodyLength] = {}
+SLEEVE_LENGTH_APPROX: dict[SleeveLength, SleeveLength] = {}
 TOY_FIGURES_DONE: frozenset[Figure] = frozenset(
     {Figure.BEAR, Figure.BUNNY, Figure.CAT, Figure.GENERIC}
 )
@@ -84,7 +88,6 @@ def _approximate(spec: GarmentSpec, update: dict[str, object], notes: list[str])
         update["categoria"] = CATEGORY_APPROX[spec.categoria]
         notes.append("category")
     for field, table, code in (
-        ("escote", NECKLINE_APPROX, "neckline"),
         ("largo_cuerpo", BODY_LENGTH_APPROX, "length"),
         ("largo_manga", SLEEVE_LENGTH_APPROX, "length"),
     ):
@@ -132,9 +135,39 @@ def route(spec: GarmentSpec) -> tuple[GarmentSpec, tuple[str, ...]]:
     if category is Category.GLOVES:
         category = Category.MITTENS
         notes.append("gloves")
-    if category is Category.PULLOVER and technique in _KNIT and spec.construccion in _PULLOVER:
-        update["construccion"] = _PULLOVER[spec.construccion]
-        if spec.construccion is not Construction.OTHER:
-            notes.append("construction")
+    construction = spec.construccion
+    if category in PULLOVER_LIKE and technique in _KNIT:
+        if construction in _SAME:
+            construction = _SAME[construction]
+        elif construction in _PULLOVER:
+            construction = _PULLOVER[construction]
+            if spec.construccion is not Construction.OTHER:
+                notes.append("construction")
+        if not has_sleeves(spec) and construction is not Construction.SET_IN_SLEEVE:
+            # Sin mangas: piezas con sisa formada (la de manga encajada).
+            if construction is not None:
+                notes.append("sleeveless")
+            construction = Construction.SET_IN_SLEEVE
+        update["construccion"] = construction
+    neck = _neckline(spec.escote, category, technique, construction)
+    if neck is not spec.escote:
+        update["escote"] = neck
+        notes.append("neckline")
     update.update(tecnica=technique, categoria=category)
     return spec.model_copy(update=update), tuple(notes)
+
+
+def _neckline(
+    neck: Neckline | None, category: Category, technique: Technique, construction: Construction | None
+) -> Neckline | None:
+    """El escote, o el mas parecido si esa familia no lo calcula."""
+    if neck not in NECKLINE_APPROX or category in {Category.SHRUG, Category.PONCHO}:
+        return neck  # el poncho y el bolero no llevan escote
+    supported: frozenset[Neckline] = frozenset()
+    if technique in _KNIT and category in PULLOVER_LIKE | {Category.VEST}:
+        supported = _NECK_ROUND if (construction or Construction.RAGLAN_TOP_DOWN) in _ROUND else _NECK_FLAT
+        if category is Category.VEST:
+            supported = _NECK_FLAT
+    elif technique in _KNIT and category in CARDIGAN_LIKE:
+        supported = _NECK_CARDIGAN
+    return neck if neck in supported else NECKLINE_APPROX[neck]
