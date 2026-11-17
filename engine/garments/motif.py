@@ -237,6 +237,18 @@ def motif_steps(
     radius = 0.0
     previous = 0
     corner = (0, 0)  # pts antes y despues de las 2 cad de esquina, por lado
+    # Minimo de pts de cada vuelta redonda para que las siguientes lleguen a
+    # su multiplo sin pasar de duplicar (mirando todas las vueltas que siguen,
+    # no solo la proxima: con simetria 13 y hexagono hay que llegar a 78).
+    mults = [_multiple(rounds, i, sectors, corners) for i in range(len(rounds))]
+    need = [1] * (len(rounds) + 1)
+    for i in range(len(rounds) - 1, -1, -1):
+        if rounds[i].square:
+            continue
+        following = max(mults[i + 1], need[i + 1]) if i + 1 < len(rounds) and not rounds[i + 1].square else (
+            mults[i + 1] if i + 1 < len(rounds) else 1
+        )
+        need[i] = math.ceil(following / 2 / mults[i]) * mults[i]
     for index, rnd in enumerate(rounds):
         width, height = _sizes(sc_per_cm, rnd.stitch)
         radius += height
@@ -256,8 +268,7 @@ def motif_steps(
             multiple = _multiple(rounds, index, sectors, corners)
             # Que la vuelta siguiente pueda llegar a su multiplo sin pasar de
             # duplicar los puntos.
-            following = _multiple(rounds, index + 1, sectors, corners) if index + 1 < len(rounds) else 1
-            floor_next = math.ceil(following / 2 / multiple) * multiple
+            floor_next = need[index]
             ideal = 2 * math.pi * radius / width
             if index == 0:
                 target = max(floor_next, multiple * max(1, round(ideal / multiple)), 3)
