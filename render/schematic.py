@@ -572,6 +572,10 @@ def render_schematic_svg(
             from render.toy import render_toy_svg
 
             return render_toy_svg(pattern, language)
+        from render.accessories import render_accessory_svg, supports
+
+        if supports(fam):
+            return render_accessory_svg(pattern, language)
         if fam == "hat":
             return _hat_svg(pattern, language)
         if fam == "cowl":

@@ -9,22 +9,20 @@ se declaran en las advertencias.
 from __future__ import annotations
 
 import hashlib
-import math
 from datetime import UTC, datetime
 
 from engine import ENGINE_VERSION
 from engine.distribution import decrease_evenly
+from engine.garments.acc_kit import nearest_multiple, repeat_tolerance
 from engine.garments.base import ImpossibleProportionsError
 from engine.ir import (
     CountRef,
-    Item,
     JoinCheck,
     Materials,
     Measurement,
     Op,
     Pattern,
     PatternMeta,
-    Repeat,
     Section,
     SectionTarget,
     Step,
@@ -46,21 +44,6 @@ from engine.stitches.catalog import (
     get_stitch,
 )
 from engine.stitches.kinds import StitchKind
-
-# ASUNCION: corona en gajos (8 es lo habitual; 4-10 segun la cantidad de
-# puntos) con disminuciones cada 2 vueltas (convencion de gorros de jersey).
-HAT_SECTORS = (8, 7, 9, 6, 10, 5, 4)
-CROWN_SHARE = 0.35  # ASUNCION: la corona ocupa ~1/3 del alto del gorro
-
-HEAD_BY_SIZE = {
-    "XS": 52.0,
-    "S": 54.0,
-    "M": 56.0,
-    "L": 58.0,
-    "XL": 59.0,
-    "2XL": 60.0,
-    "3XL": 61.0,
-}
 
 
 def _dimension(params: PatternParams, key: str, default: float) -> float:
@@ -250,9 +233,7 @@ def _rectangular(
     if pattern_id == "other":
         pattern_id = "stockinette"
     multiple = get_stitch(pattern_id).multiple
-    stitches = adjust_stitches(
-        max(1, round_half_up(width * gauge.stitches_per_cm)), multiple, mode="nearest"
-    )
+    stitches = nearest_multiple(width * gauge.stitches_per_cm, multiple)
     rows = max(1, gauge.rows_for_cm(length))
     section = _flat_rect_section(
         section_id,
@@ -260,7 +241,7 @@ def _rectangular(
         stitches,
         rows,
         pattern_id,
-        length,
+        gauge.cm_for_rows(rows),
         note_key="pattern.note.flat_panel",
     )
     warnings = _common_warnings(params)
@@ -278,7 +259,7 @@ def _rectangular(
                 key="width",
                 value_cm=gauge.cm_for_stitches(stitches),
                 target_cm=width,
-                tolerance_cm=1.5,
+                tolerance_cm=repeat_tolerance(gauge, multiple, 1.5),
                 kind="width",
             ),
             Measurement(
@@ -419,162 +400,11 @@ def generate_cowl(spec: GarmentSpec, params: PatternParams) -> Pattern:
     )
 
 
-def _rib_crown(stitches: int) -> list[tuple[tuple[Item, ...], str | None]]:
-    """Corona clasica de gorro en elastico 2x2: las disminuciones se hacen
-    dentro del elastico (primero en los reveses, despues en los derechos), sin
-    cortar las columnas. (vuelta, nota) desde `stitches` hasta stitches/8."""
-    n = stitches // 4
-    k, p = StitchKind.KNIT, StitchKind.PURL
-    rounds: list[tuple[tuple[Item, ...], str | None]] = [
-        ((Repeat(n, (Op(k, times=2), Op(StitchKind.P2TOG))),), "pattern.note.rib_crown_purls"),
-        ((Repeat(n, (Op(k, times=2), Op(p))),), None),
-        ((Repeat(n, (Op(StitchKind.K2TOG), Op(p))),), "pattern.note.rib_crown_knits"),
-        ((Repeat(n, (Op(k), Op(p))),), None),
-        ((Op(StitchKind.K2TOG, times=n),), "pattern.note.rib_crown_last"),
-    ]
-    if n % 2 == 0 and n > 8:  # una vuelta mas de 2 juntos: la coronilla cierra sin agujero
-        rounds.append(((Op(StitchKind.K2TOG, times=n // 2),), None))
-    return rounds
-
-
-def _sector_crown(stitches: int, sectors: int, max_rows: int) -> list[tuple[tuple[Item, ...], str | None]]:
-    """Corona en gajos: una disminucion por gajo por vuelta de disminucion
-    hasta que queda 1 punto por gajo. Primero cada 2 vueltas y, si no entra en
-    `max_rows`, el final en todas las vueltas (como los patrones publicados)."""
-    per = stitches // sectors
-    decreases = per - 1
-    plain = max(0, min(decreases - 1, max_rows - decreases))
-    rounds: list[tuple[tuple[Item, ...], str | None]] = []
-    while per > 1:
-        knits = (Op(StitchKind.KNIT, times=per - 2),) if per > 2 else ()
-        rounds.append(((Repeat(sectors, (*knits, Op(StitchKind.K2TOG))),), "pattern.note.hat_crown"))
-        per -= 1
-        if per > 1 and plain:
-            plain -= 1
-            rounds.append(((Op(StitchKind.KNIT, times=per * sectors),), None))
-    return rounds
-
-
 def generate_hat(spec: GarmentSpec, params: PatternParams) -> Pattern:
-    gauge = resolve_gauge(params)
-    head = _dimension(params, "head", HEAD_BY_SIZE.get(params.talla.upper(), 56.0))
-    circumference = head * 0.9
-    height = _dimension(params, "length", 22.0)
-    base = _base_id(spec)
-    ribbed = base == "rib_2x2" or (base.startswith("rib") and spec.punto_base is not None)
-    if ribbed:
-        base = "rib_2x2"
-    wanted = round_half_up(circumference * gauge.stitches_per_cm)
+    """Gorro de dos agujas: el calculo por estilo vive en engine/garments/hats.py."""
+    from engine.garments.hats import generate_hat_style
 
-    def fit(sectors: int) -> int:
-        multiple = math.lcm(get_stitch(base).multiple, sectors, 4)  # el borde es elastico 2x2
-        return int(adjust_stitches(max(2 * multiple, wanted), multiple, mode="nearest"))
-
-    sectors = 4 if ribbed else min(HAT_SECTORS, key=lambda n: abs(fit(n) - wanted))
-    stitches = fit(sectors)
-    brim_cm = 4.0
-    brim_rows = max(1, gauge.rows_for_cm(brim_cm))
-    crown_plan = _rib_crown(stitches) if ribbed else _sector_crown(
-        stitches, sectors, gauge.rows_for_cm(height * CROWN_SHARE)
-    )
-    crown_rows = len(crown_plan)
-    crown_cm = gauge.cm_for_rows(crown_rows)
-    if height <= brim_cm + crown_cm + 1:
-        raise ImpossibleProportionsError(
-            "error.impossible_proportions", yoke=0, body=height, sleeve=0
-        )
-    body_rows = max(1, gauge.rows_for_cm(height - brim_cm - crown_cm))
-    brim = _round_tube_section(
-        "brim",
-        "section.brim",
-        stitches,
-        brim_rows,
-        "rib_2x2",
-        brim_cm,
-        note_key="pattern.note.hat_brim",
-        cast_on=True,
-        bind_off=False,
-    )
-    body = _round_tube_section(
-        "body",
-        "section.body",
-        stitches,
-        body_rows,
-        base,
-        gauge.cm_for_rows(body_rows),
-        note_key="pattern.note.hat_body",
-        start_stitches=stitches,
-        bind_off=False,
-    )
-    steps: list[Step] = []
-    current = stitches
-    for number, (items, note) in enumerate(crown_plan, start=1):
-        step = build_step(number, current, items, note_key=note)
-        steps.append(step)
-        current = step.stitch_count_end
-    crown = Section(
-        id="crown",
-        name_key="section.crown",
-        mode="round",
-        steps=tuple(steps),
-        start_stitches=stitches,
-        end_stitches=current,
-        target=SectionTarget(
-            measurement_key="crown_length",
-            target_cm=crown_cm,
-            tolerance_cm=0.5,
-            dimension="length",
-        ),
-        meta={"row_count": crown_rows, "gather": 1},
-    )
-    return Pattern(
-        meta=_meta(spec, params, "hat", "title.hat"),
-        spec=spec,
-        params=params,
-        sections=(brim, body, crown),
-        measurements=(
-            Measurement(
-                key="head",
-                value_cm=head,
-                target_cm=head,
-                tolerance_cm=0.1,
-                kind="circumference",
-            ),
-            Measurement(
-                key="circumference",
-                value_cm=gauge.cm_for_stitches(stitches),
-                target_cm=circumference,
-                tolerance_cm=2.5,
-                kind="circumference",
-            ),
-            Measurement(
-                key="length",
-                value_cm=gauge.cm_for_rows(brim_rows + body_rows + crown_rows),
-                target_cm=height,
-                tolerance_cm=1.5,
-                kind="length",
-            ),
-        ),
-        materials=_materials(
-            spec,
-            params,
-            circumference * height,
-            ("notion.stitch_markers", "notion.tape_measure"),
-        ),
-        warnings=tuple(_common_warnings(params)),
-        joins=(
-            JoinCheck(
-                label_key="join.brim",
-                left=(CountRef("brim", "end"),),
-                right=(CountRef("body", "start"),),
-            ),
-            JoinCheck(
-                label_key="join.crown",
-                left=(CountRef("body", "end"),),
-                right=(CountRef("crown", "start"),),
-            ),
-        ),
-    )
+    return generate_hat_style(spec, params)
 
 
 def generate_mittens(spec: GarmentSpec, params: PatternParams) -> Pattern:
@@ -583,13 +413,16 @@ def generate_mittens(spec: GarmentSpec, params: PatternParams) -> Pattern:
     hand_length = _dimension(params, "length", 18.0)
     thumb_length = _dimension(params, "thumb", 6.0)
     thumb_width = _dimension(params, "thumb_width", 6.0)
-    hand_sts = max(4, round_half_up((palm / 2.0) * gauge.stitches_per_cm))
-    thumb_sts = max(4, round_half_up(thumb_width * gauge.stitches_per_cm))
-    hand_rows = max(1, gauge.rows_for_cm(hand_length))
-    thumb_rows = max(1, gauge.rows_for_cm(thumb_length))
     pattern_id = _base_id(spec)
     if pattern_id == "other":
         pattern_id = "stockinette"
+    # Los anchos respetan el multiplo del punto (antes: punto arroz con 13
+    # pts fallaba al expandir la vuelta).
+    multiple = get_stitch(pattern_id).multiple
+    hand_sts = nearest_multiple((palm / 2.0) * gauge.stitches_per_cm, multiple, minimum=4)
+    thumb_sts = nearest_multiple(thumb_width * gauge.stitches_per_cm, multiple, minimum=4)
+    hand_rows = max(1, gauge.rows_for_cm(hand_length))
+    thumb_rows = max(1, gauge.rows_for_cm(thumb_length))
     sections = (
         _flat_rect_section(
             "hand",
@@ -629,7 +462,7 @@ def generate_mittens(spec: GarmentSpec, params: PatternParams) -> Pattern:
                 key="palm",
                 value_cm=gauge.cm_for_stitches(2 * hand_sts),
                 target_cm=palm,
-                tolerance_cm=2.0,
+                tolerance_cm=repeat_tolerance(gauge, 2 * multiple, 2.0),
                 kind="circumference",
             ),
             Measurement(

@@ -55,7 +55,8 @@ def test_crochet_hat_crown_lies_flat() -> None:
     counts = [step.stitch_count_end for step in pattern.sections[0].steps]
     increase = counts[0]
     growth = [b - a for a, b in itertools.pairwise(counts) if b != a]
-    assert set(growth) == {increase}  # circulo plano: mismo aumento por vuelta
+    assert set(growth[:-1]) == {increase}  # circulo plano: mismo aumento por vuelta
+    assert 0 < growth[-1] <= increase  # la ultima suma solo lo que falta para el contorno
     assert simulate(pattern).ok
 
 
