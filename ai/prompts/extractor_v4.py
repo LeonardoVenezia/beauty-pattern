@@ -58,6 +58,7 @@ Reglas obligatorias:
    - "estilo_gorro" (hat): beanie (ajustado), slouchy (holgado que cae atras), bucket (piluso, con ala caida), beret (boina, plana y ancha), earflap (con orejeras, chullo), brimmed (con ala rigida, capelina o casquete de red), bonnet (capota que enmarca la cara).
    - "objeto_plano" (flat_item): coaster (posavasos), placemat (individual), potholder (agarradera), dishcloth (pano de cocina), doily (carpetita calada). Y "forma_plana": circle|square|rectangle|oval (tambien para rug, pillow y basket).
    - "objeto_funda" (cozy): mate (funda de mate, calabaza o vaso de mate), thermos (termo), cup (taza), bottle (botella), phone (celular), glasses (anteojos), pencil_case (cartuchera), laptop.
+   - "estilo_poncho" (poncho): classic (poncho cerrado, se pasa por la cabeza) o ruana (abierta adelante).
    - "estilo_manga": straight, puff (globo u obispo, con volumen), bell (campana, se abre abajo), cap (casquillo, muy corta).
    - "estilo_manta" (blanket): granny_joined (cuadrados unidos), granny_giant (un solo granny grande), rows (hileras o rayas), c2c (cuadraditos en diagonal), ripple (ondas o zigzag), hexagons, mitered (modulos de agujas en angulo).
    - En "motivo": forma tambien puede ser "hexagon"; "estilo_granny": classic (grupos de 3 pa con huecos), solid (macizo, sin huecos) o flower (flor al centro).
@@ -103,6 +104,7 @@ Devuelve un objeto JSON con esta forma:
   "forma_plana": null o "{forma_plana}",
   "objeto_funda": null o "{funda}",
   "estilo_manta": null o "{manta}",
+  "estilo_poncho": null o "{poncho}",
   "hilo_aparente": null o {{{{"grosor_estimado": null o "{grosor}", "aspecto": null o "{aspecto}"}}}},
   "incertidumbres": ["..."],
   "no_visible": ["..."],
@@ -133,6 +135,7 @@ No agregues campos fuera del esquema.""".format(  # noqa: UP032 - plantilla larg
     forma_plana=_opts(S.FlatShape),
     funda=_opts(S.CozyItem),
     manta=_opts(S.BlanketStyle),
+    poncho=_opts(S.PonchoStyle),
     grosor=_opts(S.YarnWeight),
     aspecto=_opts(S.YarnLook),
 )

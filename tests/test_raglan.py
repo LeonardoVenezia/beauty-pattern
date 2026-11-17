@@ -103,7 +103,7 @@ def test_all_sizes_weights_and_fits_simulate(
         Neckline.SQUARE,
     ],
 )
-@pytest.mark.parametrize("body_length", [b for b in BodyLength if b is not BodyLength.WAIST])  # waist: se aproxima (routing)
+@pytest.mark.parametrize("body_length", list(BodyLength))
 @pytest.mark.parametrize(
     "sleeve_length",
     [SleeveLength.SHORT, SleeveLength.THREE_QUARTER, SleeveLength.LONG],
@@ -119,6 +119,7 @@ def test_length_and_neckline_variants_simulate(
     assert report.ok, [issue.message for issue in report.issues]
     expected = {
         BodyLength.CROPPED: 43.0,
+        BodyLength.WAIST: 48.0,
         BodyLength.HIP: 58.0,
         BodyLength.TUNIC: 66.0,
         BodyLength.LONG: 73.0,
@@ -128,11 +129,11 @@ def test_length_and_neckline_variants_simulate(
     )
 
 
-def test_sleeveless_is_rejected_clearly() -> None:
-    spec = base_spec(largo_manga=SleeveLength.SLEEVELESS)
-    with pytest.raises(ImpossibleProportionsError) as error:
-        generate(spec, PatternParams(talla="M"))
-    assert error.value.key == "error.unsupported_sleeve"
+def test_sleeveless_raglan_goes_to_set_in_and_says_so() -> None:
+    pattern = generate(base_spec(largo_manga=SleeveLength.SLEEVELESS), PatternParams(talla="M"))
+    assert pattern.meta.family == "set_in"
+    assert "approx_sleeveless" in {w.code for w in pattern.warnings}
+    assert simulate(pattern).ok
 
 
 def test_gloves_are_approximated_as_mittens_and_say_so() -> None:

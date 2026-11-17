@@ -726,3 +726,13 @@ crochet y dos agujas, con esquema propio (`render/home.py`) y textos en
   dependían de que el patrón tuviera armado).
 - Carpetita o posavasos al crochet con un motivo visible: motor de motivos.
 - ASUNCIONES en docs/fuentes.md, "Hogar".
+## D039 — Prendas: top, vestido, saco, bolero, poncho/ruana, escotes, largos y mangas (2026-11-17)
+
+- Tablas comunes en `engine/garments/options.py` (largos cintura -10 cm, codo 0,6; vestido +20/+37/+55 cm; saco +15/+35; escotes; holgura y alto de tira). ASUNCIONES.
+- Sin mangas (top por defecto) → manga encajada con sisa formada y tiras de sisa (`warning.approx.sleeveless` si se pidió otra construcción). Cardigan/crochet sin mangas: sin piezas de manga.
+- Vestido/línea A: borde = max(pecho, cadera)+holgura; línea A ×1,25 (ASUNCIÓN). Aumentos en los costados (raglan, canesú) o disminuciones en los bordes (piezas). Con panel de textura el cuerpo va recto.
+- Escotes: mock/scoop/cowl en todas las familias de agujas; henley/polo (tapa de 2,5 cm, abertura 8 cm, 3 ojales) en hombro caído, manga encajada y chaleco; cuello chal en cardigan/saco. En raglan/canesú henley/polo/chal siguen aproximados; en crochet todos los escotes nuevos siguen aproximados.
+- Mangas globo (+40 %), campana (×1,5, borde santa clara) y casquillo (tira de 2 cm) en raglan, canesú y manga encajada; en hombro caído, cardigan y crochet se tejen rectas con aviso.
+- Hombro caído modificado (escalón de 4 cm) implementado; T = hombro caído sin aviso. Saddle, dolman y side-to-side siguen aproximados.
+- Bolero de un rectángulo (agujas y crochet), poncho de dos rectángulos y ruana (`GarmentSpec.estilo_poncho`, campo nuevo), talles adulto XS-3XL y niño 2-12.
+- Bugs: delanteros de cardigan corridos 2 hileras (primera disminución ≥2 hileras después del comienzo del escote); contorno de crochet con doble redondeo.

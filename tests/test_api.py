@@ -139,13 +139,13 @@ def test_pattern_rejects_impossible_variant(
                     "categoria": "pullover",
                     "tecnica": "needles",
                     "construccion": "raglan_top_down",
-                    "largo_manga": "sleeveless",
+                    "largo_manga": "long",
                 },
-                "params": {"talla": "M"},
+                "params": {"talla": "M", "medidas_cm": {"body_length": 30, "upper_arm": 90}},
             },
         )
     assert response.status_code == 422
-    assert response.json()["detail"]["error"] == "error.unsupported_sleeve"
+    assert response.json()["detail"]["error"] == "error.impossible_proportions"
 
 
 def test_pattern_not_found(monkeypatch: pytest.MonkeyPatch, tmp_path: object) -> None:

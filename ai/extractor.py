@@ -52,6 +52,7 @@ VOTED_FIELDS = (
     "forma_plana",
     "objeto_funda",
     "estilo_manta",
+    "estilo_poncho",
     "observaciones",
 )
 UNION_FIELDS = ("incertidumbres", "no_visible")

@@ -23,7 +23,22 @@ from datetime import UTC, datetime
 from engine import ENGINE_VERSION
 from engine.distribution import paired_decreases, regular_rows
 from engine.garments.base import ImpossibleProportionsError
+from engine.garments.options import body_length_cm as _body_length_cm
+from engine.garments.options import effective_sleeve, hem_circumference_cm, sleeve_style
+from engine.garments.options import neck_cm as _neck_cm
+from engine.garments.options import neckband_cm as _neckband_cm
+from engine.garments.options import sleeve_length_cm as _sleeve_length_cm
 from engine.garments.panels import body_round_with_panels, compensation, panel_for, texture_motif
+from engine.garments.shaping import flared_round_body
+from engine.garments.sleeves import (
+    CAP_BAND_CM,
+    bell_round_sleeve,
+    bell_width,
+    cap_round_sleeve,
+    gather_rounds,
+    puff_round_sleeve,
+    puff_width,
+)
 from engine.gauge import Gauge
 from engine.i18n import t
 from engine.ir import (
@@ -45,11 +60,11 @@ from engine.materials import default_needle_mm, estimate_yarn
 from engine.rounding import round_half_up
 from engine.sizes import BodySize, ease_for_fit, resolve_body_size
 from engine.spec import (
-    BodyLength,
     GarmentSpec,
     Neckline,
     PatternParams,
     SleeveLength,
+    SleeveStyle,
     StitchPatternName,
     resolve_gauge,
 )
@@ -99,49 +114,9 @@ class RaglanPlan:
     neckband_cm: float
     body_length_cm: float
     sleeve_length_cm: float
-
-
-def _body_length_cm(spec: GarmentSpec, size: BodySize) -> float:
-    length = spec.largo_cuerpo or BodyLength.HIP
-    if length is BodyLength.CROPPED:
-        return max(20.0, size.body_length_cm - 15.0)
-    if length is BodyLength.TUNIC:
-        return size.body_length_cm + 8.0
-    if length is BodyLength.LONG:
-        return size.body_length_cm + 15.0
-    return size.body_length_cm
-
-
-def _sleeve_length_cm(spec: GarmentSpec, size: BodySize) -> float:
-    length = spec.largo_manga or SleeveLength.LONG
-    if length is SleeveLength.LONG:
-        return size.sleeve_length_cm
-    if length is SleeveLength.THREE_QUARTER:
-        return size.sleeve_length_cm * 0.75
-    if length is SleeveLength.SHORT:
-        return size.sleeve_length_cm * 0.45
-    raise ImpossibleProportionsError(
-        "error.unsupported_sleeve", length=length.value
-    )
-
-
-def _neck_cm(spec: GarmentSpec, size: BodySize) -> float:
-    neckline = spec.escote
-    if neckline is Neckline.BOAT:
-        return size.neck_cm + 6.0
-    if neckline in {Neckline.V_NECK, Neckline.SQUARE}:
-        return size.neck_cm + 2.0
-    if neckline in {Neckline.TURTLENECK, Neckline.FUNNEL}:
-        return size.neck_cm - 1.0
-    if neckline is Neckline.HOOD:
-        return size.neck_cm + 4.0
-    return size.neck_cm
-
-
-def _neckband_cm(spec: GarmentSpec) -> float:
-    if spec.escote in {Neckline.TURTLENECK, Neckline.FUNNEL}:
-        return 8.0
-    return NECKBAND_CM
+    hem_sts: int = 0
+    sleeve_style: SleeveStyle = SleeveStyle.STRAIGHT
+    cuff_cm: float = CUFF_CM
 
 
 def _split_neck(neck_sts: int) -> tuple[int, int, int]:
@@ -244,7 +219,9 @@ def plan_raglan(
     # pasaba a "aumentar en todas las vueltas" y la sisa caia a la mitad.
     max_rounds = max(r_body, r_sleeve)
     target_yoke_cm = size.armhole_cm + 4.0
-    room_cm = min(body_length_cm - HEM_CM, sleeve_length_cm - CUFF_CM) - 2.5
+    style = sleeve_style(spec)
+    sleeve_room = sleeve_length_cm - CUFF_CM if style is not SleeveStyle.CAP else body_length_cm
+    room_cm = min(body_length_cm - HEM_CM, sleeve_room) - 2.5
     target_rows = gauge.rows_for_cm(min(target_yoke_cm, room_cm))
     yoke_rows = max(1 + max_rounds, target_rows)
     fast_rounds = min(max_rounds, max(0, 1 + 2 * max_rounds - yoke_rows))
@@ -258,7 +235,17 @@ def plan_raglan(
             body=body_length_cm,
             sleeve=sleeve_length_cm,
         )
-    if sleeve_length_cm <= yoke_depth_cm + CUFF_CM + 2:
+    sleeve_kind = effective_sleeve(spec)
+    cuff_cm = CUFF_CM
+    if style is SleeveStyle.CAP:
+        # Casquillo: la manga es solo la tira, apenas debajo de la axila.
+        cuff_cm = CAP_BAND_CM
+        sleeve_length_cm = yoke_depth_cm + gauge.cm_for_rows(1 if sleeve_sts % 4 == 0 else 2) + cuff_cm
+    elif sleeve_kind is not SleeveLength.LONG and sleeve_length_cm <= yoke_depth_cm + CUFF_CM + 2:
+        # Manga corta en un canesu muy hondo (talles grandes, hilo fino):
+        # ASUNCION: la manga llega al menos 2,5 cm debajo de la axila.
+        sleeve_length_cm = yoke_depth_cm + CUFF_CM + 2.5
+    if sleeve_length_cm <= yoke_depth_cm + cuff_cm + 2 and style is not SleeveStyle.CAP:
         raise ImpossibleProportionsError(
             "error.impossible_proportions",
             yoke=round(yoke_depth_cm, 1),
@@ -269,23 +256,50 @@ def plan_raglan(
     body_underarm_cm = body_length_cm - yoke_depth_cm - HEM_CM
     body_rows = max(1, gauge.rows_for_cm(body_underarm_cm))
     hem_rows = max(1, gauge.rows_for_cm(HEM_CM))
+    hem_target = hem_circumference_cm(spec, size, ease) * gauge.stitches_per_cm
+    flare = max(0, round_half_up((hem_target - body_sts) / 4))
+    flare = min(flare, max(0, body_rows - 2))
+    if texture_motif(spec) is not None:
+        flare = 0  # con panel de textura el cuerpo va recto (aviso)
+    hem_sts = body_sts + 4 * flare
 
-    sleeve_underarm_cm = sleeve_length_cm - yoke_depth_cm - CUFF_CM
+    sleeve_underarm_cm = sleeve_length_cm - yoke_depth_cm - cuff_cm
     sleeve_rows = max(1, gauge.rows_for_cm(sleeve_underarm_cm))
-    cuff_rows = max(1, gauge.rows_for_cm(CUFF_CM))
+    cuff_rows = max(1, gauge.rows_for_cm(cuff_cm))
+    if style is SleeveStyle.CAP:
+        sleeve_rows = 1 if sleeve_sts % 4 == 0 else 2
+        sleeve_underarm_cm = gauge.cm_for_rows(sleeve_rows)
 
-    sleeve_kind = spec.largo_manga or SleeveLength.LONG
     cuff_target_cm = size.wrist_cm + CUFF_EASE_CM
     if sleeve_kind is SleeveLength.THREE_QUARTER:
         cuff_target_cm += 2.0
+    if sleeve_kind is SleeveLength.ELBOW:
+        # ASUNCION: a la altura del codo, el promedio entre muneca y brazo.
+        cuff_target_cm = (size.wrist_cm + size.upper_arm_cm) / 2 + CUFF_EASE_CM
+    if style is SleeveStyle.PUFF and sleeve_kind in {SleeveLength.SHORT, SleeveLength.ELBOW}:
+        cuff_target_cm = size.upper_arm_cm + CUFF_EASE_CM  # tira que ajusta el brazo
     cuff_sts = max(
         4, round_half_up(cuff_target_cm * gauge.stitches_per_cm / 4.0) * 4
     )
     if cuff_sts >= sleeve_sts:
         cuff_sts = max(4, sleeve_sts - (sleeve_sts % 4))
+    if style is SleeveStyle.CAP:
+        cuff_sts = sleeve_sts - sleeve_sts % 4
+    elif style is SleeveStyle.BELL:
+        cuff_sts = min(bell_width(sleeve_sts), sleeve_sts + 2 * (sleeve_rows - 1))
+        cuff_sts -= (cuff_sts - sleeve_sts) % 2
+        while cuff_sts % 4:
+            cuff_sts -= 2
+        if cuff_sts <= sleeve_sts:
+            style = SleeveStyle.STRAIGHT  # no hay largo para abrir la campana
+            cuff_sts = max(4, sleeve_sts - (sleeve_sts % 4))
+    elif style is SleeveStyle.PUFF and sleeve_rows < 3 + len(gather_rounds(puff_width(sleeve_sts), cuff_sts)):
+        style = SleeveStyle.STRAIGHT
     sleeve_decreases = (sleeve_sts - cuff_sts) // 2
     capped = False
-    if sleeve_decreases > sleeve_rows:
+    if style is not SleeveStyle.STRAIGHT:
+        sleeve_decreases = 0
+    elif sleeve_decreases > sleeve_rows:
         capped = True
         sleeve_decreases = sleeve_rows
         raw_cuff = sleeve_sts - 2 * sleeve_decreases
@@ -300,7 +314,7 @@ def plan_raglan(
             body=body_length_cm,
             sleeve=sleeve_length_cm,
         )
-    if sleeve_kind is SleeveLength.LONG and gauge.cm_for_stitches(
+    if sleeve_kind is SleeveLength.LONG and style is SleeveStyle.STRAIGHT and gauge.cm_for_stitches(
         cuff_sts
     ) > size.wrist_cm + CUFF_EASE_CM + MEASUREMENT_TOLERANCE_CM:
         raise ImpossibleProportionsError(
@@ -337,6 +351,9 @@ def plan_raglan(
         neckband_cm=neckband_cm,
         body_length_cm=body_length_cm,
         sleeve_length_cm=sleeve_length_cm,
+        hem_sts=hem_sts,
+        sleeve_style=style,
+        cuff_cm=cuff_cm,
     )
     return plan, gauge, size, ease
 
@@ -514,7 +531,9 @@ def _body_section(plan: RaglanPlan, gauge: Gauge, spec: GarmentSpec, params: Pat
             extra = 0
     last_round = plan.body_rows
     steps: list[Step] = [first]
-    for number in range(2, plan.body_rows + 1):
+    if plan.hem_sts > plan.body_sts:
+        steps = flared_round_body(division, plan.body_before, plan.body_sts, plan.body_rows, plan.hem_sts)
+    for number in range(2 if len(steps) == 1 else plan.body_rows + 1, plan.body_rows + 1):
         steps.append(
             build_step(
                 number,
@@ -546,7 +565,7 @@ def _body_section(plan: RaglanPlan, gauge: Gauge, spec: GarmentSpec, params: Pat
         mode="round",
         steps=tuple(steps),
         start_stitches=plan.body_before,
-        end_stitches=plan.body_sts,
+        end_stitches=steps[-1].stitch_count_end,
         target=SectionTarget(
             measurement_key="body_underarm_length",
             target_cm=plan.body_underarm_cm,
@@ -571,11 +590,12 @@ def _body_section(plan: RaglanPlan, gauge: Gauge, spec: GarmentSpec, params: Pat
 
 def _hem_section(plan: RaglanPlan, gauge: Gauge) -> Section:
     rib = get_stitch("rib_2x2")
+    hem = max(plan.hem_sts, plan.body_sts)
     steps = tuple(
         build_step(
             number,
-            plan.body_sts,
-            expand_row(rib, plan.body_sts, number, in_the_round=True),
+            hem,
+            expand_row(rib, hem, number, in_the_round=True),
             note_key="pattern.note.hem" if number == 1 else None,
         )
         for number in range(1, plan.hem_rows + 1)
@@ -585,8 +605,8 @@ def _hem_section(plan: RaglanPlan, gauge: Gauge) -> Section:
         name_key="section.hem",
         mode="round",
         steps=steps,
-        start_stitches=plan.body_sts,
-        end_stitches=plan.body_sts,
+        start_stitches=hem,
+        end_stitches=hem,
         target=SectionTarget(
             measurement_key="hem_length",
             target_cm=HEM_CM,
@@ -602,7 +622,17 @@ def _sleeve_section(side: str, plan: RaglanPlan) -> Section:
     decrease_rows = set(regular_rows(plan.sleeve_rows, plan.sleeve_decreases))
     steps: list[Step] = []
     current = plan.sleeve_sts
-    for number in range(1, plan.sleeve_rows + 1):
+    rows = plan.sleeve_rows
+    if plan.sleeve_style is SleeveStyle.PUFF:
+        steps = puff_round_sleeve(current, rows, plan.cuff_sts)
+    elif plan.sleeve_style is SleeveStyle.BELL:
+        steps = bell_round_sleeve(current, rows, plan.cuff_sts)
+    elif plan.sleeve_style is SleeveStyle.CAP:
+        steps, _ = cap_round_sleeve(current)
+        rows = len(steps)
+    if steps:
+        current = steps[-1].stitch_count_end
+    for number in range(1 if not steps else rows + 1, rows + 1):
         if number in decrease_rows:
             ops, new_count = paired_decreases(current, 1, 1)
             steps.append(
@@ -638,7 +668,7 @@ def _sleeve_section(side: str, plan: RaglanPlan) -> Section:
             dimension="length",
         ),
         meta={
-            "row_count": plan.sleeve_rows,
+            "row_count": len(steps),
             "picked_up": plan.underarm_sts,
             "decreases": plan.sleeve_decreases,
         },
@@ -646,7 +676,7 @@ def _sleeve_section(side: str, plan: RaglanPlan) -> Section:
 
 
 def _cuff_section(side: str, plan: RaglanPlan) -> Section:
-    rib = get_stitch("rib_2x2")
+    rib = get_stitch("garter" if plan.sleeve_style is SleeveStyle.BELL else "rib_2x2")
     steps = tuple(
         build_step(
             number,
@@ -665,7 +695,7 @@ def _cuff_section(side: str, plan: RaglanPlan) -> Section:
         end_stitches=plan.cuff_sts,
         target=SectionTarget(
             measurement_key="cuff_length",
-            target_cm=CUFF_CM,
+            target_cm=plan.cuff_cm,
             tolerance_cm=0.5,
             dimension="length",
         ),
@@ -810,8 +840,8 @@ def generate_raglan_top_down(
             value_cm=gauge.cm_for_stitches(plan.cuff_sts),
             target_cm=(
                 None
-                if (spec.largo_manga or SleeveLength.LONG)
-                in {SleeveLength.SHORT, SleeveLength.THREE_QUARTER}
+                if effective_sleeve(spec) is not SleeveLength.LONG
+                or plan.sleeve_style is not SleeveStyle.STRAIGHT
                 else size.wrist_cm + CUFF_EASE_CM
             ),
             tolerance_cm=MEASUREMENT_TOLERANCE_CM,

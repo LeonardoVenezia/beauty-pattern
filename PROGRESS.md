@@ -487,3 +487,8 @@ guantes con dedos; jacquard como gráfico de color; formas de pétalo
   asa (la funda es para vasos sin asa); el dibujo punto por punto de los
   círculos de crochet (hoy solo esquema); medidas por defecto sin validar con
   una tejedora.
+
+## Catálogo ampliado (2026-11-17, D037–D039)
+
+- Hecho: vocabulario ampliado (31 categorías, 23 figuras, subtipos) con prompt `extractor-v6`; motor propio para hogar (posavasos, funda de mate y termo, canasto, almohadón, alfombra), accesorios (7 gorros, mitones sin dedos, pasamontañas, vincha, polainas, escarpines, pantuflas, pompón), prendas (top, vestido, saco, bolero, poncho y ruana, escotes nuevos, largos cintura y codo, mangas globo, campana y casquillo), amigurumi (23 figuras × 6 formas de cuerpo) y puntos nuevos de agujas y crochet (incluidos tunecino y C2C), hexágonos y variantes del granny. Bugs viejos del barrido arreglados. Suite y lint en verde.
+- Pendiente: estilos de manta (granny unido, ondas, C2C, módulos) siguen aproximados; `color_block`/`tapestry` y los aspectos de hilo nuevos solo dan aviso; textos fr/de/it de accesorios están en inglés; esquemas propios de bolero, poncho y ruana; `estilo_poncho` falta en la pantalla de confirmación; la oruga dice "alas" en su descripción; hombros sillín, dolman y de costado siguen aproximados; nada probado todavía con la IA real ni tejido a mano.

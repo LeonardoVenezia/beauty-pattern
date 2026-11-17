@@ -4,7 +4,7 @@ from itertools import product
 
 import pytest
 
-from engine.garments import ImpossibleProportionsError, generate
+from engine.garments import generate
 from engine.simulator import simulate
 from engine.sizes import BODY_SIZES
 from engine.spec import (
@@ -98,12 +98,9 @@ def test_yoke_variants_simulate(
     assert report.ok, [issue.message for issue in report.errors]
 
 
-def test_yoke_sleeveless_is_rejected() -> None:
-    with pytest.raises(ImpossibleProportionsError):
-        generate(
-            yoke_spec(largo_manga=SleeveLength.SLEEVELESS),
-            PatternParams(talla="M"),
-        )
+def test_yoke_sleeveless_goes_to_set_in() -> None:
+    pattern = generate(yoke_spec(largo_manga=SleeveLength.SLEEVELESS), PatternParams(talla="M"))
+    assert pattern.meta.family == "set_in" and simulate(pattern).ok
 
 
 def test_yoke_fair_isle_is_charted() -> None:
