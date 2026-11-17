@@ -29,14 +29,23 @@ export type GarmentSpec = {
   } | null;
   // Motivo radial de crochet descripto por la IA (capa de diseño).
   motivo?: {
-    forma: string;
+    forma: string; // circle | square | hexagon
     simetria: number;
     bandas: Array<{ punto: string; color: number | null; peso: number }>;
     cuadrar_en_banda: number | null;
+    // classic | solid | flower (solo granny)
+    estilo_granny?: string | null;
   } | null;
-  // Plantilla de juguete (solo amigurumi): bear | bunny | cat | generic.
+  // Plantilla de juguete (solo amigurumi): ver Figure en engine/spec.py.
   figura?: string | null;
   cuerpo_juguete?: string | null;
+  // Subtipos (D037): cada uno solo tiene sentido para algunas categorias.
+  estilo_manga?: string | null; // prendas con mangas
+  estilo_gorro?: string | null; // hat
+  objeto_plano?: string | null; // flat_item
+  forma_plana?: string | null; // flat_item, rug, pillow, basket
+  objeto_funda?: string | null; // cozy
+  estilo_manta?: string | null; // blanket
   incertidumbres: string[];
   no_visible: string[];
   confianza: Record<string, number>;

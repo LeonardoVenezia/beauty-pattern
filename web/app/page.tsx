@@ -24,112 +24,277 @@ type Step = "upload" | "confirm" | "params" | "pattern";
 // [valor de la API, clave de texto en web/lib/i18n.ts]
 type Options = readonly (readonly [string, TKey])[];
 
-const categories: Options = [
-  ["pullover", "cat.pullover"],
-  ["cardigan", "cat.cardigan"],
-  ["vest", "cat.vest"],
-  ["hat", "cat.hat"],
-  ["scarf", "cat.scarf"],
-  ["cowl", "cat.cowl"],
-  ["mittens", "cat.mittens"],
-  ["gloves", "cat.gloves"],
-  ["socks", "cat.socks"],
-  ["shawl", "cat.shawl"],
-  ["blanket", "cat.blanket"],
-  ["granny_square", "cat.granny_square"],
-  ["bag", "cat.bag"],
-  ["amigurumi", "cat.amigurumi"],
-  ["other", "cat.other"],
-];
+// Opciones con clave de texto = prefijo + valor de la API (engine/spec.py).
+// El tipo exige que cada clave exista en web/lib/i18n.ts.
+function opts<P extends string, const V extends string>(
+  prefix: P,
+  values: readonly V[] & ([`${P}${V}`] extends [TKey] ? unknown : never),
+): Options {
+  return values.map((value) => [value, `${prefix}${value}` as TKey] as const);
+}
 
-const techniques: Options = [
-  ["needles", "tech.needles"],
-  ["circular", "tech.circular"],
-  ["crochet", "tech.crochet"],
-  ["machine", "tech.machine"],
-];
+const categories = opts("cat.", [
+  "pullover",
+  "cardigan",
+  "vest",
+  "top",
+  "coat",
+  "dress",
+  "poncho",
+  "shrug",
+  "hat",
+  "balaclava",
+  "headband",
+  "scarf",
+  "cowl",
+  "mittens",
+  "fingerless_mitts",
+  "gloves",
+  "socks",
+  "leg_warmers",
+  "booties",
+  "slippers",
+  "shawl",
+  "blanket",
+  "granny_square",
+  "bag",
+  "basket",
+  "cozy",
+  "pillow",
+  "rug",
+  "flat_item",
+  "amigurumi",
+  "other",
+]);
 
-// Toda categoria acepta toda tecnica: el servidor elige la familia mas
-// cercana y lo avisa en las advertencias del patron (engine/garments/routing.py).
+const techniques = opts("tech.", ["needles", "circular", "crochet", "machine"]);
+
+// Toda categoria acepta toda tecnica (dos agujas y crochet incluidos): el
+// servidor elige la familia mas cercana y lo avisa en las advertencias del
+// patron (engine/garments/routing.py).
 const supportedTechniques: Record<string, readonly string[]> = {};
 
-const constructions: Options = [
-  ["raglan_top_down", "cons.raglan_top_down"],
-  ["drop_shoulder", "cons.drop_shoulder"],
-  ["set_in_sleeve", "cons.set_in_sleeve"],
-  ["yoke", "cons.yoke"],
-  ["bottom_up", "cons.bottom_up"],
-  ["in_one_piece", "cons.in_one_piece"],
-  ["flat_panels", "cons.flat_panels"],
-  ["round_tube", "cons.round_tube"],
-  ["modules", "cons.modules"],
-  ["other", "cons.other"],
-];
+const constructions = opts("cons.", [
+  "raglan_top_down",
+  "drop_shoulder",
+  "modified_drop_shoulder",
+  "set_in_sleeve",
+  "saddle_shoulder",
+  "yoke",
+  "dolman",
+  "t_shape",
+  "bottom_up",
+  "side_to_side",
+  "in_one_piece",
+  "flat_panels",
+  "round_tube",
+  "modules",
+  "other",
+]);
 
-const necklines: Options = [
-  ["crew", "neck.crew"],
-  ["v_neck", "neck.v_neck"],
-  ["boat", "neck.boat"],
-  ["turtleneck", "neck.turtleneck"],
-  ["funnel", "neck.funnel"],
-  ["hood", "neck.hood"],
-  ["square", "neck.square"],
-  ["none", "neck.none"],
-];
+const necklines = opts("neck.", [
+  "crew",
+  "scoop",
+  "v_neck",
+  "boat",
+  "square",
+  "mock_neck",
+  "turtleneck",
+  "funnel",
+  "cowl_neck",
+  "henley",
+  "polo",
+  "shawl_collar",
+  "hood",
+  "none",
+]);
 
-const bodyLengths: Options = [
-  ["cropped", "blen.cropped"],
-  ["hip", "blen.hip"],
-  ["tunic", "blen.tunic"],
-  ["long", "blen.long"],
-];
+const bodyLengths = opts("blen.", ["cropped", "waist", "hip", "tunic", "long"]);
 
-const sleeveLengths: Options = [
-  ["sleeveless", "slen.sleeveless"],
-  ["short", "slen.short"],
-  ["three_quarter", "slen.three_quarter"],
-  ["long", "slen.long"],
-];
+const sleeveLengths = opts("slen.", [
+  "sleeveless",
+  "short",
+  "elbow",
+  "three_quarter",
+  "long",
+]);
 
-const fits: Options = [
-  ["very_loose", "fit.very_loose"],
-  ["loose", "fit.loose"],
-  ["regular", "fit.regular"],
-  ["fitted", "fit.fitted"],
-];
+const fits = opts("fit.", ["very_loose", "oversized", "loose", "regular", "fitted"]);
+
+const knitStitches = opts("st.", [
+  "stockinette",
+  "reverse_stockinette",
+  "garter",
+  "seed",
+  "moss",
+  "rib_1x1",
+  "rib_2x2",
+  "rib_3x1",
+  "twisted_rib",
+  "broken_rib",
+  "brioche",
+  "basketweave",
+  "waffle",
+  "linen",
+  "cables",
+  "lace",
+  "bobbles",
+  "honeycomb",
+  "other",
+]);
 
 const crochetStitches: Options = [
-  ["crochet_sc", "cst.crochet_sc"],
-  ["crochet_hdc", "cst.crochet_hdc"],
-  ["crochet_dc", "cst.crochet_dc"],
-];
-
-const toyFigures: Options = [
-  ["generic", "fig.generic"],
-  ["bear", "fig.bear"],
-  ["bunny", "fig.bunny"],
-  ["cat", "fig.cat"],
-];
-
-const toyBodies: Options = [
-  ["pieces", "toybody.pieces"],
-  ["ball", "toybody.ball"],
-];
-
-const baseStitches: Options = [
-  ["stockinette", "st.stockinette"],
-  ["garter", "st.garter"],
-  ["seed", "st.seed"],
-  ["rib_1x1", "st.rib_1x1"],
-  ["rib_2x2", "st.rib_2x2"],
-  ["rib_3x1", "st.rib_3x1"],
-  ["moss", "st.moss"],
-  ["brioche", "st.brioche"],
-  ["cables", "st.cables"],
-  ["lace", "st.lace"],
+  ...opts("cst.", [
+    "crochet_sc",
+    "crochet_hdc",
+    "crochet_dc",
+    "crochet_tr",
+    "crochet_ribbing",
+    "granny_stitch",
+    "crochet_linen",
+    "v_stitch",
+    "shell",
+    "filet",
+    "tunisian",
+    "c2c",
+  ]),
   ["bobbles", "st.bobbles"],
-  ["honeycomb", "st.honeycomb"],
+  ["other", "st.other"],
 ];
+
+const textures = opts("tex.", [
+  "cables",
+  "aran",
+  "cabled_ribbing",
+  "ribbing",
+  "twisted_stitches",
+  "lace",
+  "mesh",
+  "bobbles",
+  "honeycomb",
+  "ruffles",
+  "other",
+]);
+
+const colorworkTypes = opts("cw.", [
+  "none",
+  "stripes",
+  "fair_isle",
+  "intarsia",
+  "mosaic",
+  "color_block",
+  "tapestry",
+]);
+
+const finishes = opts("fin.", [
+  "cuffs",
+  "hem_band",
+  "neckband",
+  "collar",
+  "button_band",
+  "zipper",
+  "pockets",
+  "hood",
+  "lining",
+  "edging",
+  "ruffle",
+  "fringe",
+  "pompom",
+  "earflaps",
+  "ties",
+]);
+
+const yarnLooks = opts("look.", [
+  "smooth",
+  "mohair",
+  "boucle",
+  "marled",
+  "chenille",
+  "tweed",
+  "variegated",
+  "self_striping",
+  "cotton_matte",
+  "chunky",
+  "raffia",
+  "tape",
+  "unknown",
+]);
+
+const toyFigures = opts("fig.", [
+  "generic",
+  "doll",
+  "bear",
+  "bunny",
+  "cat",
+  "dog",
+  "mouse",
+  "fox",
+  "lion",
+  "elephant",
+  "cow",
+  "pig",
+  "sheep",
+  "unicorn",
+  "dinosaur",
+  "duck",
+  "owl",
+  "penguin",
+  "bee",
+  "frog",
+  "turtle",
+  "whale",
+  "octopus",
+]);
+
+const toyBodies = opts("toybody.", [
+  "pieces",
+  "ball",
+  "seamless",
+  "standing",
+  "long",
+  "radial",
+]);
+
+const hatStyles = opts("hat.", [
+  "beanie",
+  "slouchy",
+  "beret",
+  "bucket",
+  "earflap",
+  "brimmed",
+  "bonnet",
+]);
+
+const flatItems = opts("flat.", ["coaster", "placemat", "potholder", "dishcloth", "doily"]);
+
+const flatShapes = opts("shape.", ["circle", "square", "rectangle", "oval"]);
+
+const cozyItems = opts("cozy.", [
+  "mate",
+  "thermos",
+  "cup",
+  "bottle",
+  "phone",
+  "glasses",
+  "pencil_case",
+  "laptop",
+]);
+
+const sleeveStyles = opts("sleeve.", ["straight", "puff", "bell", "cap"]);
+
+const blanketStyles = opts("blanket.", [
+  "granny_joined",
+  "granny_giant",
+  "rows",
+  "c2c",
+  "ripple",
+  "hexagons",
+  "mitered",
+]);
+
+const grannyStyles = opts("granny.", ["classic", "solid", "flower"]);
+
+const motifShapes = opts("motif.", ["circle", "square", "hexagon"]);
 
 const yarnWeights: Options = [
   ["lace", "yarn.lace"],
@@ -145,26 +310,67 @@ const sizes = ["XS", "S", "M", "L", "XL", "2XL", "3XL"] as const;
 
 type DimensionField = readonly [key: string, label: TKey, placeholder: string];
 
-const garmentCategories = new Set(["pullover", "cardigan", "vest"]);
+// Prendas por talle (medidas_cm). El resto usa dimensiones_cm.
+const garmentCategories = new Set([
+  "pullover",
+  "cardigan",
+  "vest",
+  "top",
+  "coat",
+  "dress",
+  "shrug",
+]);
+const sleevedCategories = new Set(["pullover", "cardigan", "top", "coat", "dress", "shrug"]);
+// Categorias donde importa la forma de la pieza plana (forma_plana).
+const flatShapeCategories = new Set(["flat_item", "rug", "pillow", "basket"]);
+// Fundas de objetos redondos (diametro + alto) vs. planos (ancho, alto, espesor).
+const roundCozies = new Set(["mate", "thermos", "cup", "bottle"]);
+
+const garmentFields: readonly DimensionField[] = [
+  ["bust", "m.bust", "100"],
+  ["body_length", "m.body_length", "58"],
+  ["sleeve_length", "m.sleeve_length", "58"],
+];
+const mittenFields: readonly DimensionField[] = [
+  ["palm", "m.palm", "20"],
+  ["length", "dim.hand_length", "18"],
+  ["thumb", "m.thumb", "6"],
+];
 
 const dimensionFields: Record<string, readonly DimensionField[]> = {
-  pullover: [
+  pullover: garmentFields,
+  cardigan: garmentFields,
+  top: garmentFields,
+  coat: [
+    ["bust", "m.bust", "104"],
+    ["body_length", "m.body_length", "90"],
+    ["sleeve_length", "m.sleeve_length", "60"],
+  ],
+  dress: [
     ["bust", "m.bust", "100"],
-    ["body_length", "m.body_length", "58"],
+    ["body_length", "m.body_length", "95"],
     ["sleeve_length", "m.sleeve_length", "58"],
   ],
-  cardigan: [
-    ["bust", "m.bust", "100"],
-    ["body_length", "m.body_length", "58"],
-    ["sleeve_length", "m.sleeve_length", "58"],
-  ],
+  shrug: garmentFields,
   vest: [
     ["bust", "m.bust", "100"],
     ["body_length", "m.body_length", "58"],
   ],
+  poncho: [
+    ["width", "m.width", "70"],
+    ["length", "m.length", "140"],
+  ],
   hat: [
     ["head", "m.head", "56"],
     ["length", "dim.hat_height", "22"],
+  ],
+  balaclava: [
+    ["head", "m.head", "56"],
+    ["length", "dim.height", "35"],
+  ],
+  headband: [
+    ["head", "m.head", "56"],
+    ["width", "dim.band_width", "10"],
   ],
   scarf: [
     ["width", "m.width", "25"],
@@ -174,16 +380,23 @@ const dimensionFields: Record<string, readonly DimensionField[]> = {
     ["circumference", "m.circumference", "60"],
     ["length", "m.length", "30"],
   ],
-  mittens: [
+  leg_warmers: [
+    ["circumference", "m.circumference", "34"],
+    ["length", "m.length", "40"],
+  ],
+  mittens: mittenFields,
+  fingerless_mitts: [
     ["palm", "m.palm", "20"],
-    ["length", "dim.hand_length", "18"],
-    ["thumb", "m.thumb", "6"],
+    ["length", "dim.hand_length", "15"],
+    ["thumb", "m.thumb", "3"],
   ],
   socks: [
     ["circumference", "m.circumference", "22"],
     ["foot_length", "m.foot_length", "24"],
     ["leg", "dim.leg_length", "10"],
   ],
+  booties: [["foot_length", "m.foot_length", "10"]],
+  slippers: [["foot_length", "m.foot_length", "24"]],
   shawl: [
     ["width", "m.width", "60"],
     ["length", "m.length", "180"],
@@ -203,6 +416,74 @@ const dimensionFields: Record<string, readonly DimensionField[]> = {
   ],
   amigurumi: [["height", "dim.toy_height", "22"]],
 };
+
+// Medidas tipicas para sugerir (placeholder), por objeto.
+const cozyPlaceholders: Record<string, readonly [string, string, string?]> = {
+  mate: ["8", "10"],
+  thermos: ["9", "30"],
+  cup: ["8", "9"],
+  bottle: ["7", "22"],
+  phone: ["8", "16", "1"],
+  glasses: ["7", "16", "3"],
+  pencil_case: ["20", "8", "5"],
+  laptop: ["34", "24", "2"],
+};
+const flatPlaceholders: Record<string, readonly [string, string]> = {
+  coaster: ["10", "10"],
+  placemat: ["45", "33"],
+  potholder: ["20", "20"],
+  dishcloth: ["25", "25"],
+  doily: ["30", "30"],
+  rug: ["60", "90"],
+  pillow: ["40", "40"],
+  basket: ["25", "25"],
+};
+
+/** Campos de medidas que dependen del subtipo (fundas, piezas planas, mantas). */
+function subtypeDimensionFields(spec: GarmentSpec): readonly DimensionField[] | null {
+  if (spec.categoria === "cozy") {
+    const item = spec.objeto_funda ?? "mate";
+    const [a, b, c] = cozyPlaceholders[item] ?? cozyPlaceholders.mate;
+    return roundCozies.has(item)
+      ? [
+          ["diameter", "dim.cozy_diameter", a],
+          ["height", "dim.cozy_height", b],
+        ]
+      : [
+          ["width", "dim.cozy_width", a],
+          ["height", "dim.cozy_height", b],
+          ["depth", "dim.cozy_depth", c ?? "2"],
+        ];
+  }
+  if (flatShapeCategories.has(spec.categoria)) {
+    const key = spec.categoria === "flat_item" ? (spec.objeto_plano ?? "coaster") : spec.categoria;
+    const [w, l] = flatPlaceholders[key] ?? ["20", "20"];
+    const shape = spec.forma_plana ?? (key === "doily" ? "circle" : null);
+    const fields: DimensionField[] =
+      shape === "circle"
+        ? [["diameter", "m.diameter", w]]
+        : [
+            ["width", "m.width", w],
+            ["length", "m.length", l],
+          ];
+    if (spec.categoria === "basket") fields.push(["height", "dim.basket_height", "15"]);
+    return fields;
+  }
+  if (spec.categoria === "blanket" && spec.tecnica === "crochet") {
+    switch (spec.estilo_manta) {
+      case "granny_giant":
+        return [["size", "dim.square_side", "100"]];
+      case "rows":
+      case "c2c":
+      case "ripple":
+        return dimensionFields.blanket;
+      default:
+        // Modulos unidos (granny, hexagonos, en angulo) o sin definir.
+        return [["size", "dim.module_side", "15"]];
+    }
+  }
+  return null;
+}
 
 type SavedProject = {
   id: string;
@@ -291,8 +572,12 @@ function PatternApp() {
     caught instanceof Error ? tx(caught.message) : t(fallback);
 
   const baseStitchOptions =
-    spec?.tecnica === "crochet" ? crochetStitches : baseStitches;
+    spec?.tecnica === "crochet" ? crochetStitches : knitStitches;
   const isGarment = spec ? garmentCategories.has(spec.categoria) : false;
+  const hasSleeves =
+    spec !== null &&
+    sleevedCategories.has(spec.categoria) &&
+    spec.largo_manga !== "sleeveless";
   const allowedTechniques = spec
     ? (supportedTechniques[spec.categoria] ?? techniques.map(([key]) => key))
     : [];
@@ -313,10 +598,7 @@ function PatternApp() {
         ],
       ];
     }
-    if (spec.categoria === "blanket" && spec.tecnica === "crochet") {
-      return [["size", "dim.module_side", "15"]];
-    }
-    return dimensionFields[spec.categoria] ?? [];
+    return subtypeDimensionFields(spec) ?? dimensionFields[spec.categoria] ?? [];
   }, [spec]);
 
   const flatRows = useMemo(() => {
@@ -602,6 +884,69 @@ function PatternApp() {
     );
   }
 
+  function updateMotif(key: "forma" | "estilo_granny", value: string) {
+    setSpec((current) => {
+      if (!current?.motivo) return current;
+      // La forma del motivo no puede quedar vacia (engine/spec.py: MotifDesign).
+      if (key === "forma" && value === "") return current;
+      return { ...current, motivo: { ...current.motivo, [key]: value === "" ? null : value } };
+    });
+  }
+
+  function updateColorwork(value: string) {
+    setSpec((current) => {
+      if (!current) return current;
+      if (value === "") return { ...current, colorwork: null };
+      const base = current.colorwork ?? { tipo: value, zona: null, colores: 2, paleta: [] };
+      return {
+        ...current,
+        colorwork: { ...base, tipo: value, colores: value === "none" ? 1 : Math.max(base.colores, 2) },
+      };
+    });
+  }
+
+  function updateYarnLook(value: string) {
+    setSpec((current) =>
+      current
+        ? {
+            ...current,
+            hilo_aparente: {
+              grosor_estimado: current.hilo_aparente?.grosor_estimado ?? null,
+              aspecto: value === "" ? null : value,
+            },
+          }
+        : current,
+    );
+  }
+
+  function toggleFinish(value: string) {
+    setSpec((current) =>
+      current
+        ? {
+            ...current,
+            acabados: current.acabados.includes(value)
+              ? current.acabados.filter((item) => item !== value)
+              : [...current.acabados, value],
+          }
+        : current,
+    );
+  }
+
+  function addTexture(value: string) {
+    if (!value) return;
+    setSpec((current) =>
+      current
+        ? {
+            ...current,
+            texturas: [
+              ...current.texturas,
+              { textura: value, ubicacion: null, repeticion_estimada: null },
+            ],
+          }
+        : current,
+    );
+  }
+
   const qualityNotes = (analysis?.photo_quality ?? [])
     .filter((item) => item.issues.length > 0)
     .map(
@@ -810,7 +1155,11 @@ function PatternApp() {
             {spec.motivo && spec.tecnica === "crochet" ? (
               <p className="mt-3 rounded-xl bg-sage/10 p-3 text-sm text-ink/80">
                 {t(
-                  spec.motivo.forma === "square" ? "confirm.motif_square" : "confirm.motif_round",
+                  spec.motivo.forma === "square"
+                    ? "confirm.motif_square"
+                    : spec.motivo.forma === "hexagon"
+                      ? "confirm.motif_hexagon"
+                      : "confirm.motif_round",
                   { bands: spec.motivo.bandas.length, symmetry: spec.motivo.simetria },
                 )}
               </p>
@@ -836,7 +1185,72 @@ function PatternApp() {
                 options={tr(techniqueOptions)}
                 onChange={(value) => updateNullable("tecnica", value)}
               />
-              {spec.categoria === "pullover" ? (
+              {spec.categoria === "hat" ? (
+                <Field
+                  label={t("field.hat_style")}
+                  confidence={confidenceFor("estilo_gorro")}
+                  value={spec.estilo_gorro ?? ""}
+                  options={tr(hatStyles)}
+                  onChange={(value) => updateNullable("estilo_gorro", value)}
+                />
+              ) : null}
+              {spec.categoria === "flat_item" ? (
+                <Field
+                  label={t("field.flat_item")}
+                  confidence={confidenceFor("objeto_plano")}
+                  value={spec.objeto_plano ?? ""}
+                  options={tr(flatItems)}
+                  onChange={(value) => updateNullable("objeto_plano", value)}
+                />
+              ) : null}
+              {flatShapeCategories.has(spec.categoria) ? (
+                <Field
+                  label={t("field.flat_shape")}
+                  confidence={confidenceFor("forma_plana")}
+                  value={spec.forma_plana ?? ""}
+                  options={tr(flatShapes)}
+                  onChange={(value) => updateNullable("forma_plana", value)}
+                />
+              ) : null}
+              {spec.categoria === "cozy" ? (
+                <Field
+                  label={t("field.cozy_item")}
+                  confidence={confidenceFor("objeto_funda")}
+                  value={spec.objeto_funda ?? ""}
+                  options={tr(cozyItems)}
+                  onChange={(value) => updateNullable("objeto_funda", value)}
+                />
+              ) : null}
+              {spec.categoria === "blanket" ? (
+                <Field
+                  label={t("field.blanket_style")}
+                  confidence={confidenceFor("estilo_manta")}
+                  value={spec.estilo_manta ?? ""}
+                  options={tr(blanketStyles)}
+                  onChange={(value) => updateNullable("estilo_manta", value)}
+                />
+              ) : null}
+              {spec.motivo && spec.tecnica === "crochet" ? (
+                <>
+                  <Field
+                    label={t("field.motif_shape")}
+                    confidence={confidenceFor("motivo")}
+                    value={spec.motivo.forma}
+                    options={tr(motifShapes)}
+                    onChange={(value) => updateMotif("forma", value)}
+                  />
+                  {spec.categoria === "granny_square" || spec.categoria === "blanket" ? (
+                    <Field
+                      label={t("field.granny_style")}
+                      confidence={null}
+                      value={spec.motivo.estilo_granny ?? ""}
+                      options={tr(grannyStyles)}
+                      onChange={(value) => updateMotif("estilo_granny", value)}
+                    />
+                  ) : null}
+                </>
+              ) : null}
+              {isGarment ? (
                 <Field
                   label={t("field.construction")}
                   confidence={confidenceFor("construccion")}
@@ -868,6 +1282,15 @@ function PatternApp() {
                     options={tr(sleeveLengths)}
                     onChange={(value) => updateNullable("largo_manga", value)}
                   />
+                  {hasSleeves ? (
+                    <Field
+                      label={t("field.sleeve_style")}
+                      confidence={confidenceFor("estilo_manga")}
+                      value={spec.estilo_manga ?? ""}
+                      options={tr(sleeveStyles)}
+                      onChange={(value) => updateNullable("estilo_manga", value)}
+                    />
+                  ) : null}
                   <Field
                     label={t("field.fit")}
                     confidence={confidenceFor("ajuste")}
@@ -902,7 +1325,45 @@ function PatternApp() {
                   onChange={(value) => updateNullable("cuerpo_juguete", value)}
                 />
               ) : null}
+              <Field
+                label={t("field.colorwork")}
+                confidence={confidenceFor("colorwork")}
+                value={spec.colorwork?.tipo ?? ""}
+                options={tr(colorworkTypes)}
+                onChange={updateColorwork}
+              />
+              <Field
+                label={t("field.yarn_look")}
+                confidence={confidenceFor("hilo_aparente")}
+                value={spec.hilo_aparente?.aspecto ?? ""}
+                options={tr(yarnLooks)}
+                onChange={updateYarnLook}
+              />
             </div>
+
+            <fieldset className="mt-6">
+              <legend className="text-sm font-semibold">{t("field.finishes")}</legend>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {finishes.map(([value, labelKey]) => {
+                  const active = spec.acabados.includes(value);
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => toggleFinish(value)}
+                      className={`min-h-9 rounded-full border px-3 py-1 text-sm ${
+                        active
+                          ? "border-sage bg-sage text-white"
+                          : "border-ink/20 bg-white text-ink/70"
+                      }`}
+                    >
+                      {t(labelKey)}
+                    </button>
+                  );
+                })}
+              </div>
+            </fieldset>
 
             {unsupportedCategory ? (
               <div className="mt-6 rounded-2xl border border-amber-300 bg-amber-50 p-4 text-sm text-ink/75">
@@ -955,6 +1416,23 @@ function PatternApp() {
                 ))}
               </div>
             ) : null}
+            <label className="mt-3 block sm:max-w-xs">
+              <span className="sr-only">{t("field.add_texture")}</span>
+              <select
+                value=""
+                onChange={(event) => addTexture(event.target.value)}
+                className="min-h-11 w-full rounded-xl border border-ink/20 bg-white px-3 text-sm"
+              >
+                <option value="">+ {t("field.add_texture")}</option>
+                {textures
+                  .filter(([value]) => !spec.texturas.some((item) => item.textura === value))
+                  .map(([value, labelKey]) => (
+                    <option key={value} value={value}>
+                      {t(labelKey)}
+                    </option>
+                  ))}
+              </select>
+            </label>
           </div>
 
           <div className="flex flex-col gap-3 sm:flex-row">

@@ -12,6 +12,7 @@ import {
 } from "react";
 
 import { LANGUAGES, type Language } from "./api";
+import { OPTION_TEXTS } from "./i18n-options";
 
 /** Idiomas de la interfaz: los mismos codigos que el patron/PDF. */
 export const UI_LANGUAGES = LANGUAGES;
@@ -252,7 +253,7 @@ const en = {
   "slen.three_quarter": "Three-quarter sleeve",
   "slen.long": "Long sleeve",
 
-  "fit.very_loose": "Very oversized",
+  "fit.very_loose": "Very loose",
   "fit.loose": "Relaxed",
   "fit.regular": "Regular",
   "fit.fitted": "Fitted",
@@ -261,7 +262,7 @@ const en = {
   "cst.crochet_hdc": "Half double crochet",
   "cst.crochet_dc": "Double crochet",
 
-  "fig.generic": "Doll (no ears)",
+  "fig.generic": "Basic figure (no ears)",
   "fig.bear": "Bear",
   "fig.bunny": "Bunny",
   "fig.cat": "Cat",
@@ -393,6 +394,7 @@ const en = {
     "We couldn't identify the piece, so this is a flat rectangle. Check whether a more specific category fits.",
   "warning.mittens_flat":
     "The mittens are simplified flat pieces; the thumb is sewn on separately, so try them on as you go.",
+  ...OPTION_TEXTS.en,
 };
 
 export type TKey = keyof typeof en;
@@ -580,7 +582,7 @@ const es: Dict = {
   "cat.hat": "Gorro",
   "cat.scarf": "Bufanda",
   "cat.cowl": "Cuello",
-  "cat.mittens": "Mitones",
+  "cat.mittens": "Manoplas",
   "cat.gloves": "Guantes",
   "cat.socks": "Medias",
   "cat.shawl": "Chal",
@@ -634,18 +636,18 @@ const es: Dict = {
   "cst.crochet_hdc": "Medio punto alto",
   "cst.crochet_dc": "Punto alto",
 
-  "fig.generic": "Muñeco (sin orejas)",
+  "fig.generic": "Muñeco básico (sin orejas)",
   "fig.bear": "Oso",
   "fig.bunny": "Conejo",
   "fig.cat": "Gato",
 
   "st.stockinette": "Jersey",
-  "st.garter": "Musgo",
-  "st.seed": "Arroz",
+  "st.garter": "Punto musgo",
+  "st.seed": "Punto arroz",
   "st.rib_1x1": "Elástico 1x1",
   "st.rib_2x2": "Elástico 2x2",
   "st.rib_3x1": "Elástico 3x1",
-  "st.moss": "Punto musgo doble",
+  "st.moss": "Punto arroz doble",
   "st.brioche": "Canalé inglés",
   "st.cables": "Trenzas",
   "st.lace": "Calados",
@@ -766,6 +768,7 @@ const es: Dict = {
     "No se reconoció la prenda; se genera una pieza plana rectangular. Revisá si corresponde a una categoría más específica.",
   "warning.mittens_flat":
     "Los mitones son piezas planas simplificadas; el pulgar se cose aparte y el calce debe probarse.",
+  ...OPTION_TEXTS.es,
 };
 
 // ---------------------------------------------------------------------------
@@ -1012,7 +1015,7 @@ const fr: Dict = {
   "cst.crochet_hdc": "Demi-bride",
   "cst.crochet_dc": "Bride",
 
-  "fig.generic": "Poupée (sans oreilles)",
+  "fig.generic": "Figurine de base (sans oreilles)",
   "fig.bear": "Ours",
   "fig.bunny": "Lapin",
   "fig.cat": "Chat",
@@ -1145,6 +1148,7 @@ const fr: Dict = {
     "L'ouvrage n'a pas été reconnu : le modèle est une pièce plate rectangulaire. Vérifiez si une catégorie plus précise convient.",
   "warning.mittens_flat":
     "Les moufles sont des pièces plates simplifiées ; le pouce se coud à part et il faut essayer en cours de route.",
+  ...OPTION_TEXTS.fr,
 };
 
 // ---------------------------------------------------------------------------
@@ -1382,7 +1386,7 @@ const de: Dict = {
   "slen.three_quarter": "Dreiviertelarm",
   "slen.long": "Langarm",
 
-  "fit.very_loose": "Sehr weit (oversized)",
+  "fit.very_loose": "Sehr weit",
   "fit.loose": "Weit",
   "fit.regular": "Normal",
   "fit.fitted": "Tailliert",
@@ -1391,7 +1395,7 @@ const de: Dict = {
   "cst.crochet_hdc": "Halbe Stäbchen",
   "cst.crochet_dc": "Stäbchen",
 
-  "fig.generic": "Püppchen (ohne Ohren)",
+  "fig.generic": "Grundfigur (ohne Ohren)",
   "fig.bear": "Bär",
   "fig.bunny": "Hase",
   "fig.cat": "Katze",
@@ -1523,6 +1527,7 @@ const de: Dict = {
     "Das Teil wurde nicht erkannt; es wird ein flaches Rechteck erstellt. Prüfe, ob eine genauere Kategorie passt.",
   "warning.mittens_flat":
     "Die Fäustlinge sind vereinfachte flache Teile; der Daumen wird separat angenäht, die Passform bitte zwischendurch anprobieren.",
+  ...OPTION_TEXTS.de,
 };
 
 // ---------------------------------------------------------------------------
@@ -1769,7 +1774,7 @@ const it: Dict = {
   "cst.crochet_hdc": "Mezza maglia alta",
   "cst.crochet_dc": "Maglia alta",
 
-  "fig.generic": "Bambolina (senza orecchie)",
+  "fig.generic": "Pupazzo base (senza orecchie)",
   "fig.bear": "Orso",
   "fig.bunny": "Coniglio",
   "fig.cat": "Gatto",
@@ -1901,6 +1906,7 @@ const it: Dict = {
     "Il capo non è stato riconosciuto; viene generato un pezzo piatto rettangolare. Controlla se c'è una categoria più specifica.",
   "warning.mittens_flat":
     "Le muffole sono pezzi piatti semplificati; il pollice si cuce a parte e la vestibilità va provata.",
+  ...OPTION_TEXTS.it,
 };
 
 const DICTIONARIES: Record<Language, Dict> = { en, es, fr, de, it };
