@@ -31,12 +31,19 @@ from engine.garments.crochet import (
     generate_granny_square,
 )
 from engine.garments.flat import generate_flat
+from engine.garments.hats import generate_balaclava, generate_hat_style, generate_headband
 from engine.garments.home import (
     generate_basket,
     generate_cozy,
     generate_flat_item,
     generate_pillow,
     generate_rug,
+)
+from engine.garments.limbs import (
+    generate_booties,
+    generate_fingerless_mitts,
+    generate_leg_warmers,
+    generate_slippers,
 )
 from engine.garments.motif import generate_crochet_motif
 from engine.garments.raglan import generate_raglan_top_down
@@ -100,11 +107,25 @@ _HOME = {
 }
 
 
+# Accesorios con calculo propio en las dos tecnicas (D038).
+_ACCESSORIES = {
+    Category.HAT: generate_hat_style,
+    Category.BALACLAVA: generate_balaclava,
+    Category.HEADBAND: generate_headband,
+    Category.FINGERLESS_MITTS: generate_fingerless_mitts,
+    Category.LEG_WARMERS: generate_leg_warmers,
+    Category.BOOTIES: generate_booties,
+    Category.SLIPPERS: generate_slippers,
+}
+
+
 def _generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
     if spec.categoria is Category.AMIGURUMI:
         return generate_amigurumi(spec, params)
     if spec.categoria in _HOME:
         return _HOME[spec.categoria](spec, params)
+    if spec.categoria in _ACCESSORIES and spec.tecnica in {Technique.CROCHET, Technique.NEEDLES, Technique.CIRCULAR}:
+        return _ACCESSORIES[spec.categoria](spec, params)
     if spec.tecnica is Technique.CROCHET:
         if spec.motivo is not None and spec.categoria in _MOTIF_CATEGORIES:
             return generate_crochet_motif(spec, params)

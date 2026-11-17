@@ -205,17 +205,18 @@ def _flat_pattern(
     gauge = resolve_gauge(params)
     pattern_id = _pattern_id(spec)
     multiple = get_stitch(pattern_id).multiple
-    stitches = adjust_stitches(
-        max(1, round_half_up(width * gauge.stitches_per_cm)), multiple, mode="nearest"
-    )
+    stitches = max(multiple, round_half_up(width * gauge.stitches_per_cm / multiple) * multiple)
     rows = max(1, gauge.rows_for_cm(length))
+    # Una hilera de pa mide ~1,5 cm: el largo real es el de las hileras
+    # enteras y la tolerancia es media hilera si eso supera 1,5 cm.
+    row_tolerance = max(1.5, 0.5 / gauge.rows_per_cm + 0.05)
     section = _flat_section(
         section_id,
         section_key,
         stitches,
         rows,
         pattern_id,
-        length,
+        gauge.cm_for_rows(rows),
         note_key="pattern.note.crochet_flat",
     )
     warnings = _warnings(params)
@@ -238,7 +239,7 @@ def _flat_pattern(
                 key="length",
                 value_cm=gauge.cm_for_rows(rows),
                 target_cm=length,
-                tolerance_cm=1.5,
+                tolerance_cm=row_tolerance,
                 kind="length",
             ),
         ),
@@ -411,53 +412,10 @@ def _circle_increase(gauge_spc: float, gauge_rpc: float) -> int:
 
 
 def generate_crochet_hat(spec: GarmentSpec, params: PatternParams) -> Pattern:
-    """Gorro de crochet de arriba hacia abajo: circulo plano y tubo recto."""
-    from engine.garments.accessories import HEAD_BY_SIZE
+    """Gorro de crochet de arriba hacia abajo (estilos en engine/garments/hats.py)."""
+    from engine.garments.hats import generate_hat_style
 
-    stitch_id = _garment_stitch(spec)
-    spec_hat = spec.model_copy(update={"punto_base": StitchPatternName(stitch_id)})
-    params = _with_crochet_gauge(spec_hat, params)
-    gauge = resolve_gauge(params)
-    kind = _kind(stitch_id)
-    head = params.dimensiones_cm.get("head", params.medidas_cm.get("head", HEAD_BY_SIZE.get(params.talla.upper(), 56.0)))
-    height = params.dimensiones_cm.get("length", params.medidas_cm.get("length", 21.0))
-    circumference = head * 0.92  # ASUNCION: el crochet cede menos que el tejido
-    inc = _circle_increase(gauge.stitches_per_cm, gauge.rows_per_cm)
-    target = adjust_stitches(max(inc, round_half_up(circumference * gauge.stitches_per_cm)), inc, mode="nearest")
-    crown = target // inc
-    rows = max(crown + 1, gauge.rows_for_cm(height))
-    steps: list[Step] = [build_step(1, 0, (Op(StitchKind.RING, width=inc),))]
-    current = inc
-    for number in range(2, rows + 1):
-        if current < target:
-            items, current = _increase_round(current, inc, kind)
-            note = "pattern.note.crochet_crown" if number == 2 else "pattern.note.circle_increase"
-            steps.append(build_step(number, current - inc, items, note_key=note))
-        else:
-            steps.append(build_step(number, current, (Op(kind, times=current),), note_key="pattern.note.plain" if steps[-1].note_key != "pattern.note.plain" else None))
-    section = Section(
-        id="hat",
-        name_key="section.hat_crochet",
-        mode="round",
-        steps=tuple(steps),
-        start_stitches=0,
-        end_stitches=current,
-        target=SectionTarget(measurement_key="length", target_cm=height, tolerance_cm=1.5, dimension="length"),
-        meta={"row_count": rows},
-        bind_off=True,
-    )
-    return Pattern(
-        meta=_meta(spec_hat, params, "crochet_hat", "title.hat_crochet"),
-        spec=spec_hat,
-        params=params,
-        sections=(section,),
-        measurements=(
-            Measurement(key="circumference", value_cm=gauge.cm_for_stitches(current), target_cm=circumference, tolerance_cm=2.5, kind="circumference"),
-            Measurement(key="length", value_cm=gauge.cm_for_rows(rows), target_cm=height, tolerance_cm=1.5, kind="length"),
-        ),
-        materials=_materials(spec_hat, params, circumference * height, ("notion.crochet_hook", "notion.stitch_markers", "notion.tapestry_needle")),
-        warnings=tuple(_warnings(params)),
-    )
+    return generate_hat_style(spec, params)
 
 
 def generate_crochet_cowl(spec: GarmentSpec, params: PatternParams) -> Pattern:

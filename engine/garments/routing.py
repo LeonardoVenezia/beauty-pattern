@@ -45,12 +45,6 @@ CATEGORY_APPROX: dict[Category, Category] = {
     Category.DRESS: Category.PULLOVER,
     Category.PONCHO: Category.SHAWL,
     Category.SHRUG: Category.CARDIGAN,
-    Category.FINGERLESS_MITTS: Category.MITTENS,
-    Category.BALACLAVA: Category.HAT,
-    Category.HEADBAND: Category.COWL,
-    Category.LEG_WARMERS: Category.COWL,
-    Category.BOOTIES: Category.SOCKS,
-    Category.SLIPPERS: Category.SOCKS,
 }
 NECKLINE_APPROX: dict[Neckline, Neckline] = {
     Neckline.MOCK_NECK: Neckline.TURTLENECK,

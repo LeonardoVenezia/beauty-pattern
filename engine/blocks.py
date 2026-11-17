@@ -574,7 +574,7 @@ def render_step_lines(
         count = _count_text(line.last, lang)
         plain = {_is_plain(line.first), _is_plain(line.second)} == {True}
         first_op = line.first.items[0]
-        if plain and isinstance(first_op, Op):
+        if plain and isinstance(first_op, Op) and not rnd:
             side = "pattern.side_rs" if first_op.kind is StitchKind.KNIT else "pattern.side_ws"
             text = t("pattern.stockinette_rows", lang, n=line.length, side=t(side, lang))
         else:
