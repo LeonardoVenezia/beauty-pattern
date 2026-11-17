@@ -144,7 +144,7 @@ def _techniques(patterns: list[Pattern], lang: str) -> list[str]:
         found.append("technique.bobbles")
     if base.materials.colors and len(base.materials.colors) > 1:
         found.append("technique.color_changes")
-    if base.finishing:
+    if base.finishing and base.meta.family == "amigurumi":
         found.append("technique.toy_assembly")
     return [t(key, lang) for key in found]
 
@@ -369,6 +369,8 @@ def build_document(
     stitch_key = "doc.gauge_stitch_crochet" if is_crochet else "doc.gauge_stitch_knit"
     if base.meta.family == "crochet_motif":  # el motor mide el motivo en pb
         stitch_key = "doc.gauge_stitch_sc"
+    if any(s.meta.get("garter_gauge") for s in base.sections):  # hogar: punto bobo
+        stitch_key = "doc.gauge_stitch_garter"
     stitch = t(stitch_key, language)
     line(
         t(
@@ -429,8 +431,9 @@ def build_document(
     if has_key(finishing_key, language):
         line(t(finishing_key, language))
     blocks.extend(finishing_blocks(base, language))
-    line(t("doc.weave_ends_toy" if base.finishing else "doc.weave_ends", language))
-    if not base.finishing:
+    toy = base.meta.family == "amigurumi"
+    line(t("doc.weave_ends_toy" if toy else "doc.weave_ends", language))
+    if not toy:
         line(t("pattern.block", language))
 
     when = (today or date.today()).isoformat()

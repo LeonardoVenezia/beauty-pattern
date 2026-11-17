@@ -53,11 +53,6 @@ CATEGORY_APPROX: dict[Category, Category] = {
     Category.LEG_WARMERS: Category.COWL,
     Category.BOOTIES: Category.SOCKS,
     Category.SLIPPERS: Category.SOCKS,
-    Category.FLAT_ITEM: Category.OTHER,
-    Category.COZY: Category.BAG,
-    Category.BASKET: Category.BAG,
-    Category.PILLOW: Category.OTHER,
-    Category.RUG: Category.OTHER,
 }
 NECKLINE_APPROX: dict[Neckline, Neckline] = {
     Neckline.MOCK_NECK: Neckline.TURTLENECK,

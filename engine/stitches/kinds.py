@@ -58,6 +58,11 @@ class StitchKind(StrEnum):
     GRANNY_START = "granny_start"
     GRANNY_CORNER = "granny_corner"
     GRANNY_SIDE = "granny_side"
+    # Hogar (engine/garments/home.py): puntos tejidos sobre un borde (el otro
+    # lado de la cadena base, los extremos de las hileras) que no consumen
+    # puntos vivos: suman un punto nuevo cada uno.
+    CROCHET_EDGE = "crochet_edge"
+    PICK_UP = "pick_up"
 
 
 @dataclass(frozen=True)
@@ -117,6 +122,8 @@ _EFFECTS: dict[StitchKind, Effect] = {
     StitchKind.CORNER_SC: Effect(2, 4),
     StitchKind.CORNER_DC: Effect(2, 6),
     StitchKind.SQUARE_TURN: Effect(1, 6),
+    StitchKind.CROCHET_EDGE: Effect(0, 1),
+    StitchKind.PICK_UP: Effect(0, 1),
 }
 
 _CABLES = {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK}
