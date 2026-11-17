@@ -423,11 +423,19 @@ def granny_round_stitches(round_number: int) -> int:
     return 16 * round_number + 4
 
 
-def _granny_rounds(rounds: int) -> tuple[Step, ...]:
+def _granny_rounds(rounds: int, *, solid: bool = False) -> tuple[Step, ...]:
+    """Vueltas del granny. Macizo (`solid`): la misma vuelta 1 y despues 1 pa
+    en cada pa y esquinas (2 pa, 2 cad, 2 pa): crece 16 pts por vuelta, igual
+    que el clasico, asi que mide lo mismo con las mismas vueltas."""
     steps: list[Step] = [
         build_step(1, 0, (Repeat(4, (Op(StitchKind.GRANNY_START),)),))
     ]
     for number in range(2, rounds + 1):
+        if solid:
+            side = granny_round_stitches(number - 1) // 4 - 2
+            sector = (Op(StitchKind.DC, times=side), Op(StitchKind.CORNER_DC))
+            steps.append(build_step(number, granny_round_stitches(number - 1), (Repeat(4, sector),)))
+            continue
         sides = number - 2
         group: tuple[Op, ...] = (Op(StitchKind.GRANNY_CORNER),)
         if sides:
@@ -438,8 +446,9 @@ def _granny_rounds(rounds: int) -> tuple[Step, ...]:
     return tuple(steps)
 
 
-def generate_granny_square(spec: GarmentSpec, params: PatternParams) -> Pattern:
+def generate_granny_square(spec: GarmentSpec, params: PatternParams, *, solid: bool = False) -> Pattern:
     """Granny square clasico en redondo: grupos de 3 pa, esquinas de 2 cad.
+    Con `solid`, el granny macizo (pa en cada pa).
 
     Lado = 2 x vueltas x alto de una vuelta de pa (ASUNCION: el anillo central
     queda absorbido en la primera vuelta). Ver docs/fuentes.md.
@@ -453,7 +462,7 @@ def generate_granny_square(spec: GarmentSpec, params: PatternParams) -> Pattern:
     round_cm = 1.0 / gauge.rows_per_cm
     rounds = max(1, round_half_up(size / (2 * round_cm)))
     actual = 2 * rounds * round_cm
-    steps = _granny_rounds(rounds)
+    steps = _granny_rounds(rounds, solid=solid)
     section = Section(
         id="granny_square",
         name_key="section.granny_square",
@@ -473,7 +482,11 @@ def generate_granny_square(spec: GarmentSpec, params: PatternParams) -> Pattern:
         note_keys=("pattern.granny_intro",),
     )
     warnings = _warnings(params)
-    warnings.append(Warning("granny_classic", "warning.granny_classic"))
+    warnings.append(
+        Warning("granny_solid", "warning.granny_solid")
+        if solid
+        else Warning("granny_classic", "warning.granny_classic")
+    )
     colors = tuple(spec.colorwork.paleta) if spec.colorwork else ()
     if len(colors) > 1:
         letters = ", ".join(f"{chr(65 + i)} ({c})" for i, c in enumerate(colors))
@@ -486,7 +499,7 @@ def generate_granny_square(spec: GarmentSpec, params: PatternParams) -> Pattern:
             )
         )
     return Pattern(
-        meta=_meta(spec, params, "granny_square", "title.granny_square"),
+        meta=_meta(spec, params, "granny_square", "title.granny_solid" if solid else "title.granny_square"),
         spec=spec,
         params=params,
         sections=(section,),

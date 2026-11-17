@@ -75,7 +75,7 @@ TOY_FIGURES_DONE: frozenset[Figure] = frozenset(
     {Figure.BEAR, Figure.BUNNY, Figure.CAT, Figure.GENERIC}
 )
 TOY_BODIES_DONE: frozenset[ToyBody] = frozenset({ToyBody.PIECES, ToyBody.BALL})
-MOTIF_SHAPES_DONE: frozenset[MotifShape] = frozenset({MotifShape.CIRCLE, MotifShape.SQUARE})
+MOTIF_SHAPES_DONE: frozenset[MotifShape] = frozenset({MotifShape.CIRCLE, MotifShape.SQUARE, MotifShape.HEXAGON})
 
 
 def _approximate(spec: GarmentSpec, update: dict[str, object], notes: list[str]) -> None:

@@ -28,7 +28,15 @@ from engine.garments.base import ImpossibleProportionsError
 from engine.gauge import crochet_gauge
 from engine.i18n import t
 from engine.ir import Item, Measurement, Op, Pattern, Repeat, Section, Step, Warning, build_step
-from engine.spec import GarmentSpec, MotifDesign, MotifShape, MotifStitch, PatternParams
+from engine.spec import (
+    GarmentSpec,
+    GrannyStyle,
+    MotifBand,
+    MotifDesign,
+    MotifShape,
+    MotifStitch,
+    PatternParams,
+)
 from engine.stitches.kinds import StitchKind
 
 # (ancho, alto) de un punto relativos al pb de referencia (engine/gauge.py).
@@ -61,6 +69,24 @@ class _Round:
     band: int
     stitch: MotifStitch
     square: bool
+
+
+def flower_design(base: MotifDesign) -> MotifDesign:
+    """Granny con flor al centro (sunburst): centro de pa, petalos de puff
+    separados por cadenas y cuadrado de pa. ASUNCION: estructura de los
+    "sunburst granny" publicados, 8 petalos."""
+    color = base.bandas[0].color if base.bandas else None
+    return base.model_copy(
+        update={
+            "simetria": 8,
+            "bandas": [
+                MotifBand(punto=MotifStitch.DC, color=color),
+                MotifBand(punto=MotifStitch.PUFF, color=1 if color is None else min(7, color + 1)),
+                MotifBand(punto=MotifStitch.DC, color=2 if color is None else min(7, color + 2), peso=2),
+            ],
+            "cuadrar_en_banda": 2,
+        }
+    )
 
 
 def _sizes(sc_per_cm: float, stitch: MotifStitch) -> tuple[float, float]:
@@ -101,8 +127,13 @@ def _rounds_per_band(design: MotifDesign, radius: float, sc_per_cm: float) -> li
         counts = best
 
 
+# Esquinas de cada forma con lados rectos.
+CORNERS: dict[MotifShape, int] = {MotifShape.SQUARE: 4, MotifShape.HEXAGON: 6}
+
+
 def _square_band(design: MotifDesign) -> int | None:
-    if design.forma is not MotifShape.SQUARE:
+    """Primera banda con lados rectos (cuadrado o hexagono)."""
+    if design.forma not in CORNERS:
         return None
     if design.cuadrar_en_banda is not None:
         return min(design.cuadrar_en_banda, len(design.bandas) - 1)
@@ -174,15 +205,15 @@ def _note(design: MotifDesign, band: int, lang: str, colors: tuple[str, ...]) ->
     )
 
 
-def _multiple(rounds: list[_Round], index: int, sectors: int) -> int:
+def _multiple(rounds: list[_Round], index: int, sectors: int, corners: int = 4) -> int:
     """Multiplo de puntos de una vuelta redonda: la simetria (x2 si es calada,
     por los grupos de pt + cad) y multiplo de 4 si la siguiente cuadra."""
     rnd = rounds[index]
     if rnd.square:
-        return 4
+        return corners
     multiple = sectors * (2 if rnd.stitch in _SPACED else 1)
     if index + 1 < len(rounds) and rounds[index + 1].square:
-        multiple = math.lcm(multiple, 4)
+        multiple = math.lcm(multiple, corners)
     return multiple
 
 
@@ -200,6 +231,7 @@ def motif_steps(
     if rounds[0].square:  # la vuelta 1 (anillo) siempre es redonda
         rounds[0] = _Round(rounds[0].band, rounds[0].stitch, False)
     sectors = design.simetria
+    corners = CORNERS.get(design.forma, 4)
     steps: list[Step] = []
     simplified: list[str] = []
     radius = 0.0
@@ -213,7 +245,7 @@ def motif_steps(
         note_key: str | None = None
         params: tuple[tuple[str, str], ...] = ()
         if first_of_band or squaring:
-            note_key = "pattern.note.motif_squaring" if squaring else "pattern.note.motif_band"
+            note_key = ("pattern.note.motif_hexagon" if corners == 6 else "pattern.note.motif_squaring") if squaring else "pattern.note.motif_band"
             if index == 0 and rnd.stitch in _SPACED:
                 note_key = "pattern.note.motif_ring_spaced"
             params = _note(design, rnd.band, lang, colors)
@@ -221,10 +253,10 @@ def motif_steps(
                 params = tuple((k, t("motif.stitch.dc", lang) if k == "stitch" else v) for k, v in params)
         spaced = rnd.stitch in _SPACED
         if not rnd.square:
-            multiple = _multiple(rounds, index, sectors)
+            multiple = _multiple(rounds, index, sectors, corners)
             # Que la vuelta siguiente pueda llegar a su multiplo sin pasar de
             # duplicar los puntos.
-            following = _multiple(rounds, index + 1, sectors) if index + 1 < len(rounds) else 1
+            following = _multiple(rounds, index + 1, sectors, corners) if index + 1 < len(rounds) else 1
             floor_next = math.ceil(following / 2 / multiple) * multiple
             ideal = 2 * math.pi * radius / width
             if index == 0:
@@ -243,6 +275,19 @@ def motif_steps(
                     else _solid_sector(per, new, _SOLID[rnd.stitch])
                 )
                 items = _sector_items(ops, sectors)
+        elif corners == 6:
+            # Hexagono: cada esquina se teje en 1 pt (o en el esp de la esquina
+            # anterior) y el resto del lado, 1 pt en cada pt.
+            kind = _SOLID.get(rnd.stitch)
+            if kind is None:
+                kind = StitchKind.DC
+                if rnd.stitch.value not in simplified:
+                    simplified.append(rnd.stitch.value)
+            corner_kind = StitchKind.HEX_CORNER_SC if kind is StitchKind.SC else StitchKind.HEX_CORNER
+            side = previous // 6 - 1
+            sector = [Op(corner_kind)] + ([Op(kind, times=side)] if side else [])
+            items = _sector_items(sector, 6)
+            target = previous + 6 * (Op(corner_kind).produces - 1)
         elif squaring:
             side = previous // 4 - 1
             items = _sector_items([Op(StitchKind.SQUARE_TURN), *_graded_side(side)], 4)
@@ -273,6 +318,16 @@ def generate_crochet_motif(spec: GarmentSpec, params: PatternParams) -> Pattern:
     design = spec.motivo
     if design is None:
         raise ValueError("generate_crochet_motif requiere spec.motivo")
+    if design.forma is MotifShape.SQUARE and design.estilo_granny is not None:
+        from engine.garments.crochet import generate_granny_square
+
+        if design.estilo_granny is GrannyStyle.CLASSIC:
+            return generate_granny_square(spec, params)
+        if design.estilo_granny is GrannyStyle.SOLID:
+            return generate_granny_square(spec, params, solid=True)
+        if len(design.bandas) < 2:  # flor al centro sin bandas leidas: la de referencia
+            design = flower_design(design)
+            spec = spec.model_copy(update={"motivo": design})
     if params.densidad is None:  # la muestra del documento va en pb, no la de dos agujas
         params = params.model_copy(update={"densidad": crochet_gauge(params.peso_hilo.value, "crochet_sc")})
     assert params.densidad is not None
@@ -284,7 +339,7 @@ def generate_crochet_motif(spec: GarmentSpec, params: PatternParams) -> Pattern:
     tolerance = max(1.5, 2 * tallest)
     # Solo pasa si ni con 1 vuelta por banda entra en la medida pedida.
     resized = abs(actual - size) > tolerance
-    square = design.forma is MotifShape.SQUARE
+    square = design.forma in CORNERS
     key = "width" if square else "diameter"
     section = Section(
         id="motif",
@@ -319,7 +374,10 @@ def generate_crochet_motif(spec: GarmentSpec, params: PatternParams) -> Pattern:
     if len(colors) > 1:
         letters = ", ".join(f"{chr(65 + i)} ({c})" for i, c in enumerate(colors))
         warnings.append(Warning("motif_colors", "warning.motif_colors", severity="info", params={"colors": letters}))
-    area = actual * actual if square else math.pi * (actual / 2) ** 2
+    if design.forma is MotifShape.HEXAGON:  # de lado plano a lado plano
+        area = math.sqrt(3) / 2 * actual * actual
+    else:
+        area = actual * actual if square else math.pi * (actual / 2) ** 2
     return Pattern(
         meta=_meta(spec, params, "crochet_motif", "title.crochet_motif"),
         spec=spec,

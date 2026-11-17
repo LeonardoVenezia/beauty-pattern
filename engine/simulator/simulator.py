@@ -247,7 +247,14 @@ def _check_section(
     return available
 
 
-_CORNERS = {StitchKind.CORNER_SC, StitchKind.CORNER_DC, StitchKind.SQUARE_TURN, StitchKind.GRANNY_CORNER}
+_CORNERS = {
+    StitchKind.CORNER_SC,
+    StitchKind.CORNER_DC,
+    StitchKind.SQUARE_TURN,
+    StitchKind.GRANNY_CORNER,
+    StitchKind.HEX_CORNER,
+    StitchKind.HEX_CORNER_SC,
+}
 # Piezas que se tejen iguales: mismo conteo en cada vuelta.
 _PAIRS = (("sleeve_left", "sleeve_right"), ("cuff_left", "cuff_right"), ("button_band_left", "button_band_right"))
 # Piezas en espejo tejidas en plano: los cierres van al principio de una hilera
@@ -272,7 +279,7 @@ def _check_symmetry(pattern: Pattern, issues: list[Issue]) -> None:
         for step in section.steps:
             ops = list(step.expanded_ops())
             corners = [i for i, op in enumerate(ops) if op.kind in _CORNERS]
-            if len(corners) != 4:
+            if len(corners) not in (4, 6):  # cuadrado o hexagono
                 continue
             ends = [*corners[1:], corners[0] + len(ops)]
             sides = [

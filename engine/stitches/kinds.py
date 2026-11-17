@@ -72,6 +72,9 @@ class StitchKind(StrEnum):
     C2C_BLOCK = "c2c_block"  # bloque en el esp de 3 cad del bloque anterior
     C2C_SLIDE = "c2c_slide"  # pe por el bloque, sin bloque nuevo (borde que ya no crece)
     C2C_TURN = "c2c_turn"  # el ultimo bloque de la diagonal anterior no lleva bloque
+    # Hexagono: esquinas de 120 grados (engine/garments/motif.py).
+    HEX_CORNER = "hex_corner"  # (1 pt, 1 cad, 1 pt) en el pt o esp de esquina
+    HEX_CORNER_SC = "hex_corner_sc"  # 2 pb en el pt o esp de esquina
 
 
 @dataclass(frozen=True)
@@ -150,6 +153,11 @@ _EFFECTS: dict[StitchKind, Effect] = {
     StitchKind.C2C_BLOCK: Effect(1, 1),
     StitchKind.C2C_SLIDE: Effect(0, 0),
     StitchKind.C2C_TURN: Effect(1, 0),
+    # Una esquina de hexagono se teje en un solo pt (o en el esp de 1 cad de la
+    # esquina anterior): +2 pts por esquina (pa) o +1 (pb), lo que pide un
+    # hexagono plano (perimetro +6,9 x alto de vuelta por vuelta).
+    StitchKind.HEX_CORNER: Effect(1, 3),
+    StitchKind.HEX_CORNER_SC: Effect(1, 2),
 }
 
 _CABLES = {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK}

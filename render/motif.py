@@ -8,9 +8,9 @@ import math
 from engine.garments.motif import _SOLID, _SPACED
 from engine.i18n import t
 from engine.ir import Pattern, Step
-from engine.spec import MotifStitch
+from engine.spec import MotifShape, MotifStitch
 from engine.stitches.kinds import StitchKind
-from render.crochet_chart import draw_rounds, start_angle
+from render.crochet_chart import corner_angle, draw_rounds, polygon_corners, start_angle
 from render.crochet_chart import legend as chart_legend
 from render.draw import STROKE, TEXT_SOFT, _f, caption, label, svg_document, title_block
 from render.draw import swatch as _hex
@@ -29,8 +29,20 @@ def _too_small(steps: tuple[Step, ...], radius: float) -> bool:
     return min(unit, slot) < _MIN_PX
 
 
+def _reach(a: float, apothem: float, sides: int) -> float:
+    """Distancia del centro al borde de un poligono regular en la direccion `a`."""
+    normals = [corner_angle(sides) - math.pi / sides - 2 * math.pi * j / sides for j in range(sides)]
+    return apothem / max(math.cos(a - n) for n in normals)
+
+
 def _overview(
-    steps: tuple[Step, ...], squares: list[bool], fills: list[str], start: float, span: float, lang: str
+    steps: tuple[Step, ...],
+    squares: list[bool],
+    fills: list[str],
+    start: float,
+    span: float,
+    lang: str,
+    sides: int = 4,
 ) -> list[str]:
     """Miniatura del motivo entero (solo colores) con la porcion dibujada
     marcada, para que se entienda que el triangulo es una parte que se repite."""
@@ -38,15 +50,18 @@ def _overview(
     parts = [f'<rect x="{_f(ox - r - 10)}" y="{_f(oy - r - 10)}" width="{_f(2 * r + 20)}" height="{_f(2 * r + 20)}" fill="#ffffff" stroke="{STROKE}" stroke-opacity="0.3" rx="6"/>']
     n = len(steps)
     # Con esquinas el cuadrado exterior debe entrar en la caja: radio / sqrt(2).
-    outer = r / math.sqrt(2) if any(squares) else r
+    outer = r * math.cos(math.pi / sides) if any(squares) else r
     for index in range(n - 1, -1, -1):
         rr = outer * (index + 1) / n
         if squares[index]:
-            parts.append(f'<rect x="{_f(ox - rr)}" y="{_f(oy - rr)}" width="{_f(2 * rr)}" height="{_f(2 * rr)}" fill="{fills[index]}"/>')
+            points = " ".join(f"{_f(ox + x)},{_f(oy + y)}" for x, y in polygon_corners(rr, sides))
+            parts.append(f'<polygon points="{points}" fill="{fills[index]}"/>')
         else:
             parts.append(f'<circle cx="{_f(ox)}" cy="{_f(oy)}" r="{_f(rr)}" fill="{fills[index]}"/>')
-    def reach(a: float) -> float:  # hasta el borde exterior (cuadrado o circulo)
-        return outer / max(abs(math.cos(a)), abs(math.sin(a))) if squares[-1] else outer
+
+    def reach(a: float) -> float:  # hasta el borde exterior (poligono o circulo)
+        return _reach(a, outer, sides) if squares[-1] else outer
+
 
     angles = [start - span * k / 48 for k in range(49)]
     arc = " ".join(f"{_f(ox + reach(a) * math.cos(a))},{_f(oy + reach(a) * math.sin(a))}" for a in angles)
@@ -59,8 +74,10 @@ def render_motif_svg(pattern: Pattern, lang: str) -> str:
     design = pattern.spec.motivo
     steps = pattern.sections[0].steps
     colors = list(pattern.materials.colors)
+    sides = 6 if design is not None and design.forma is MotifShape.HEXAGON else 4
+    turning = {StitchKind.SQUARE_TURN, StitchKind.HEX_CORNER, StitchKind.HEX_CORNER_SC}
     square_from = next(
-        (s.number for s in steps if any(getattr(i, "ops", ()) and i.ops[0].kind.value == "square_turn" for i in s.items)),
+        (s.number for s in steps if any(getattr(i, "ops", ()) and i.ops[0].kind in turning for i in s.items)),
         None,
     )
     band = 0
@@ -90,21 +107,23 @@ def render_motif_svg(pattern: Pattern, lang: str) -> str:
         # Motivo grande: se dibuja ampliado un sector (>= 1/4) y se repite.
         span = 2 * math.pi * math.ceil(symmetry / 4) / symmetry
         # Encuadre: caja del sector (centro + borde exterior) con radio 1.
-        start = start_angle(steps, bases, squares, spaced_ring)
+        start = start_angle(steps, bases, squares, spaced_ring, sides)
         square = any(squares)
         points = [(0.0, 0.0)]
         for k in range(49):
             a = start - span * k / 48
-            reach = 1 / max(abs(math.cos(a)), abs(math.sin(a))) if square else 1.0
+            reach = _reach(a, 1.0, sides) if square else 1.0
             points.append((reach * math.cos(a), reach * math.sin(a)))
         xs, ys = [x for x, _ in points], [y for _, y in points]
         radius = min((WIDTH - 140) / (max(xs) - min(xs)), size / (max(ys) - min(ys)))
         cx = WIDTH / 2 - radius * (max(xs) + min(xs)) / 2
         cy = 118.0 - radius * min(ys)
-    parts, used = draw_rounds(steps, bases, squares, fills, cx, cy, radius, spaced_ring=spaced_ring, span=span)
+    parts, used = draw_rounds(
+        steps, bases, squares, fills, cx, cy, radius, spaced_ring=spaced_ring, span=span, sides=sides
+    )
     if span < 2 * math.pi:
         parts.append(label(WIDTH / 2, 104, t("schematic.motif_partial", lang), size=11, color=TEXT_SOFT))
-        parts += _overview(steps, squares, fills, start, span, lang)
+        parts += _overview(steps, squares, fills, start, span, lang, sides)
     measure = pattern.measurements[0]
     unit = t(f"unit.{pattern.params.unidades}", lang)
     shown = measure.value_cm / 2.54 if pattern.params.unidades == "in" else measure.value_cm
@@ -114,6 +133,8 @@ def render_motif_svg(pattern: Pattern, lang: str) -> str:
     if not partial:
         parts.append(f'<line x1="{_f(left)}" y1="{_f(y_dim)}" x2="{_f(left + size)}" y2="{_f(y_dim)}" stroke="{STROKE}"/>')
     size_text = f"{round(shown * 2) / 2:g} {unit}"
+    if sides == 6:
+        size_text += f" ({t('schematic.motif_hexagon', lang)})"
     if partial:
         size_text = t("schematic.motif_total", lang, size=size_text)
     parts.append(label(WIDTH / 2, y_dim + 18, size_text, size=12, weight="700"))
