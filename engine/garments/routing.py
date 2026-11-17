@@ -11,13 +11,11 @@ from engine.spec import (
     BodyLength,
     Category,
     Construction,
-    Figure,
     GarmentSpec,
     MotifShape,
     Neckline,
     SleeveLength,
     Technique,
-    ToyBody,
 )
 from engine.stitches.catalog import APPROXIMATED_NAMES
 
@@ -71,10 +69,6 @@ BODY_LENGTH_APPROX: dict[BodyLength, BodyLength] = {BodyLength.WAIST: BodyLength
 SLEEVE_LENGTH_APPROX: dict[SleeveLength, SleeveLength] = {
     SleeveLength.ELBOW: SleeveLength.THREE_QUARTER
 }
-TOY_FIGURES_DONE: frozenset[Figure] = frozenset(
-    {Figure.BEAR, Figure.BUNNY, Figure.CAT, Figure.GENERIC}
-)
-TOY_BODIES_DONE: frozenset[ToyBody] = frozenset({ToyBody.PIECES, ToyBody.BALL})
 MOTIF_SHAPES_DONE: frozenset[MotifShape] = frozenset({MotifShape.CIRCLE, MotifShape.SQUARE})
 
 
@@ -95,12 +89,6 @@ def _approximate(spec: GarmentSpec, update: dict[str, object], notes: list[str])
                 notes.append(code)
     if spec.punto_base in APPROXIMATED_NAMES:
         notes.append("stitch")
-    if spec.figura is not None and spec.figura not in TOY_FIGURES_DONE:
-        update["figura"] = Figure.GENERIC
-        notes.append("figure")
-    if spec.cuerpo_juguete is not None and spec.cuerpo_juguete not in TOY_BODIES_DONE:
-        update["cuerpo_juguete"] = ToyBody.PIECES
-        notes.append("toy_body")
     if spec.motivo is not None and spec.motivo.forma not in MOTIF_SHAPES_DONE:
         update["motivo"] = spec.motivo.model_copy(update={"forma": MotifShape.CIRCLE})
         notes.append("motif_shape")

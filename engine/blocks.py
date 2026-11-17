@@ -1028,8 +1028,13 @@ def _ws_purl_blocks(steps: tuple[Step, ...], lang: str) -> tuple[Block, ...] | N
                 return None
     blocks: list[Block] = []
 
-    def plain_knit(step: Step) -> bool:
-        return _is_plain(step) and isinstance(step.items[0], Op) and step.items[0].kind is StitchKind.KNIT
+    def plain_knit(step: Step) -> bool:  # una hilera con nota (cambio de color) va sola
+        return (
+            not step.note_key
+            and _is_plain(step)
+            and isinstance(step.items[0], Op)
+            and step.items[0].kind is StitchKind.KNIT
+        )
 
     index = 0
     while index < len(steps):
@@ -1064,8 +1069,8 @@ def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
     for section in pattern.sections:
         blocks.append(Block(BlockKind.SECTION_HEADING, t(section.name_key, language)))
         intro = _section_intro(section, language)
-        if section.meta.get("toy") and pattern.spec.tecnica.value == "crochet":
-            intro = ""  # "Vuelta 1: anillo magico + 6 pb" ya lo dice
+        if section.meta.get("toy") and (pattern.spec.tecnica.value == "crochet" or section.meta.get("picked_up")):
+            intro = ""  # "Vuelta 1: anillo magico + 6 pb" (o la nota de recoger) ya lo dice
         if intro:
             blocks.append(Block(BlockKind.LINE, intro))
         for note_key in section.note_keys:

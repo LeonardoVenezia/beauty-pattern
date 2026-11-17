@@ -280,9 +280,13 @@ def build_document(
 
     # 2. Descripcion.
     heading("doc.description")
-    is_ball = any(section.id == "ball" for section in base.sections)
-    desc_key = "desc.toy_ball" if is_ball else "desc." + base.meta.title_key.removeprefix("title.")
-    line(t(desc_key if has_key(desc_key, language) else "desc.generic", language))
+    if base.meta.family == "amigurumi":
+        from engine.garments.toy import toy_description_keys
+
+        line(" ".join(t(key, language) for key in toy_description_keys(base)))
+    else:
+        desc_key = "desc." + base.meta.title_key.removeprefix("title.")
+        line(t(desc_key if has_key(desc_key, language) else "desc.generic", language))
 
     # 3. Ficha tecnica.
     heading("doc.technical")
@@ -298,9 +302,12 @@ def build_document(
             ease = bust.value_cm - BODY_SIZES[base.meta.size].bust_cm if base.meta.size in BODY_SIZES else None
             if ease is not None:
                 rows.append((t("doc.ease", language), t("doc.ease_value", language, cm=_half(ease))))
-    toy_height = next((m for m in base.measurements if m.key == "toy_height"), None)
+    toy_height = next((m for m in base.measurements if m.key.startswith(("toy_height", "toy_length"))), None)
     if toy_height is not None:
-        size_key = "doc.toy_size_value_ball" if is_ball else "doc.toy_size_value"
+        size_key = {
+            "toy_height": "doc.toy_size_value",
+            "toy_height_ball": "doc.toy_size_value_ball",
+        }.get(toy_height.key, "doc.toy_size_value." + toy_height.key)
         size = t(size_key, language, n=_length(toy_height.value_cm, units), unit=unit)
         rows.append((t("doc.toy_size", language), size))
     techniques = _techniques(patterns, language)
