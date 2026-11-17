@@ -238,8 +238,13 @@ def draw_rounds(
     bands: list[str] = []
     for index in range(len(rows) - 1, -1, -1):
         r = inner[index + 1]
-        if squares[index]:
-            points = " ".join(f"{_f(cx + x)},{_f(cy + y)}" for x, y in polygon_corners(r, sides))
+        if squares[index] and sides == 4:
+            bands.append(
+                f'<rect x="{_f(cx - r)}" y="{_f(cy - r)}" width="{_f(2 * r)}" height="{_f(2 * r)}" '
+                f'fill="{fills[index]}" fill-opacity="0.38" stroke="{STROKE}" stroke-opacity="0.25" stroke-width="0.6"/>'
+            )
+        elif squares[index]:
+            points =" ".join(f"{_f(cx + x)},{_f(cy + y)}" for x, y in polygon_corners(r, sides))
             bands.append(
                 f'<polygon points="{points}" '
                 f'fill="{fills[index]}" fill-opacity="0.38" stroke="{STROKE}" stroke-opacity="0.25" stroke-width="0.6"/>'
