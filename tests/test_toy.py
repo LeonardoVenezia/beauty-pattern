@@ -66,7 +66,7 @@ def check_structure(pattern: Pattern, figure: Figure) -> None:
 
 
 @pytest.mark.parametrize(
-    ("figure", "weight", "technique"), list(product(Figure, YarnWeight, TECHNIQUES))
+    ("figure", "weight", "technique"), list(product(TEMPLATES, YarnWeight, TECHNIQUES))
 )
 def test_every_template_weight_and_technique_simulates(
     figure: Figure, weight: YarnWeight, technique: Technique
@@ -80,7 +80,7 @@ def test_every_template_weight_and_technique_simulates(
 
 @settings(max_examples=60, deadline=None)
 @given(
-    figure=st.sampled_from(list(Figure)),
+    figure=st.sampled_from(list(TEMPLATES)),
     weight=st.sampled_from([w for w in YarnWeight if w is not YarnWeight.UNKNOWN]),
     technique=st.sampled_from(TECHNIQUES),
     factor=st.floats(min_value=0.5, max_value=3.0),
@@ -198,7 +198,7 @@ def test_text_reads_like_a_toy_pattern(technique: Technique) -> None:
         assert raw_key is None, rendered[raw_key.start() - 40 : raw_key.end() + 40] if raw_key else ""
 
 
-@pytest.mark.parametrize(("figure", "technique"), list(product(Figure, TECHNIQUES)))
+@pytest.mark.parametrize(("figure", "technique"), list(product(TEMPLATES, TECHNIQUES)))
 def test_schematic_draws_the_assembled_toy(figure: Figure, technique: Technique) -> None:
     pattern = generate(toy(figure, technique), PatternParams())
     svg = render_toy_svg(pattern, "es")
@@ -241,7 +241,7 @@ def test_round_chart_lists_only_pieces_worked_exactly_like_it() -> None:
 
 @pytest.mark.parametrize(
     "figure,technique,weight",
-    list(product(Figure, [Technique.CROCHET, Technique.NEEDLES], [YarnWeight.FINGERING, YarnWeight.DK, YarnWeight.SUPER_BULKY])),
+    list(product([Figure.BEAR, Figure.BUNNY, Figure.CAT, Figure.GENERIC], [Technique.CROCHET, Technique.NEEDLES], [YarnWeight.FINGERING, YarnWeight.DK, YarnWeight.SUPER_BULKY])),
 )
 def test_ball_toy_is_one_round_piece_and_verifies(figure: Figure, technique: Technique, weight: YarnWeight) -> None:
     """Un gatito "bolita" no tiene cabeza aparte: una sola pieza redonda,

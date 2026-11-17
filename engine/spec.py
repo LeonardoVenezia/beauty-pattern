@@ -29,6 +29,23 @@ class Category(StrEnum):
     GRANNY_SQUARE = "granny_square"
     BAG = "bag"
     AMIGURUMI = "amigurumi"
+    # Ampliacion D037 (investigacion 2026-11): prendas, accesorios y hogar.
+    TOP = "top"  # musculosa, remera, crop
+    COAT = "coat"  # saco, tapado, campera
+    DRESS = "dress"  # vestido o tunica
+    PONCHO = "poncho"  # poncho, ruana, capa
+    SHRUG = "shrug"  # bolero
+    FINGERLESS_MITTS = "fingerless_mitts"
+    BALACLAVA = "balaclava"
+    HEADBAND = "headband"  # vincha, cubreorejas
+    LEG_WARMERS = "leg_warmers"
+    BOOTIES = "booties"  # escarpines
+    SLIPPERS = "slippers"
+    FLAT_ITEM = "flat_item"  # posavasos, individual, agarradera, pano, carpeta
+    COZY = "cozy"  # funda: mate, termo, taza, botella, celular, anteojos, cartuchera
+    BASKET = "basket"
+    PILLOW = "pillow"
+    RUG = "rug"
     OTHER = "other"
 
 
@@ -49,6 +66,11 @@ class Construction(StrEnum):
     FLAT_PANELS = "flat_panels"
     ROUND_TUBE = "round_tube"
     MODULES = "modules"
+    MODIFIED_DROP_SHOULDER = "modified_drop_shoulder"
+    SADDLE_SHOULDER = "saddle_shoulder"
+    DOLMAN = "dolman"  # manga murcielago
+    T_SHAPE = "t_shape"  # rectangulos (tipico de crochet)
+    SIDE_TO_SIDE = "side_to_side"
     OTHER = "other"
 
 
@@ -60,11 +82,18 @@ class Neckline(StrEnum):
     FUNNEL = "funnel"
     HOOD = "hood"
     SQUARE = "square"
+    MOCK_NECK = "mock_neck"  # cuello alto corto
+    SCOOP = "scoop"
+    HENLEY = "henley"  # tapa con botones o medio cierre
+    POLO = "polo"
+    SHAWL_COLLAR = "shawl_collar"
+    COWL_NECK = "cowl_neck"
     NONE = "none"
 
 
 class BodyLength(StrEnum):
     CROPPED = "cropped"
+    WAIST = "waist"
     HIP = "hip"
     TUNIC = "tunic"
     LONG = "long"
@@ -73,12 +102,14 @@ class BodyLength(StrEnum):
 class SleeveLength(StrEnum):
     SLEEVELESS = "sleeveless"
     SHORT = "short"
+    ELBOW = "elbow"
     THREE_QUARTER = "three_quarter"
     LONG = "long"
 
 
 class Fit(StrEnum):
     VERY_LOOSE = "very_loose"
+    OVERSIZED = "oversized"
     LOOSE = "loose"
     REGULAR = "regular"
     FITTED = "fitted"
@@ -107,6 +138,21 @@ class StitchPatternName(StrEnum):
     CROCHET_SC = "crochet_sc"
     CROCHET_HDC = "crochet_hdc"
     CROCHET_DC = "crochet_dc"
+    REVERSE_STOCKINETTE = "reverse_stockinette"
+    TWISTED_RIB = "twisted_rib"
+    BROKEN_RIB = "broken_rib"
+    BASKETWEAVE = "basketweave"
+    WAFFLE = "waffle"
+    LINEN = "linen"  # punto lino (puntos deslizados)
+    CROCHET_TR = "crochet_tr"
+    CROCHET_RIBBING = "crochet_ribbing"  # por la hebra de atras
+    GRANNY_STITCH = "granny_stitch"
+    CROCHET_LINEN = "crochet_linen"  # punto musgo/lino de crochet
+    V_STITCH = "v_stitch"
+    SHELL = "shell"  # abanico
+    FILET = "filet"  # red
+    TUNISIAN = "tunisian"
+    C2C = "c2c"
     OTHER = "other"
 
 
@@ -117,6 +163,10 @@ class Texture(StrEnum):
     HONEYCOMB = "honeycomb"
     RIBBING = "ribbing"
     CABLED_RIBBING = "cabled_ribbing"
+    ARAN = "aran"  # trenzas en toda la pieza
+    TWISTED_STITCHES = "twisted_stitches"
+    RUFFLES = "ruffles"
+    MESH = "mesh"
     OTHER = "other"
 
 
@@ -126,6 +176,8 @@ class ColorworkType(StrEnum):
     FAIR_ISLE = "fair_isle"
     INTARSIA = "intarsia"
     MOSAIC = "mosaic"
+    COLOR_BLOCK = "color_block"
+    TAPESTRY = "tapestry"  # tapestry crochet
 
 
 class Finish(StrEnum):
@@ -137,6 +189,13 @@ class Finish(StrEnum):
     FRINGE = "fringe"
     HOOD = "hood"
     LINING = "lining"
+    POMPOM = "pompom"
+    ZIPPER = "zipper"
+    COLLAR = "collar"
+    TIES = "ties"  # lazos, cordon
+    EARFLAPS = "earflaps"
+    EDGING = "edging"  # picot, abanico, cangrejo, i-cord
+    RUFFLE = "ruffle"
 
 
 class YarnWeight(StrEnum):
@@ -156,6 +215,13 @@ class YarnLook(StrEnum):
     BOUCLE = "boucle"
     MARLED = "marled"
     CHENILLE = "chenille"
+    TWEED = "tweed"
+    VARIEGATED = "variegated"  # jaspeado, tenido a mano
+    SELF_STRIPING = "self_striping"
+    COTTON_MATTE = "cotton_matte"
+    CHUNKY = "chunky"  # XXL
+    RAFFIA = "raffia"
+    TAPE = "tape"  # trapillo, cinta
     UNKNOWN = "unknown"
 
 
@@ -189,6 +255,10 @@ class ToyBody(StrEnum):
 
     PIECES = "pieces"
     BALL = "ball"
+    SEAMLESS = "seamless"  # cabeza y cuerpo de una pieza, con cuello
+    STANDING = "standing"  # de pie (munecas, cuadrupedos)
+    LONG = "long"  # alargado: serpiente, salchicha
+    RADIAL = "radial"  # pulpo, medusa
 
 
 class Figure(StrEnum):
@@ -198,12 +268,91 @@ class Figure(StrEnum):
     BEAR = "bear"
     BUNNY = "bunny"
     CAT = "cat"
+    DOG = "dog"
+    ELEPHANT = "elephant"
+    OCTOPUS = "octopus"
+    DINOSAUR = "dinosaur"
+    UNICORN = "unicorn"
+    WHALE = "whale"
+    TURTLE = "turtle"
+    DUCK = "duck"
+    FROG = "frog"
+    BEE = "bee"
+    COW = "cow"
+    SHEEP = "sheep"
+    MOUSE = "mouse"
+    FOX = "fox"
+    OWL = "owl"
+    PENGUIN = "penguin"
+    PIG = "pig"
+    LION = "lion"
+    DOLL = "doll"
     GENERIC = "generic"  # muneco sin orejas (cuerpo de osito o de muneca)
 
 
 class MotifShape(StrEnum):
     CIRCLE = "circle"
     SQUARE = "square"
+    HEXAGON = "hexagon"
+
+
+class GrannyStyle(StrEnum):
+    CLASSIC = "classic"  # grupos de 3 pa
+    SOLID = "solid"  # macizo
+    FLOWER = "flower"  # flor al centro / sunburst
+
+
+class HatStyle(StrEnum):
+    BEANIE = "beanie"
+    SLOUCHY = "slouchy"
+    BUCKET = "bucket"  # piluso
+    BERET = "beret"  # boina
+    EARFLAP = "earflap"  # chullo
+    BRIMMED = "brimmed"  # capelina, casquete de red
+    BONNET = "bonnet"  # capota
+
+
+class FlatItem(StrEnum):
+    COASTER = "coaster"
+    PLACEMAT = "placemat"
+    POTHOLDER = "potholder"
+    DISHCLOTH = "dishcloth"
+    DOILY = "doily"
+
+
+class FlatShape(StrEnum):
+    CIRCLE = "circle"
+    SQUARE = "square"
+    RECTANGLE = "rectangle"
+    OVAL = "oval"
+
+
+class CozyItem(StrEnum):
+    MATE = "mate"
+    THERMOS = "thermos"
+    CUP = "cup"
+    BOTTLE = "bottle"
+    PHONE = "phone"
+    GLASSES = "glasses"
+    PENCIL_CASE = "pencil_case"
+    LAPTOP = "laptop"
+
+
+class SleeveStyle(StrEnum):
+    STRAIGHT = "straight"
+    PUFF = "puff"  # globo, obispo
+    BELL = "bell"  # campana
+    CAP = "cap"  # casquillo
+
+
+class BlanketStyle(StrEnum):
+    GRANNY_JOINED = "granny_joined"
+    GRANNY_GIANT = "granny_giant"
+    ROWS = "rows"  # rayas o un solo punto
+    C2C = "c2c"
+    RIPPLE = "ripple"
+    HEXAGONS = "hexagons"
+    MITERED = "mitered"
 
 
 class MotifStitch(StrEnum):
@@ -241,6 +390,7 @@ class MotifDesign(BaseModel):
     simetria: int = Field(default=8, ge=3, le=24)  # petalos o repeticiones radiales
     bandas: list[MotifBand] = Field(min_length=1, max_length=16)
     cuadrar_en_banda: int | None = Field(default=None, ge=0, le=15)
+    estilo_granny: GrannyStyle | None = None
 
 
 class GarmentSpec(BaseModel):
@@ -264,6 +414,12 @@ class GarmentSpec(BaseModel):
     motivo: MotifDesign | None = None
     figura: Figure | None = None  # solo amigurumi
     cuerpo_juguete: ToyBody | None = None  # solo amigurumi
+    estilo_manga: SleeveStyle | None = None
+    estilo_gorro: HatStyle | None = None  # solo hat
+    objeto_plano: FlatItem | None = None  # solo flat_item
+    forma_plana: FlatShape | None = None  # flat_item, rug, pillow, basket
+    objeto_funda: CozyItem | None = None  # solo cozy
+    estilo_manta: BlanketStyle | None = None  # solo blanket
     incertidumbres: list[str] = Field(default_factory=list)
     no_visible: list[str] = Field(default_factory=list)
     confianza: dict[str, float] = Field(default_factory=dict)

@@ -7,7 +7,19 @@ parecida y el patron lo dice en una advertencia ("se aproximo X con Y").
 
 from __future__ import annotations
 
-from engine.spec import Category, Construction, GarmentSpec, Technique
+from engine.spec import (
+    BodyLength,
+    Category,
+    Construction,
+    Figure,
+    GarmentSpec,
+    MotifShape,
+    Neckline,
+    SleeveLength,
+    Technique,
+    ToyBody,
+)
+from engine.stitches.catalog import APPROXIMATED_NAMES
 
 _KNIT = {Technique.NEEDLES, Technique.CIRCULAR}
 # Construcciones de pullover sin familia propia -> la mas parecida.
@@ -18,18 +30,98 @@ _PULLOVER = {
     Construction.ROUND_TUBE: Construction.RAGLAN_TOP_DOWN,
     Construction.MODULES: Construction.DROP_SHOULDER,
     Construction.OTHER: Construction.RAGLAN_TOP_DOWN,
+    Construction.MODIFIED_DROP_SHOULDER: Construction.DROP_SHOULDER,
+    Construction.SADDLE_SHOULDER: Construction.SET_IN_SLEEVE,
+    Construction.DOLMAN: Construction.DROP_SHOULDER,
+    Construction.T_SHAPE: Construction.DROP_SHOULDER,
+    Construction.SIDE_TO_SIDE: Construction.DROP_SHOULDER,
 }
+
+# Ampliacion D037: opciones que la IA ya reconoce pero que todavia no tienen
+# calculo propio. Cada una va a la familia verificada mas parecida y el patron
+# lo avisa ("warning.approx.<codigo>"). Al implementar una opcion, se borra
+# de estas tablas.
+CATEGORY_APPROX: dict[Category, Category] = {
+    Category.TOP: Category.PULLOVER,
+    Category.COAT: Category.CARDIGAN,
+    Category.DRESS: Category.PULLOVER,
+    Category.PONCHO: Category.SHAWL,
+    Category.SHRUG: Category.CARDIGAN,
+    Category.FINGERLESS_MITTS: Category.MITTENS,
+    Category.BALACLAVA: Category.HAT,
+    Category.HEADBAND: Category.COWL,
+    Category.LEG_WARMERS: Category.COWL,
+    Category.BOOTIES: Category.SOCKS,
+    Category.SLIPPERS: Category.SOCKS,
+    Category.FLAT_ITEM: Category.OTHER,
+    Category.COZY: Category.BAG,
+    Category.BASKET: Category.BAG,
+    Category.PILLOW: Category.OTHER,
+    Category.RUG: Category.OTHER,
+}
+NECKLINE_APPROX: dict[Neckline, Neckline] = {
+    Neckline.MOCK_NECK: Neckline.TURTLENECK,
+    Neckline.SCOOP: Neckline.CREW,
+    Neckline.HENLEY: Neckline.CREW,
+    Neckline.POLO: Neckline.CREW,
+    Neckline.SHAWL_COLLAR: Neckline.V_NECK,
+    Neckline.COWL_NECK: Neckline.TURTLENECK,
+}
+BODY_LENGTH_APPROX: dict[BodyLength, BodyLength] = {BodyLength.WAIST: BodyLength.CROPPED}
+SLEEVE_LENGTH_APPROX: dict[SleeveLength, SleeveLength] = {
+    SleeveLength.ELBOW: SleeveLength.THREE_QUARTER
+}
+TOY_FIGURES_DONE: frozenset[Figure] = frozenset(
+    {Figure.BEAR, Figure.BUNNY, Figure.CAT, Figure.GENERIC}
+)
+TOY_BODIES_DONE: frozenset[ToyBody] = frozenset({ToyBody.PIECES, ToyBody.BALL})
+MOTIF_SHAPES_DONE: frozenset[MotifShape] = frozenset({MotifShape.CIRCLE, MotifShape.SQUARE})
+
+
+def _approximate(spec: GarmentSpec, update: dict[str, object], notes: list[str]) -> None:
+    """Opciones sin calculo propio -> la mas parecida, siempre avisando."""
+    if spec.categoria in CATEGORY_APPROX:
+        update["categoria"] = CATEGORY_APPROX[spec.categoria]
+        notes.append("category")
+    for field, table, code in (
+        ("escote", NECKLINE_APPROX, "neckline"),
+        ("largo_cuerpo", BODY_LENGTH_APPROX, "length"),
+        ("largo_manga", SLEEVE_LENGTH_APPROX, "length"),
+    ):
+        value = getattr(spec, field)
+        if value in table:
+            update[field] = table[value]
+            if code not in notes:
+                notes.append(code)
+    if spec.punto_base in APPROXIMATED_NAMES:
+        notes.append("stitch")
+    if spec.figura is not None and spec.figura not in TOY_FIGURES_DONE:
+        update["figura"] = Figure.GENERIC
+        notes.append("figure")
+    if spec.cuerpo_juguete is not None and spec.cuerpo_juguete not in TOY_BODIES_DONE:
+        update["cuerpo_juguete"] = ToyBody.PIECES
+        notes.append("toy_body")
+    if spec.motivo is not None and spec.motivo.forma not in MOTIF_SHAPES_DONE:
+        update["motivo"] = spec.motivo.model_copy(update={"forma": MotifShape.CIRCLE})
+        notes.append("motif_shape")
 
 
 def route(spec: GarmentSpec) -> tuple[GarmentSpec, tuple[str, ...]]:
     """(spec que se genera, codigos de aproximacion)."""
     notes: list[str] = []
     update: dict[str, object] = {}
+    _approximate(spec, update, notes)
+    if update:
+        spec = spec.model_copy(update=update)
     technique, category = spec.tecnica, spec.categoria
     if technique is Technique.MACHINE:
         technique = Technique.NEEDLES
         notes.append("machine")
-    if technique is Technique.CROCHET and category in {Category.MITTENS, Category.GLOVES, Category.SOCKS}:
+    if technique is Technique.CROCHET and category in {
+        Category.MITTENS,
+        Category.GLOVES,
+        Category.SOCKS,
+    }:
         technique = Technique.NEEDLES
         notes.append("crochet_to_knit")
     if technique in _KNIT and category is Category.GRANNY_SQUARE:

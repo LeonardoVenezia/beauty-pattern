@@ -28,6 +28,8 @@ _BY_TEXTURE: dict[Texture, str] = {
     Texture.LACE: "lace_basic",
     Texture.BOBBLES: "bobbles",
     Texture.HONEYCOMB: "honeycomb",
+    Texture.ARAN: "cable_2x2_front",
+    Texture.TWISTED_STITCHES: "cable_2x2_front",
 }
 _BY_STITCH: dict[StitchPatternName, str] = {
     StitchPatternName.CABLES: "cable_2x2_front",

@@ -48,6 +48,7 @@ EASE_BY_FIT: dict[Fit, float] = {
     Fit.REGULAR: 6.0,
     Fit.LOOSE: 12.0,
     Fit.VERY_LOOSE: 20.0,
+    Fit.OVERSIZED: 25.0,  # ASUNCION: oversize de patrones actuales, 20-30 cm
 }
 
 MEASUREMENT_KEYS = (

@@ -680,3 +680,15 @@ Decisiones:
 - `ball`: una esfera (`BALL_D` = 0,9 del alto), 4 patitas cortas, orejas según el animal (punta, redondas o largas) y cola corta (gato) o pompón (oso, conejo). Armado propio: ojos, orejas, patitas y cola en vueltas calculadas de la esfera.
 - ASUNCIÓN: alto por defecto = la mitad del muñeco sentado del mismo hilo (`BALL_HEIGHT_FACTOR`); proporciones de orejas, patitas y cola medidas a ojo sobre juguetes bolita publicados. Con super bulky da 18 cm, como la foto.
 - Verificado con la IA real: el gatito sale `cat` + `ball` con confianza 1,0; el osito de las comparaciones sigue `bear` + `pieces`.
+
+## D037 — Catálogo ampliado al ~95 % (2026-11-17)
+
+Base: `docs/investigacion-2026-11.md`.
+
+Decisiones:
+- **Vocabulario primero, motor después.** Todas las opciones comunes entran ya en `engine/spec.py`; la IA las reconoce con el prompt `extractor-v6`, que genera sus listas desde los enums. Mientras una opción no tenga cálculo propio, `engine/garments/routing.py` la manda a la familia verificada más parecida y el patrón lo avisa (`warning.approx.*`). Implementar una opción = borrarla de esas tablas. Un test garantiza que toda categoría da un patrón verificado o un rechazo honesto.
+- **Subtipos en lugar de multiplicar categorías:** `estilo_gorro`, `objeto_plano` + `forma_plana`, `objeto_funda`, `estilo_manga`, `estilo_manta` y `motivo.estilo_granny`. La IA elige primero qué es y después de qué tipo.
+- **No se separa `construccion` en tres ejes** (hombro / dirección / armado), aunque la investigación lo sugiere: la dirección y el armado los decide el motor, y la foto solo informa el hombro. Se suman los hombros que faltaban.
+- **Seed/moss:** se mantienen los valores (`seed` = punto arroz, `moss` = punto arroz doble) y el prompt explica cómo distinguirlos; las etiquetas por idioma dicen el nombre local.
+- **Textos por área** (`engine/i18n/areas/*.py`): cada línea de trabajo suma sus claves en su propio módulo, en los cinco idiomas, sin tocar los catálogos base.
+- **Bugs viejos que expuso el barrido**, sin entregar nada mal porque el simulador los frena: mitones con punto arroz (múltiplo); cárdigan con cuello alto + largo corto (delanteros distintos).

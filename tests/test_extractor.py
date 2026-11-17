@@ -57,7 +57,7 @@ async def test_fake_extractor_is_deterministic_and_uses_images() -> None:
     assert result.spec.construccion.value == "raglan_top_down"
     assert result.confidence["categoria"] == 1.0
     assert len(result.samples) == 3
-    assert result.prompt_version == "extractor-v5"
+    assert result.prompt_version == "extractor-v6"
     assert result.usage.total_tokens == 0
     assert "espalda" in result.spec.no_visible
 

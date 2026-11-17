@@ -131,9 +131,7 @@ STITCH_PATTERNS: dict[str, StitchPattern] = {
             (Op(StitchKind.BRIOCHE_KNIT), Op(StitchKind.BRIOCHE_PURL)),
             (Op(StitchKind.BRIOCHE_PURL), Op(StitchKind.BRIOCHE_KNIT)),
         ),
-        round_rows=(
-            (Op(StitchKind.BRIOCHE_KNIT), Op(StitchKind.BRIOCHE_PURL)),
-        ),
+        round_rows=((Op(StitchKind.BRIOCHE_KNIT), Op(StitchKind.BRIOCHE_PURL)),),
         notes_key="stitch.note.brioche",
     ),
     "cable_2x2_front": StitchPattern(
@@ -293,7 +291,37 @@ _PATTERN_NAME_TO_ID: dict[StitchPatternName, str] = {
     StitchPatternName.CROCHET_HDC: "crochet_hdc",
     StitchPatternName.CROCHET_DC: "crochet_dc",
     StitchPatternName.OTHER: "stockinette",
+    # Puntos de la ampliacion D037 sin grafico propio todavia: el mas parecido.
+    # engine/garments/routing.py avisa la aproximacion en el patron.
+    StitchPatternName.REVERSE_STOCKINETTE: "stockinette",
+    StitchPatternName.TWISTED_RIB: "rib_1x1",
+    StitchPatternName.BROKEN_RIB: "rib_2x2",
+    StitchPatternName.BASKETWEAVE: "seed",
+    StitchPatternName.WAFFLE: "seed",
+    StitchPatternName.LINEN: "seed",
+    StitchPatternName.CROCHET_TR: "crochet_dc",
+    StitchPatternName.CROCHET_RIBBING: "crochet_sc",
+    StitchPatternName.GRANNY_STITCH: "crochet_dc",
+    StitchPatternName.CROCHET_LINEN: "crochet_sc",
+    StitchPatternName.V_STITCH: "crochet_dc",
+    StitchPatternName.SHELL: "crochet_dc",
+    StitchPatternName.FILET: "crochet_dc",
+    StitchPatternName.TUNISIAN: "crochet_sc",
+    StitchPatternName.C2C: "crochet_dc",
 }
+
+# Nombres que todavia se aproximan (los usa routing para avisar).
+APPROXIMATED_NAMES = frozenset(
+    name
+    for name in _PATTERN_NAME_TO_ID
+    if name.value != _PATTERN_NAME_TO_ID[name]
+    and name
+    not in {
+        StitchPatternName.CABLES,
+        StitchPatternName.LACE,
+        StitchPatternName.OTHER,
+    }
+)
 
 
 def get_stitch(pattern_id: str) -> StitchPattern:
@@ -339,16 +367,12 @@ def expand_row(
     if stitches <= 0:
         raise ValueError("stitches debe ser > 0")
     if stitches % pattern.multiple != 0:
-        raise ValueError(
-            f"{pattern.id}: {stitches} no es multiplo de {pattern.multiple}"
-        )
+        raise ValueError(f"{pattern.id}: {stitches} no es multiplo de {pattern.multiple}")
     repeats = stitches // pattern.multiple
     base_ops = pattern.ops_for_row(row_number, in_the_round=in_the_round)
     expanded: tuple[Item, ...]
     if len(base_ops) == 1 or repeats == 1:
-        expanded = tuple(
-            Op(op.kind, times=op.times * repeats, width=op.width) for op in base_ops
-        )
+        expanded = tuple(Op(op.kind, times=op.times * repeats, width=op.width) for op in base_ops)
     else:
         expanded = (Repeat(times=repeats, ops=tuple(base_ops)),)
     consumed = sum(item.consumes for item in expanded)

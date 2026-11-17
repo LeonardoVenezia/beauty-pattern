@@ -103,7 +103,7 @@ def test_all_sizes_weights_and_fits_simulate(
         Neckline.SQUARE,
     ],
 )
-@pytest.mark.parametrize("body_length", list(BodyLength))
+@pytest.mark.parametrize("body_length", [b for b in BodyLength if b is not BodyLength.WAIST])  # waist: se aproxima (routing)
 @pytest.mark.parametrize(
     "sleeve_length",
     [SleeveLength.SHORT, SleeveLength.THREE_QUARTER, SleeveLength.LONG],

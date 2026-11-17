@@ -46,6 +46,12 @@ VOTED_FIELDS = (
     "motivo",
     "figura",
     "cuerpo_juguete",
+    "estilo_manga",
+    "estilo_gorro",
+    "objeto_plano",
+    "forma_plana",
+    "objeto_funda",
+    "estilo_manta",
     "observaciones",
 )
 UNION_FIELDS = ("incertidumbres", "no_visible")
