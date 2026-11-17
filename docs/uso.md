@@ -105,6 +105,36 @@ se reconoce como una categoría concreta; se advierte en el patrón. Los mitones
 se generan como dos piezas reutilizables (mano y pulgar) que se cortan dos veces
 cada una y se cosen.
 
+### Hogar (crochet y dos agujas)
+
+`engine/garments/home.py` calcula cinco categorías; el subtipo lo da la IA
+(`objeto_plano`, `forma_plana`, `objeto_funda`) y las medidas, si faltan, son
+las de un objeto común (ver `docs/fuentes.md`, "Hogar"):
+
+| Categoría | Subtipo | `dimensiones_cm` |
+|---|---|---|
+| `flat_item` | `coaster`, `placemat`, `potholder`, `dishcloth`, `doily`; forma `circle`, `square`, `rectangle`, `oval` | `diameter` (círculo), `width` (cuadrado), `width` + `length` |
+| `cozy` redonda | `mate`, `thermos`, `cup`, `bottle` | medidas del objeto: `diameter`, `height` (alto a cubrir), `top_diameter` (boca), `strap` (largo de la correa) |
+| `cozy` plana | `phone`, `glasses`, `pencil_case`, `laptop` | medidas del objeto: `width`, `height`, `depth` |
+| `basket` | forma `circle`, `square`, `rectangle`, `oval` | base como `flat_item` + `height` |
+| `pillow` | forma | medida del relleno (`width` + `length` o `diameter`) |
+| `rug` | forma | como `flat_item` |
+
+- Círculos al crochet: anillo y aumentos parejos en cada vuelta (6 en pb, 8 en
+  mpa, 12 en pa), escalonados en las vueltas pares. En agujas: desde el centro
+  en redondo, 8 gajos.
+- Óvalo (solo crochet): cadena trabajada por los dos lados, aumentos en las
+  curvas. En agujas se entrega un rectángulo y se avisa.
+- Cuadrados y rectángulos: en hileras (agujas: punto bobo, la muestra se mide en
+  bobo).
+- Fundas redondas: base cerrada + paredes rectas con holgura negativa (abrazan);
+  la de mate se cierra hacia la boca y la de termo trae correa. Bolsitas: al
+  crochet sin costuras (cadena por los dos lados); en agujas, una tira doblada.
+  Cartuchera con cierre; notebook con solapa y botón.
+- Canasto: tejido apretado, base + paredes; desde 12 cm de alto, dos asas
+  (aberturas opuestas). Almohadón: crochet, dos caras unidas; agujas, frente +
+  espalda en sobre.
+
 ## Medidas propias y talle
 
 La pantalla de medidas se adapta a la categoría:

@@ -119,7 +119,7 @@ def _flat_shape(
         parts.append(shape_path(_ellipse(cx, y + h / 2, w / 2, h / 2), fill=FILL))
         for frac in (0.66, 0.33):  # vueltas sugeridas
             parts.append(shape_path(_ellipse(cx, y + h / 2, w / 2 * frac, h / 2 * frac), fill="none", stroke=STROKE_SOFT, width=1))
-        parts += dim_h(x, x + w, y + h + 34, _dim(pattern, "diameter", lang), extension=-30)
+        parts += dim_h(x, x + w, y + h + 44, _dim(pattern, "diameter", lang), extension=-40)
     else:
         oval_like = shape == "oval" or pattern.meta.family == "home_basket"
         long_key, short_key = ("length", "width") if oval_like else ("width", "length")
@@ -135,7 +135,7 @@ def _flat_shape(
             parts.append(label(cx, y + h / 2 - 8, t("schematic.home.chain", lang), size=10, color=TEXT_SOFT))
         else:
             parts.append(shape_rect(x, y, w, h, fill=FILL))
-        parts += dim_h(x, x + w, y + h + 34, _dim(pattern, long_key, lang), extension=-30)
+        parts += dim_h(x, x + w, y + h + 44, _dim(pattern, long_key, lang), extension=-40)
         parts += dim_v(y, y + h, x + w + 26, _dim(pattern, short_key, lang), side="right", extension=-22)
     return parts
 
@@ -175,8 +175,9 @@ def _cozy_svg(pattern: Pattern, lang: str) -> list[str]:
     circ = _measure(pattern, "circumference") or 20.0
     top_circ = _measure(pattern, "home_top")
     width_cm = circ / 3.1416
-    w, h = _fit(width_cm, height, 260, 380)
-    cx, y0 = 300.0, TOP + 40
+    strap_room = 90.0 if _measure(pattern, "home_strap") else 0.0  # la correa va arriba
+    w, h = _fit(width_cm, height, 260, 380 - strap_room)
+    cx, y0 = 300.0, TOP + 40 + strap_room
     y1 = y0 + h
     ry = w * 0.12
     top_w = w * (top_circ / circ) if top_circ else w
@@ -197,8 +198,8 @@ def _cozy_svg(pattern: Pattern, lang: str) -> list[str]:
     strap = _measure(pattern, "home_strap")
     if strap:
         parts.append(
-            f'<path d="M {_f(cx - w / 2 + 6)} {_f(y0 + 14)} C {_f(cx - w)} {_f(y0 - 150)}, '
-            f'{_f(cx + w)} {_f(y0 - 150)}, {_f(cx + w / 2 - 6)} {_f(y0 + 14)}" fill="none" '
+            f'<path d="M {_f(cx - w / 2 + 6)} {_f(y0 + 14)} C {_f(cx - w)} {_f(y0 - 120)}, '
+            f'{_f(cx + w)} {_f(y0 - 120)}, {_f(cx + w / 2 - 6)} {_f(y0 + 14)}" fill="none" '
             f'stroke="{STROKE_SOFT}" stroke-width="4" stroke-dasharray="8 5"/>'
         )
         parts.append(label(cx + w / 2 + 40, y0 - 60, f"{_name('home_strap', lang)}: {_fmt(pattern, strap)}", size=11, anchor="start"))
@@ -237,7 +238,7 @@ def _pouch_svg(pattern: Pattern, lang: str) -> list[str]:
         parts.append(label(cx, y + h - 10, t("schematic.fold", lang), size=10, color=TEXT_SOFT))
     else:
         parts.append(label(cx, y + h - 10, t("schematic.home.closed_bottom", lang), size=10, color=TEXT_SOFT))
-    parts += dim_h(x, x + w, y + h + 34, _dim(pattern, "width", lang), extension=-30)
+    parts += dim_h(x, x + w, y + h + 44, _dim(pattern, "width", lang), extension=-40)
     parts += dim_v(y, y + h, x + w + 26, _dim(pattern, "height", lang), side="right", extension=-22)
     parts.append(label(cx, BOTTOM + 40, t("schematic.home.pouch_note", lang), size=11, color=TEXT_SOFT))
     return parts

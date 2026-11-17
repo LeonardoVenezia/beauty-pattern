@@ -399,10 +399,12 @@ def rows_piece(
             steps.append(build_step(row + 1, stitches, expand_row(band_pattern, stitches, row), note_key=note))
     for row in range(1, rows - band_rows + 1):
         note = None
-        if row == 1:
-            note = "home.note.garter_rows" if ctx.garter else (
-                "home.note.crochet_rows" if ctx.craft == "crochet" else "pattern.note.flat_panel"
-            )
+        if row == 1 and ctx.garter:
+            note = "home.note.garter_rows"
+        elif row == 1 and ctx.craft == "crochet":
+            note = "home.note.crochet_rows"
+        elif row == 1 and pattern.id == "stockinette":
+            note = "pattern.note.flat_panel"
         steps.append(
             build_step(len(steps) + 1, stitches, expand_row(pattern, stitches, row), note_key=note)
         )
@@ -722,7 +724,7 @@ def _base_and_pickup(
         long = base.section.end_stitches
         side = ctx.sts(depth, minimum=2)
         edge = StitchKind.CROCHET_EDGE if ctx.craft == "crochet" else StitchKind.PICK_UP
-        pickup: list[Item] = [Op(ctx.kind, times=long), Op(edge, times=side + long + side)]
+        pickup: list[Item] = [Op(ctx.kind, times=long), Op(edge, times=side), Op(edge, times=long), Op(edge, times=side)]
         count = 2 * (long + side)
         # Asas centradas en los lados cortos si entran; si no, en los largos.
         center = long + side / 2 if side > ctx.sts(HANDLE_WIDTH_CM) + 4 else long / 2
@@ -757,8 +759,7 @@ def _walls(
 
     Crochet: vuelta por la hebra de atras (marca el borde) y vueltas lisas.
     Agujas: una vuelta reves (doblez), jersey o elastico, y 4 vueltas de
-    borde (bobo en redondo, o elastico 1x1 si se cierra hacia la boca) que
-    no se enrollan. Asas: dos aberturas opuestas a 2,5 cm del borde.
+    borde en elastico 1x1, que no se enrolla. Asas: dos aberturas opuestas a 2,5 cm del borde.
     `top_count`: se cierra hacia la boca (mate) en el tercio de arriba.
     """
     total = ctx.rows(height, minimum=4)
@@ -814,11 +815,8 @@ def _walls(
         count = target
         number += 1
     for index in range(edge):
-        if shaping:
-            items = expand_row(get_stitch("rib_1x1"), count, index + 1, in_the_round=True)
-        else:
-            items = (Op(StitchKind.PURL if index % 2 == 0 else StitchKind.KNIT, times=count),)
-        edge_note = ("home.note.rib_edge" if shaping else "home.note.garter_edge_round") if index == 0 else None
+        items = expand_row(get_stitch("rib_1x1"), count, index + 1, in_the_round=True)
+        edge_note = "home.note.rib_edge" if index == 0 else None
         steps.append(build_step(number, count, items, note_key=edge_note))
         number += 1
     return steps, len(steps)
@@ -973,7 +971,8 @@ def _round_cozy(spec: GarmentSpec, params: PatternParams, item: CozyItem) -> Pat
     finishing: list[Note] = []
     if strap > 0:
         strap_sts = ctx.sts(strap, minimum=10)
-        strap_rows = ctx.rows(STRAP_WIDTH_CM, minimum=2) if craft == "crochet" else 6
+        # Agujas: punto bobo, un lomo (2 hileras) por cada punto de ancho.
+        strap_rows = ctx.rows(STRAP_WIDTH_CM, minimum=2) if craft == "crochet" else 2 * ctx.sts(STRAP_WIDTH_CM, minimum=3)
         strap_kind = StitchKind.CH if craft == "crochet" else StitchKind.CAST_ON
         strap_steps = [build_step(1, 0, (Op(strap_kind, times=strap_sts),), note_key="home.note.strap_start")]
         row_kind = ctx.kind
@@ -1059,14 +1058,12 @@ def _pouch(spec: GarmentSpec, params: PatternParams, item: CozyItem) -> Pattern:
         side_rows = ctx.rows(flat_h, minimum=4)
         total = 2 * side_rows + (ctx.rows(flap, minimum=2) if flap else 0)
         edge = KNIT_POUCH_EDGE_ROWS
-        steps = [build_step(1, 0, (Op(StitchKind.CAST_ON, times=stitches),), note_key="pattern.note.cast_on_panel")]
+        steps = [build_step(1, 0, (Op(StitchKind.CAST_ON, times=stitches),), note_key="home.note.garter_edge_rows")]
         stock = get_stitch("stockinette")
         for row in range(1, total + 1):
             in_edge = row <= edge or row > total - edge
             note = None
-            if row == 1:
-                note = "home.note.garter_edge_rows"
-            elif row == edge + 1:
+            if row == edge + 1:
                 note = "pattern.note.flat_panel"
             items = (Op(StitchKind.KNIT, times=stitches),) if in_edge else expand_row(stock, stitches, row - edge)
             steps.append(build_step(row + 1, stitches, items, note_key=note))
@@ -1080,7 +1077,7 @@ def _pouch(spec: GarmentSpec, params: PatternParams, item: CozyItem) -> Pattern:
                 row_count=total,
             )
         )
-        finishing.append(Note("finishing.home.pouch_fold", {"n": side_rows}))
+        finishing.append(Note("finishing.home.pouch_fold", {"n": side_rows, "cm": f"{side_rows / ctx.rpc:.1f}"}))
         width_sts = stitches
         height_cm = side_rows / ctx.rpc
     measurements = [

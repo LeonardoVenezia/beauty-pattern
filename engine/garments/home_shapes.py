@@ -277,5 +277,17 @@ def handle_round(
             close_items.extend(refill)
     opened = build_step(number, count, open_items, note_key="home.note.handles_open", note_params=(("n", str(width)),))
     middle = opened.stitch_count_end
-    closed = build_step(number + 1, middle, close_items, note_key="home.note.handles_close")
+    closed = build_step(number + 1, middle, _merge(close_items), note_key="home.note.handles_close")
     return opened, closed
+
+
+def _merge(items: Sequence[Item]) -> list[Item]:
+    """Junta tramos seguidos del mismo punto ("36 pb, 10 pb" -> "46 pb")."""
+    out: list[Item] = []
+    for item in items:
+        last = out[-1] if out else None
+        if isinstance(item, Op) and isinstance(last, Op) and last.kind is item.kind and item.width is None:
+            out[-1] = Op(item.kind, times=last.times + item.times)
+        else:
+            out.append(item)
+    return out
