@@ -36,6 +36,7 @@ export type GarmentSpec = {
   } | null;
   // Plantilla de juguete (solo amigurumi): bear | bunny | cat | generic.
   figura?: string | null;
+  cuerpo_juguete?: string | null;
   incertidumbres: string[];
   no_visible: string[];
   confianza: Record<string, number>;

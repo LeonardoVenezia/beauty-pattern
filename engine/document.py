@@ -280,7 +280,8 @@ def build_document(
 
     # 2. Descripcion.
     heading("doc.description")
-    desc_key = "desc." + base.meta.title_key.removeprefix("title.")
+    is_ball = any(section.id == "ball" for section in base.sections)
+    desc_key = "desc.toy_ball" if is_ball else "desc." + base.meta.title_key.removeprefix("title.")
     line(t(desc_key if has_key(desc_key, language) else "desc.generic", language))
 
     # 3. Ficha tecnica.
@@ -299,7 +300,8 @@ def build_document(
                 rows.append((t("doc.ease", language), t("doc.ease_value", language, cm=_half(ease))))
     toy_height = next((m for m in base.measurements if m.key == "toy_height"), None)
     if toy_height is not None:
-        size = t("doc.toy_size_value", language, n=_length(toy_height.value_cm, units), unit=unit)
+        size_key = "doc.toy_size_value_ball" if is_ball else "doc.toy_size_value"
+        size = t(size_key, language, n=_length(toy_height.value_cm, units), unit=unit)
         rows.append((t("doc.toy_size", language), size))
     techniques = _techniques(patterns, language)
     if techniques:

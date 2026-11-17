@@ -183,6 +183,14 @@ class YarnAppearance(BaseModel):
     aspecto: YarnLook | None = None
 
 
+class ToyBody(StrEnum):
+    """Forma del juguete: en piezas (cabeza y cuerpo aparte, sentado) o
+    bolita (cabeza y cuerpo son una sola pieza redonda, sin cuello)."""
+
+    PIECES = "pieces"
+    BALL = "ball"
+
+
 class Figure(StrEnum):
     """Plantilla de juguete (amigurumi). La IA solo elige la categoria; las
     proporciones de cada pieza salen de engine/garments/toy.py."""
@@ -255,6 +263,7 @@ class GarmentSpec(BaseModel):
     hilo_aparente: YarnAppearance | None = None
     motivo: MotifDesign | None = None
     figura: Figure | None = None  # solo amigurumi
+    cuerpo_juguete: ToyBody | None = None  # solo amigurumi
     incertidumbres: list[str] = Field(default_factory=list)
     no_visible: list[str] = Field(default_factory=list)
     confianza: dict[str, float] = Field(default_factory=dict)

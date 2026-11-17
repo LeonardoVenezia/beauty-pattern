@@ -670,3 +670,13 @@ Decisiones:
 - **PDF**: portada con todas las fotos elegidas (una grande o grilla de 2); el esquema y los gráficos van primero; sin sección de créditos/legales ni la nota "diseño propio"; sin salto de página forzado antes de las instrucciones.
 - **Interfaz web** en los cinco idiomas, inglés por defecto (o el del navegador).
 - **Cuándo hay dibujo con cada punto** (regla de coherencia): se dibuja punto por punto donde la posición de cada punto no es obvia por el texto: motivos y cuadrados de crochet, texturas y trenzas, jacquard y, nuevo, las vueltas de aumento del amigurumi al crochet (`render/toy.py::render_round_chart_svg`). El dibujo lista solo las piezas que se tejen exactamente igual, vuelta por vuelta (`engine/document.py::_round_chart_pieces`). No se dibuja punto por punto el jersey liso (todas las casillas serían iguales: los patrones comerciales dan esquema y medidas) ni el amigurumi a dos agujas (sus vueltas son "tejer todo" o aumentos repartidos que el texto ya ubica).
+
+## D036 — Amigurumi "bolita": cabeza y cuerpo en una sola pieza (2026-11-17)
+
+Contexto: un gatito bolita (prueba de la persona en `pruebas/`) salía con cabeza, cuello, cuerpo sentado, brazos, piernas y cola larga, y 41 cm de alto; el de la foto es una esfera de unos 18 cm.
+
+Decisiones:
+- Nuevo campo `GarmentSpec.cuerpo_juguete` (`pieces` | `ball`), que la IA elige por la forma (prompt `extractor-v5`, campo votado) y la persona puede corregir en la confirmación.
+- `ball`: una esfera (`BALL_D` = 0,9 del alto), 4 patitas cortas, orejas según el animal (punta, redondas o largas) y cola corta (gato) o pompón (oso, conejo). Armado propio: ojos, orejas, patitas y cola en vueltas calculadas de la esfera.
+- ASUNCIÓN: alto por defecto = la mitad del muñeco sentado del mismo hilo (`BALL_HEIGHT_FACTOR`); proporciones de orejas, patitas y cola medidas a ojo sobre juguetes bolita publicados. Con super bulky da 18 cm, como la foto.
+- Verificado con la IA real: el gatito sale `cat` + `ball` con confianza 1,0; el osito de las comparaciones sigue `bear` + `pieces`.

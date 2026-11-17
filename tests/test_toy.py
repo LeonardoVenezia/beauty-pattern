@@ -237,3 +237,27 @@ def test_round_chart_lists_only_pieces_worked_exactly_like_it() -> None:
     for step in growth_rounds(cat.sections[0].steps):
         assert sum(len(expand(item, StitchKind.SC)) for item in step.items) == step.stitch_count_end
     assert "<svg" in (render_round_chart_svg(cat, cat.sections[0].id, "es") or "")
+
+
+@pytest.mark.parametrize(
+    "figure,technique,weight",
+    list(product(Figure, [Technique.CROCHET, Technique.NEEDLES], [YarnWeight.FINGERING, YarnWeight.DK, YarnWeight.SUPER_BULKY])),
+)
+def test_ball_toy_is_one_round_piece_and_verifies(figure: Figure, technique: Technique, weight: YarnWeight) -> None:
+    """Un gatito "bolita" no tiene cabeza aparte: una sola pieza redonda,
+    con orejas, patitas y cola cosidas segun el animal, y mide lo esperado."""
+    from engine.spec import ToyBody
+
+    spec = GarmentSpec(categoria=Category.AMIGURUMI, tecnica=technique, figura=figure, cuerpo_juguete=ToyBody.BALL)
+    pattern = generate(spec, PatternParams(peso_hilo=weight))
+    assert simulate(pattern).ok
+    ids = {s.id for s in pattern.sections}
+    assert "ball" in ids and not ids & {"head", "body", "arm", "leg"}
+    assert ("ear" in ids) is (figure is not Figure.GENERIC)
+    height = next(m for m in pattern.measurements if m.key == "toy_height")
+    assert abs(height.value_cm - height.target_cm) <= height.tolerance_cm  # type: ignore[operator]
+    seated = generate(spec.model_copy(update={"cuerpo_juguete": None}), PatternParams(peso_hilo=weight))
+    seated_height = next(m for m in seated.measurements if m.key == "toy_height").value_cm
+    assert height.value_cm < 0.7 * seated_height  # una bolita es mas chica que un muneco sentado
+    text = render_document_text(build_document([pattern]))
+    assert "Cabeza" not in text and "sentado" not in text

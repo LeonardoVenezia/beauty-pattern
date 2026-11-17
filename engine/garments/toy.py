@@ -47,7 +47,7 @@ from engine.ir import (
 )
 from engine.materials import estimate_yarn
 from engine.rounding import round_half_up
-from engine.spec import Figure, GarmentSpec, PatternParams, Technique, YarnWeight
+from engine.spec import Figure, GarmentSpec, PatternParams, Technique, ToyBody, YarnWeight
 from engine.stitches.kinds import StitchKind
 
 # ---------------------------------------------------------------------------
@@ -209,6 +209,31 @@ def _cat() -> tuple[PieceTemplate, ...]:
     return (*_base_pieces(), ear, tail)
 
 
+# Bolita: cabeza y cuerpo son una sola esfera; orejas, patitas y cola se
+# cosen. ASUNCION: proporciones medidas a ojo sobre juguetes "bolita" publicados
+# (orejas ~1/5 del alto, patitas cortas, cola corta); ver DECISIONS D036.
+BALL_D = 0.9
+BALL_HEIGHT_FACTOR = 0.5  # una bolita mide la mitad que un muneco sentado del mismo hilo
+
+
+def _ball_template(figure: Figure) -> tuple[PieceTemplate, ...]:
+    pieces = [_ball("ball", BALL_D), _tube("foot", 0.15, 0.08, copies=4, stuffing="light", variant="foot")]
+    if figure is Figure.CAT:
+        pieces.append(PieceTemplate("ear", 2, 0.16, (Seg(pi * 0.22, 0.16),), False, "none", "ear_pointy"))
+        pieces.append(_tube("tail", 0.1, 0.16, copies=1, stuffing="light", variant="tail_stub"))
+    elif figure is Figure.BEAR:
+        pieces.append(_tube("ear", 0.2, 0.12, stuffing="none", variant="ear_round"))
+        pieces.append(_ball("tail", 0.1))
+    elif figure is Figure.BUNNY:
+        pieces.append(
+            _tube("ear", 0.15, 0.45, stuffing="none", taper=0.7, taper_length=0.08, variant="ear_long")
+        )
+        pieces.append(_ball("tail", 0.14))
+    return tuple(pieces)
+
+
+BALL_TEMPLATES: dict[Figure, tuple[PieceTemplate, ...]] = {figure: _ball_template(figure) for figure in Figure}
+
 TEMPLATES: dict[Figure, tuple[PieceTemplate, ...]] = {
     Figure.BEAR: _bear(),
     Figure.BUNNY: _bunny(),
@@ -317,6 +342,7 @@ _START_NOTE = {
     "arm": "pattern.note.toy_start_arm",
     "leg": "pattern.note.toy_start_leg",
     "tail": "pattern.note.toy_start_tail",
+    "ball": "pattern.note.toy_start_ball",
 }
 
 
@@ -373,7 +399,7 @@ def _build_section(
     note_keys: list[str] = []
     if piece.id in _START_NOTE:
         note_keys.append(_START_NOTE[piece.id])
-    if piece.id == "head":
+    if piece.id in {"head", "ball"}:
         note_keys.append("pattern.note.toy_eyes_first")
     if craft == "knit":
         note_keys.append("pattern.note.toy_ws_purl")
@@ -394,7 +420,7 @@ def _build_section(
         meta["ws_purl"] = 1
     section = Section(
         id=piece.id,
-        name_key=f"section.toy_{piece.id}" + ("s" if piece.copies == 2 else ""),
+        name_key=f"section.toy_{piece.id}" + ("s" if piece.copies > 1 else ""),
         mode="round" if craft == "crochet" else "flat",
         steps=tuple(steps),
         start_stitches=start,
@@ -483,10 +509,31 @@ def _toy_params(params: PatternParams, craft: Craft) -> PatternParams:
     return params.model_copy(update={"densidad": gauge})
 
 
-def toy_height(params: PatternParams) -> float:
-    return params.dimensiones_cm.get(
-        "height", params.medidas_cm.get("height", DEFAULT_HEIGHT_CM[params.peso_hilo])
-    )
+def toy_height(params: PatternParams, ball: bool = False) -> float:
+    default = DEFAULT_HEIGHT_CM[params.peso_hilo] * (BALL_HEIGHT_FACTOR if ball else 1.0)
+    return params.dimensiones_cm.get("height", params.medidas_cm.get("height", default))
+
+
+def _assembly_ball(figure: Figure, built: dict[str, _Built], craft: Craft, ball_cm: float) -> tuple[Note, ...]:
+    """Armado de la bolita: todo se cose sobre la unica pieza grande, que
+    empieza arriba y termina en la base."""
+    ball = built["ball"]
+    eye_row = _row_of(ball, 0.42)
+    eye_gap = max(2, round_half_up(ball.section.meta["max_stitches"] * 0.14))
+    eye_mm = min(SAFETY_EYES_MM, key=lambda mm: abs(mm - ball_cm * 0.6))
+    notes = [Note(f"finishing.toy.ball_eyes.{craft}", {"a": eye_row, "b": eye_row + 1, "n": eye_gap, "mm": eye_mm})]
+    notes.append(Note("finishing.toy.nose_cat" if figure is Figure.CAT else "finishing.toy.nose", {}))
+    if "ear" in built:
+        variant = "ball_ear_long" if figure is Figure.BUNNY else "ball_ear"
+        row = _row_of(ball, 0.12 if figure is Figure.BUNNY else 0.18)
+        gap = max(2, round_half_up(_count_at(ball, row) * (0.15 if figure is Figure.BUNNY else 0.3)))
+        notes.append(Note(f"finishing.toy.{variant}.{craft}", {"a": row, "b": row + 1, "n": gap}))
+    feet_row = _row_of(ball, 0.82)
+    feet_gap = max(2, round_half_up(_count_at(ball, feet_row) * 0.12))
+    notes.append(Note(f"finishing.toy.ball_feet.{craft}", {"a": feet_row, "n": feet_gap}))
+    if "tail" in built:
+        notes.append(Note(f"finishing.toy.ball_tail.{craft}", {"a": _row_of(ball, 0.7)}))
+    return tuple(notes)
 
 
 def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
@@ -498,15 +545,16 @@ def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
     else:
         raise ImpossibleProportionsError("error.unsupported_technique", technique=spec.tecnica.value)
     figure = spec.figura or Figure.GENERIC
+    is_ball = spec.cuerpo_juguete is ToyBody.BALL
     params = _toy_params(params, craft)
     gauge = params.densidad
     assert gauge is not None
-    height = toy_height(params)
-    pieces = TEMPLATES[figure]
+    height = toy_height(params, is_ball)
+    pieces = BALL_TEMPLATES[figure] if is_ball else TEMPLATES[figure]
     built = {piece.id: _build_section(piece, height, gauge, craft) for piece in pieces}
-    head, body = built["head"], built["body"]
+    main = built["ball"] if is_ball else built["head"]
     sectors = SECTORS[craft]
-    if head.section.meta["max_stitches"] < 4 * sectors:
+    if main.section.meta["max_stitches"] < 4 * sectors:
         raise ImpossibleProportionsError(
             "error.too_small_for_yarn", weight=params.peso_hilo.value, target=round(height, 1)
         )
@@ -518,6 +566,34 @@ def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
             raise ImpossibleProportionsError(
                 "error.too_small_for_yarn", weight=params.peso_hilo.value, target=round(height, 1)
             )
+    if is_ball:
+        ball_d = 2 * gauge.cm_for_rows(main.rows) / pi
+        measurements: tuple[Measurement, ...] = (
+            Measurement(
+                key="toy_height",
+                value_cm=ball_d,
+                target_cm=BALL_D * height,
+                tolerance_cm=max(1.5, 0.12 * height),
+                kind="length",
+            ),
+            Measurement(
+                key="toy_body",
+                value_cm=gauge.cm_for_stitches(main.section.meta["max_stitches"]),
+                target_cm=pi * BALL_D * height,
+                tolerance_cm=max(1.5, 0.15 * pi * BALL_D * height),
+                kind="circumference",
+            ),
+        )
+        finishing = _assembly_ball(figure, built, craft, ball_d)
+    else:
+        measurements, finishing = _measure_pieces(built, gauge, craft, height, figure)
+    return _toy_pattern(spec, params, craft, figure, built, measurements, finishing, is_ball)
+
+
+def _measure_pieces(
+    built: dict[str, _Built], gauge: Gauge, craft: Craft, height: float, figure: Figure
+) -> tuple[tuple[Measurement, ...], tuple[Note, ...]]:
+    head, body = built["head"], built["body"]
     head_d = 2 * gauge.cm_for_rows(head.rows) / pi
     base_cm = gauge.cm_for_rows(body.plan.base_units * (1 if craft == "crochet" else 2))
     body_side = gauge.cm_for_rows(body.rows) - base_cm
@@ -547,6 +623,19 @@ def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
             kind="circumference",
         ),
     )
+    return measurements, _assembly(figure, built, craft, head_d)
+
+
+def _toy_pattern(
+    spec: GarmentSpec,
+    params: PatternParams,
+    craft: Craft,
+    figure: Figure,
+    built: dict[str, _Built],
+    measurements: tuple[Measurement, ...],
+    finishing: tuple[Note, ...],
+    is_ball: bool,
+) -> Pattern:
     area = sum(item.area_cm2 for item in built.values())
     meters, grams = estimate_yarn(area, params.peso_hilo)
     if craft == "crochet":
@@ -579,7 +668,7 @@ def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
         Warning("toy_tight", f"warning.toy_tight.{craft}", severity="info"),
         Warning("toy_safety", "warning.toy_safety", severity="warning"),
         Warning("estimated_yardage", "warning.estimated_yardage", severity="info"),
-        Warning("assumption", "warning.toy_proportions", severity="info"),
+        Warning("assumption", "warning.toy_proportions_ball" if is_ball else "warning.toy_proportions", severity="info"),
     ]
     if spec.figura is None:
         warnings.append(Warning("toy_generic", "warning.toy_generic", severity="info"))
@@ -602,5 +691,5 @@ def generate_amigurumi(spec: GarmentSpec, params: PatternParams) -> Pattern:
         measurements=measurements,
         materials=materials,
         warnings=tuple(warnings),
-        finishing=_assembly(figure, built, craft, head_d),
+        finishing=finishing,
     )

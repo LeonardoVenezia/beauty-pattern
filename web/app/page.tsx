@@ -111,6 +111,11 @@ const toyFigures: Options = [
   ["cat", "fig.cat"],
 ];
 
+const toyBodies: Options = [
+  ["pieces", "toybody.pieces"],
+  ["ball", "toybody.ball"],
+];
+
 const baseStitches: Options = [
   ["stockinette", "st.stockinette"],
   ["garter", "st.garter"],
@@ -886,6 +891,15 @@ function PatternApp() {
                   value={spec.figura ?? "generic"}
                   options={tr(toyFigures)}
                   onChange={(value) => updateNullable("figura", value)}
+                />
+              ) : null}
+              {spec.categoria === "amigurumi" ? (
+                <Field
+                  label={t("field.toy_body")}
+                  confidence={confidenceFor("cuerpo_juguete")}
+                  value={spec.cuerpo_juguete ?? "pieces"}
+                  options={tr(toyBodies)}
+                  onChange={(value) => updateNullable("cuerpo_juguete", value)}
                 />
               ) : null}
             </div>

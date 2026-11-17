@@ -94,6 +94,9 @@ const en = {
   "field.fit": "Fit",
   "field.base_stitch": "Main stitch",
   "field.figure": "Figure",
+  "field.toy_body": "Body shape",
+  "toybody.pieces": "Separate head and body (sitting)",
+  "toybody.ball": "Ball (head and body in one piece)",
   "field.undefined": "Not set",
 
   "params.title_garment": "Your yarn and size",
@@ -464,6 +467,9 @@ const es: Dict = {
   "field.fit": "Ajuste",
   "field.base_stitch": "Punto base",
   "field.figure": "Figura",
+  "field.toy_body": "Forma del cuerpo",
+  "toybody.pieces": "Cabeza y cuerpo aparte (sentado)",
+  "toybody.ball": "Bolita (cabeza y cuerpo en una pieza)",
   "field.undefined": "Sin definir",
 
   "params.title_garment": "Tu hilo y tu talle",
@@ -834,6 +840,9 @@ const fr: Dict = {
   "field.fit": "Coupe",
   "field.base_stitch": "Point principal",
   "field.figure": "Personnage",
+  "field.toy_body": "Forme du corps",
+  "toybody.pieces": "Tête et corps séparés (assis)",
+  "toybody.ball": "Boule (tête et corps d'une seule pièce)",
   "field.undefined": "Non défini",
 
   "params.title_garment": "Votre fil et votre taille",
@@ -1210,6 +1219,9 @@ const de: Dict = {
   "field.fit": "Passform",
   "field.base_stitch": "Grundmuster",
   "field.figure": "Figur",
+  "field.toy_body": "Körperform",
+  "toybody.pieces": "Kopf und Körper getrennt (sitzend)",
+  "toybody.ball": "Kugel (Kopf und Körper in einem Teil)",
   "field.undefined": "Nicht festgelegt",
 
   "params.title_garment": "Dein Garn und deine Größe",
@@ -1585,6 +1597,9 @@ const it: Dict = {
   "field.fit": "Vestibilità",
   "field.base_stitch": "Punto principale",
   "field.figure": "Figura",
+  "field.toy_body": "Forma del corpo",
+  "toybody.pieces": "Testa e corpo separati (seduto)",
+  "toybody.ball": "Pallina (testa e corpo in un pezzo)",
   "field.undefined": "Non definito",
 
   "params.title_garment": "Il tuo filato e la tua taglia",
