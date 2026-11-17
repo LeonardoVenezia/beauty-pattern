@@ -158,6 +158,24 @@ def _check_section(
                     step=step.number,
                 )
             )
+        # Tunecino: cada hilera son dos pasadas. La de ida levanta los lazos y
+        # la de vuelta los cierra; sin la vuelta, la hilera no esta terminada.
+        ops = step.expanded_ops()
+        if any(op.kind is StitchKind.TSS for op in ops) and (
+            ops[-1].kind is not StitchKind.TUNISIAN_RETURN
+            or sum(op.kind is StitchKind.TUNISIAN_RETURN for op in ops) != 1
+        ):
+            issues.append(
+                Issue(
+                    code="tunisian_return",
+                    message=(
+                        f"seccion {section.id}, vuelta {step.number}: la pasada de ida "
+                        "del tunecino no termina con una sola pasada de vuelta"
+                    ),
+                    section=section.id,
+                    step=step.number,
+                )
+            )
         total_increases += _step_increases(step)
         total_decreases += _step_decreases(step)
         available = computed_end

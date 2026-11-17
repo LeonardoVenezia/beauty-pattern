@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from engine import ENGINE_VERSION
 from engine.distribution import decrease_evenly
 from engine.garments.base import ImpossibleProportionsError
+from engine.gauge import Gauge
 from engine.ir import (
     CountRef,
     Item,
@@ -44,6 +45,7 @@ from engine.stitches.catalog import (
     catalog_id_for_name,
     expand_row,
     get_stitch,
+    stitch_row_note,
 )
 from engine.stitches.kinds import StitchKind
 
@@ -71,14 +73,26 @@ def _dimension(params: PatternParams, key: str, default: float) -> float:
     return default
 
 
-_CROCHET_IDS = {"crochet_sc", "crochet_hdc", "crochet_dc"}
-
-
 def _base_id(spec: GarmentSpec) -> str:
     pattern_id = catalog_id_for_name(
         spec.punto_base or StitchPatternName.STOCKINETTE
     )
-    return "stockinette" if pattern_id in _CROCHET_IDS else pattern_id
+    return "stockinette" if get_stitch(pattern_id).technique == "crochet" else pattern_id
+
+
+def with_stitch_gauge(params: PatternParams, pattern_id: str) -> PatternParams:
+    """Sin muestra medida: la densidad de referencia del hilo corregida por
+    el punto (el punto lino o un elastico no miden lo mismo que el jersey).
+    Los factores son ASUNCIONES documentadas en el catalogo."""
+    sts, rows = get_stitch(pattern_id).gauge_factor
+    if params.densidad is not None or (sts, rows) == (1.0, 1.0):
+        return params
+    base = resolve_gauge(params)
+    gauge = Gauge(
+        stitches_per_10cm=round(base.stitches_per_10cm * sts, 1),
+        rows_per_10cm=round(base.rows_per_10cm * rows, 1),
+    )
+    return params.model_copy(update={"densidad": gauge})
 
 
 def _meta(
@@ -243,12 +257,13 @@ def _rectangular(
     default_length: float,
     warning: Warning | None = None,
 ) -> Pattern:
-    gauge = resolve_gauge(params)
     width = _dimension(params, "width", default_width)
     length = _dimension(params, "length", default_length)
     pattern_id = _base_id(spec)
     if pattern_id == "other":
         pattern_id = "stockinette"
+    params = with_stitch_gauge(params, pattern_id)
+    gauge = resolve_gauge(params)
     multiple = get_stitch(pattern_id).multiple
     stitches = adjust_stitches(
         max(1, round_half_up(width * gauge.stitches_per_cm)), multiple, mode="nearest"
@@ -261,13 +276,17 @@ def _rectangular(
         rows,
         pattern_id,
         length,
-        note_key="pattern.note.flat_panel",
+        note_key=stitch_row_note(pattern_id, "pattern.note.flat_panel"),
     )
     warnings = _common_warnings(params)
     if warning is not None:
         warnings.append(warning)
-    if pattern_id == "stockinette" and family in {"scarf", "shawl", "blanket"}:
+    if pattern_id in {"stockinette", "reverse_stockinette"} and family in {"scarf", "shawl", "blanket"}:
         warnings.append(Warning("scarf_curl", "warning.scarf_curl"))
+    from engine.garments.crochet import _repeat_warning, _width_tolerance
+
+    width_tol = _width_tolerance(gauge, multiple, 1.5)
+    warnings += _repeat_warning(gauge.cm_for_stitches(stitches), width, 1.5, params.idioma, pattern_id)
     return Pattern(
         meta=_meta(spec, params, family, title_key),
         spec=spec,
@@ -278,7 +297,7 @@ def _rectangular(
                 key="width",
                 value_cm=gauge.cm_for_stitches(stitches),
                 target_cm=width,
-                tolerance_cm=1.5,
+                tolerance_cm=width_tol,
                 kind="width",
             ),
             Measurement(
@@ -456,11 +475,12 @@ def _sector_crown(stitches: int, sectors: int, max_rows: int) -> list[tuple[tupl
 
 
 def generate_hat(spec: GarmentSpec, params: PatternParams) -> Pattern:
-    gauge = resolve_gauge(params)
     head = _dimension(params, "head", HEAD_BY_SIZE.get(params.talla.upper(), 56.0))
     circumference = head * 0.9
     height = _dimension(params, "length", 22.0)
     base = _base_id(spec)
+    params = with_stitch_gauge(params, base)
+    gauge = resolve_gauge(params)
     ribbed = base == "rib_2x2" or (base.startswith("rib") and spec.punto_base is not None)
     if ribbed:
         base = "rib_2x2"
@@ -578,18 +598,20 @@ def generate_hat(spec: GarmentSpec, params: PatternParams) -> Pattern:
 
 
 def generate_mittens(spec: GarmentSpec, params: PatternParams) -> Pattern:
+    pattern_id = _base_id(spec)
+    if pattern_id == "other":
+        pattern_id = "stockinette"
+    params = with_stitch_gauge(params, pattern_id)
     gauge = resolve_gauge(params)
+    multiple = get_stitch(pattern_id).multiple
     palm = _dimension(params, "palm", 20.0)
     hand_length = _dimension(params, "length", 18.0)
     thumb_length = _dimension(params, "thumb", 6.0)
     thumb_width = _dimension(params, "thumb_width", 6.0)
-    hand_sts = max(4, round_half_up((palm / 2.0) * gauge.stitches_per_cm))
-    thumb_sts = max(4, round_half_up(thumb_width * gauge.stitches_per_cm))
+    hand_sts = adjust_stitches(max(4, round_half_up((palm / 2.0) * gauge.stitches_per_cm)), multiple)
+    thumb_sts = adjust_stitches(max(4, round_half_up(thumb_width * gauge.stitches_per_cm)), multiple)
     hand_rows = max(1, gauge.rows_for_cm(hand_length))
     thumb_rows = max(1, gauge.rows_for_cm(thumb_length))
-    pattern_id = _base_id(spec)
-    if pattern_id == "other":
-        pattern_id = "stockinette"
     sections = (
         _flat_rect_section(
             "hand",
@@ -629,7 +651,7 @@ def generate_mittens(spec: GarmentSpec, params: PatternParams) -> Pattern:
                 key="palm",
                 value_cm=gauge.cm_for_stitches(2 * hand_sts),
                 target_cm=palm,
-                tolerance_cm=2.0,
+                tolerance_cm=max(2.0, gauge.cm_for_stitches(multiple + 1) + 0.05),  # repeticiones enteras en cada mitad
                 kind="circumference",
             ),
             Measurement(

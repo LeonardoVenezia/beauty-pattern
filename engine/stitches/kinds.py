@@ -58,6 +58,20 @@ class StitchKind(StrEnum):
     GRANNY_START = "granny_start"
     GRANNY_CORNER = "granny_corner"
     GRANNY_SIDE = "granny_side"
+    # Ampliacion de puntos (area stitches).
+    SL1_WYIF = "sl1_wyif"  # pasar 1 pt con la hebra adelante (punto lino)
+    SL1_WYIB = "sl1_wyib"  # pasar 1 pt con la hebra atras (punto lino, LR)
+    SC_BLO = "sc_blo"  # pb por la hebra de atras (elastico de crochet)
+    V_STITCH = "v_stitch"  # (1 pa, 1 cad, 1 pa) en el mismo pt o esp
+    SHELL = "shell"  # abanico: 5 pa en el mismo pt
+    GRANNY_GROUP = "granny_group"  # 3 pa en el sig esp (granny en hileras)
+    TSS = "tss"  # punto tunecino simple (pasada de ida: levantar 1 lazo)
+    TUNISIAN_RETURN = "tunisian_return"  # pasada de vuelta (cerrar los lazos)
+    # Esquina a esquina (C2C): cada unidad es un bloque (3 cad + 3 pa).
+    C2C_NEW = "c2c_new"  # bloque nuevo al comienzo de la diagonal
+    C2C_BLOCK = "c2c_block"  # bloque en el esp de 3 cad del bloque anterior
+    C2C_SLIDE = "c2c_slide"  # pe por el bloque, sin bloque nuevo (borde que ya no crece)
+    C2C_TURN = "c2c_turn"  # el ultimo bloque de la diagonal anterior no lleva bloque
 
 
 @dataclass(frozen=True)
@@ -117,6 +131,25 @@ _EFFECTS: dict[StitchKind, Effect] = {
     StitchKind.CORNER_SC: Effect(2, 4),
     StitchKind.CORNER_DC: Effect(2, 6),
     StitchKind.SQUARE_TURN: Effect(1, 6),
+    StitchKind.SL1_WYIF: Effect(1, 1),
+    StitchKind.SL1_WYIB: Effect(1, 1),
+    StitchKind.SC_BLO: Effect(1, 1),
+    # Grupos de crochet que se tejen en un solo pt o espacio: consumen ese pt
+    # y producen los pts del grupo (como los del granny).
+    StitchKind.V_STITCH: Effect(1, 3),
+    StitchKind.SHELL: Effect(1, 5),
+    # Granny en hileras: el grupo de 3 pa va en el espacio entre dos grupos y
+    # "consume" el grupo anterior (3 pts); sobre la cadena base, 3 cad.
+    StitchKind.GRANNY_GROUP: Effect(3, 3),
+    # Tunecino: la pasada de ida levanta un lazo por punto (consume y produce
+    # 1); la de vuelta cierra los lazos sin cambiar el conteo.
+    StitchKind.TSS: Effect(1, 1),
+    StitchKind.TUNISIAN_RETURN: Effect(0, 0),
+    # C2C: el conteo de una diagonal es la cantidad de bloques.
+    StitchKind.C2C_NEW: Effect(0, 1),
+    StitchKind.C2C_BLOCK: Effect(1, 1),
+    StitchKind.C2C_SLIDE: Effect(0, 0),
+    StitchKind.C2C_TURN: Effect(1, 0),
 }
 
 _CABLES = {StitchKind.CABLE_FRONT, StitchKind.CABLE_BACK}

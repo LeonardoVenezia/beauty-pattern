@@ -84,6 +84,19 @@ _CROCHET_SHAPE: dict[str, tuple[float, float]] = {
     "crochet_sc": (1.0, 1.1),
     "crochet_hdc": (0.95, 0.75),
     "crochet_dc": (0.9, 0.55),
+    # Ampliacion de puntos (ASUNCION, muestras publicadas; ver docs/fuentes.md):
+    "crochet_tr": (0.9, 0.42),  # pad ~2,6 veces el alto del pb
+    "crochet_ribbing": (1.0, 1.25),  # pb por la hebra de atras: hileras mas juntas
+    "granny_stitch": (0.9, 0.55),  # grupos de pa: como el pa
+    "crochet_linen": (1.05, 1.2),  # pb + cad: un poco mas ancho y bajo que el pb
+    "v_stitch": (0.9, 0.55),
+    "shell": (0.9, 0.55),
+    "filet": (0.9, 0.55),  # red: pa + cad
+    "tunisian": (1.1, 1.0),  # tunecino simple: pts casi cuadrados
+    # C2C: unidades = bloques (3 pa de ancho, 1 hilera de pa de alto). ASUNCION:
+    # un bloque mide de lado lo que 3,3 pb (2,5 cm en hilo medio, como los
+    # patrones publicados), igual en ancho y en alto.
+    "c2c": (0.3, 0.3),
 }
 
 
