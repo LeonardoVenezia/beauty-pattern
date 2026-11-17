@@ -788,6 +788,10 @@ def _top_down(spec: GarmentSpec, params: PatternParams, style: HatStyle) -> Patt
     warnings = common_warnings(craft, params)
     if mesh:
         warnings.append(Warning("mesh_hat", "acc.warning.mesh", severity="info"))
+    elif craft.crochet and spec.punto_base is not None:
+        from engine.garments.crochet import _round_fallback  # puntos con grupos -> el mas parecido
+
+        warnings.extend(_round_fallback(spec, params))
     return Pattern(
         meta=meta(spec, params, _family(craft, style), _title(craft, style)),
         spec=spec,

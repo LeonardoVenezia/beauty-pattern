@@ -236,10 +236,15 @@ def _step_body(step: Step, lang: str, *, markers: bool = False) -> str:
     return ", ".join(_item_text(item, lang) for item in step.items)
 
 
+_C2C = {StitchKind.C2C_NEW, StitchKind.C2C_BLOCK, StitchKind.C2C_SLIDE, StitchKind.C2C_TURN}
+
+
 def _count_text(step: Step, lang: str) -> str:
     clusters = _granny_clusters(step)
     if clusters:
         return t("pattern.cluster_count", lang, n=clusters)
+    if any(op.kind in _C2C for op in step.expanded_ops()):
+        return t("pattern.block_count", lang, n=step.stitch_count_end)
     return t("pattern.stitch_count_short", lang, n=step.stitch_count_end)
 
 
@@ -651,6 +656,12 @@ _IMPLIED_KINDS: dict[StitchKind, tuple[StitchKind, ...]] = {
     StitchKind.GRANNY_START: (StitchKind.DC, StitchKind.CH, StitchKind.MAGIC_RING),
     StitchKind.GRANNY_CORNER: (StitchKind.DC, StitchKind.CH, StitchKind.SLST),
     StitchKind.GRANNY_SIDE: (StitchKind.DC, StitchKind.CH),
+    StitchKind.V_STITCH: (StitchKind.DC, StitchKind.CH),
+    StitchKind.SHELL: (StitchKind.DC,),
+    StitchKind.GRANNY_GROUP: (StitchKind.DC, StitchKind.CH),
+    StitchKind.C2C_NEW: (StitchKind.CH, StitchKind.DC),
+    StitchKind.C2C_BLOCK: (StitchKind.SLST, StitchKind.CH, StitchKind.DC),
+    StitchKind.C2C_SLIDE: (StitchKind.SLST,),
 }
 
 
@@ -714,6 +725,14 @@ def _section_intro(section: Section, lang: str) -> str:
         return t("pattern.cast_on", lang, n=section.start_stitches)
     if section.id == "granny_square":
         return t("pattern.granny_ring", lang)
+    if "c2c_width" in section.meta:
+        return t(
+            "pattern.c2c_size",
+            lang,
+            w=section.meta["c2c_width"],
+            h=section.meta["c2c_height"],
+            rows=len(section.steps),
+        )
     if section.division:
         parts = ", ".join(t(f"pattern.div.{part}", lang, n=n) for part, n in section.division)
         return t(

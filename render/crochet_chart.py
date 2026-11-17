@@ -24,9 +24,9 @@ _HEIGHT = {
     K.SC: 1.0, K.HDC: 1.4, K.DC: 1.9, K.TR: 2.5, K.CLUSTER: 1.9, K.POPCORN: 1.9,
     K.PUFF: 1.9, K.CH: 0.8, K.SLST: 0.6,
 }
-_CORNER_CH = 2  # las esquinas llevan 2 cad
-# Direccion hacia afuera de cada lado del cuadrado (arriba, izq, abajo, der).
-_SIDE_NORMAL = (-math.pi / 2, math.pi, math.pi / 2, 0.0)
+_CORNER_KINDS = {
+    K.CORNER_SC, K.CORNER_DC, K.SQUARE_TURN, K.GRANNY_CORNER, K.GRANNY_START, K.HEX_CORNER, K.HEX_CORNER_SC,
+}
 
 
 def expand(item: Item, base: StitchKind, spaced: bool = False) -> list[StitchKind]:
@@ -57,6 +57,10 @@ def expand(item: Item, base: StitchKind, spaced: bool = False) -> list[StitchKin
         one = [K.DC] * 3 + [K.CH] * 2 + [K.DC] * 3 + [K.CH]
     elif op.kind is K.GRANNY_SIDE:
         one = [K.DC] * 3 + [K.CH]
+    elif op.kind is K.HEX_CORNER:  # (1 pt, 1 cad, 1 pt)
+        one = [base, K.CH, base]
+    elif op.kind is K.HEX_CORNER_SC:
+        one = [K.SC, K.SC]
     else:
         one = [op.kind]
     return one * op.times
@@ -69,9 +73,11 @@ def corner_offset(step: Step, base: StitchKind) -> float:
     position = 0.0
     for op in ops:
         glyphs = expand(op, base)
-        if op.kind in {K.CORNER_SC, K.CORNER_DC, K.SQUARE_TURN, K.GRANNY_CORNER, K.GRANNY_START}:
+        if op.kind in _CORNER_KINDS:
+            if K.CH not in glyphs:  # esquina de pb: entre los 2 pb
+                return position + len(glyphs) / 2
             first_ch = glyphs.index(K.CH)
-            return position + first_ch + _CORNER_CH / 2
+            return position + first_ch + glyphs.count(K.CH) / 2
         position += len(glyphs)
     return 0.0
 
@@ -139,18 +145,43 @@ def _anchors(step: Step, base: StitchKind) -> list[float]:
     return out
 
 
-def _square_point(u: float, half: float) -> tuple[float, float]:
-    """Punto del perimetro de un cuadrado; `u` en lados desde la esquina
-    superior derecha, en sentido antihorario (en pantalla)."""
-    corners = [(half, -half), (-half, -half), (-half, half), (half, half)]
-    k = math.floor(u) % 4
+def corner_angle(sides: int) -> float:
+    """Angulo (en pantalla) de la primera esquina: arriba a la derecha."""
+    return -math.pi / 2 + math.pi / sides
+
+
+def polygon_corners(half: float, sides: int = 4) -> list[tuple[float, float]]:
+    """Esquinas de un poligono regular de apotema `half`, en sentido
+    antihorario en pantalla desde arriba a la derecha (cuadrado o hexagono)."""
+    radius = half / math.cos(math.pi / sides)
+    first = corner_angle(sides)
+    return [
+        (radius * math.cos(first - 2 * math.pi * j / sides), radius * math.sin(first - 2 * math.pi * j / sides))
+        for j in range(sides)
+    ]
+
+
+def _square_point(u: float, half: float, sides: int = 4) -> tuple[float, float]:
+    """Punto del perimetro de un cuadrado (o hexagono); `u` en lados desde la
+    esquina superior derecha, en sentido antihorario (en pantalla)."""
+    corners = polygon_corners(half, sides)
+    k = math.floor(u) % sides
     f = u - math.floor(u)
-    (x0, y0), (x1, y1) = corners[k], corners[(k + 1) % 4]
+    (x0, y0), (x1, y1) = corners[k], corners[(k + 1) % sides]
     return x0 + (x1 - x0) * f, y0 + (y1 - y0) * f
 
 
+def _side_normal(u: float, sides: int) -> float:
+    """Direccion hacia afuera del lado donde cae `u`."""
+    return corner_angle(sides) - math.pi / sides - 2 * math.pi * (math.floor(u) % sides) / sides
+
+
 def start_angle(
-    steps: Sequence[Step], bases: Sequence[StitchKind], squares: Sequence[bool], spaced_ring: bool = False
+    steps: Sequence[Step],
+    bases: Sequence[StitchKind],
+    squares: Sequence[bool],
+    spaced_ring: bool = False,
+    sides: int = 4,
 ) -> float:
     """Angulo (en pantalla) donde empieza cada vuelta. Las vueltas redondas se
     giran para que la esquina de la vuelta que cuadra quede justo sobre el
@@ -161,7 +192,7 @@ def start_angle(
             offset = corner_offset(steps[index], bases[index])
             worked = anchors[min(int(offset), len(anchors) - 1)]
             prev = len([k for item in steps[index - 1].items for k in expand(item, bases[index - 1], spaced_ring and index == 1)])
-            return -math.pi / 4 + 2 * math.pi * worked / prev
+            return corner_angle(sides) + 2 * math.pi * worked / prev
     return -math.pi / 2
 
 
@@ -177,6 +208,7 @@ def draw_rounds(
     ring_center: bool = True,
     spaced_ring: bool = False,
     span: float = 2 * math.pi,
+    sides: int = 4,
 ) -> tuple[list[str], set[StitchKind]]:
     """Dibuja las vueltas; devuelve (svg, simbolos usados).
 
@@ -184,7 +216,8 @@ def draw_rounds(
     antihorario): para motivos grandes alcanza con un sector de la simetria.
     """
     fraction = span / (2 * math.pi)
-    start = start_angle(steps, bases, squares, spaced_ring)
+    start = start_angle(steps, bases, squares, spaced_ring, sides)
+    perimeter = 2 * sides * math.tan(math.pi / sides)  # por unidad de apotema
 
     def turn(position: float, count: int) -> float:
         return start - 2 * math.pi * position / count
@@ -205,9 +238,15 @@ def draw_rounds(
     bands: list[str] = []
     for index in range(len(rows) - 1, -1, -1):
         r = inner[index + 1]
-        if squares[index]:
+        if squares[index] and sides == 4:
             bands.append(
                 f'<rect x="{_f(cx - r)}" y="{_f(cy - r)}" width="{_f(2 * r)}" height="{_f(2 * r)}" '
+                f'fill="{fills[index]}" fill-opacity="0.38" stroke="{STROKE}" stroke-opacity="0.25" stroke-width="0.6"/>'
+            )
+        elif squares[index]:
+            points =" ".join(f"{_f(cx + x)},{_f(cy + y)}" for x, y in polygon_corners(r, sides))
+            bands.append(
+                f'<polygon points="{points}" '
                 f'fill="{fills[index]}" fill-opacity="0.38" stroke="{STROKE}" stroke-opacity="0.25" stroke-width="0.6"/>'
             )
         else:
@@ -234,23 +273,23 @@ def draw_rounds(
         anchors = _anchors(steps[index], bases[index]) if linked else []
         prev = len(rows[index - 1]) if linked else count
         if squares[index] and not linked:  # cuadrado sobre cuadrado (granny)
-            slot = 8 * base_r / count
+            slot = perimeter * base_r / count
             for i, kind in enumerate(row):
-                u = (i + 0.5 - offset) / (count / 4)
-                px, py = _square_point(u, base_r)
+                u = (i + 0.5 - offset) / (count / sides)
+                px, py = _square_point(u, base_r, sides)
                 if (start - math.atan2(py, px)) % (2 * math.pi) > span:
                     continue
                 # De pie sobre el lado (perpendicular al borde), no hacia el centro.
-                angle = _SIDE_NORMAL[math.floor(u) % 4]
+                angle = _side_normal(u, sides)
                 parts.append(glyph(kind, cx + px, cy + py, angle, _HEIGHT.get(kind, 1.0) * unit, min(slot, 1.6 * unit)))
                 used.add(kind)
         else:
             half = inner[index + 1] - 0.15 * unit
-            slot = 8 * half / count if squares[index] else 2 * math.pi * base_r / count
+            slot = perimeter * half / count if squares[index] else 2 * math.pi * base_r / count
             for i, kind in enumerate(row):
                 h = _HEIGHT.get(kind, 1.0) * unit
                 if squares[index]:
-                    tx, ty = _square_point((i + 0.5 - offset) / (count / 4), half)
+                    tx, ty = _square_point((i + 0.5 - offset) / (count / sides), half, sides)
                 else:
                     a = turn(i + 0.5, count)
                     tx, ty = (base_r + h) * math.cos(a), (base_r + h) * math.sin(a)

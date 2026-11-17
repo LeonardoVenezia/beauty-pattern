@@ -58,7 +58,7 @@ BODY_LENGTH_APPROX: dict[BodyLength, BodyLength] = {BodyLength.WAIST: BodyLength
 SLEEVE_LENGTH_APPROX: dict[SleeveLength, SleeveLength] = {
     SleeveLength.ELBOW: SleeveLength.THREE_QUARTER
 }
-MOTIF_SHAPES_DONE: frozenset[MotifShape] = frozenset({MotifShape.CIRCLE, MotifShape.SQUARE})
+MOTIF_SHAPES_DONE: frozenset[MotifShape] = frozenset({MotifShape.CIRCLE, MotifShape.SQUARE, MotifShape.HEXAGON})
 
 
 def _approximate(spec: GarmentSpec, update: dict[str, object], notes: list[str]) -> None:

@@ -27,6 +27,12 @@ class StitchPattern:
     round_rows: tuple[tuple[Op, ...], ...] | None = None
     setup_ops: tuple[Op, ...] = ()
     notes_key: str | None = None
+    # Ops que cierran cada vuelta una sola vez (no por repeticion): la pasada
+    # de vuelta del tunecino. No cambian el conteo.
+    row_end: tuple[Op, ...] = ()
+    # (pts, vueltas) por 10 cm relativos a la densidad de referencia del hilo
+    # en jersey (dos agujas). Crochet: ver engine/gauge.py::_CROCHET_SHAPE.
+    gauge_factor: tuple[float, float] = (1.0, 1.0)
 
     def __post_init__(self) -> None:
         if self.multiple < 1:
@@ -67,6 +73,49 @@ def _cable(kind: StitchKind, width: int) -> Op:
     return Op(kind, width=width)
 
 
+_SWAP = {
+    StitchKind.KNIT: StitchKind.PURL,
+    StitchKind.PURL: StitchKind.KNIT,
+    StitchKind.K1TBL: StitchKind.P1TBL,
+    StitchKind.P1TBL: StitchKind.K1TBL,
+}
+
+
+def _in_the_round(rows: tuple[tuple[Op, ...], ...]) -> tuple[tuple[Op, ...], ...]:
+    """Hileras planas -> vueltas en redondo: las pares (LR) se leen al reves
+    y con el punto contrario (der <-> rev), porque en redondo siempre se teje
+    del LD."""
+    return tuple(
+        row if index % 2 == 0 else tuple(Op(_SWAP[op.kind], times=op.times) for op in reversed(row))
+        for index, row in enumerate(rows)
+    )
+
+
+def rs_view_rows(rows: tuple[tuple[Op, ...], ...]) -> tuple[tuple[Op, ...], ...]:
+    """Hileras planas vistas del LD (para el grafico): igual que en redondo."""
+    return _in_the_round(rows)
+
+
+def _op(kind: StitchKind, times: int = 1) -> Op:
+    return Op(kind, times=times)
+
+
+# Cesteria (Barbara Walker, "Basketweave", adaptada a multiplo de 8): bloques
+# de 3 derechos rodeados de reveses, alternados cada 4 hileras.
+_BASKETWEAVE_ROWS: tuple[tuple[Op, ...], ...] = (
+    (K(8),),
+    (K(5), P(3)),
+    (K(3), P(5)),
+    (K(5), P(3)),
+    (K(8),),
+    (K(), P(3), K(4)),
+    (P(4), K(3), P()),
+    (K(), P(3), K(4)),
+)
+# Punto waffle (gofre) de dos agujas, multiplo de 3.
+_WAFFLE_ROWS: tuple[tuple[Op, ...], ...] = ((K(2), P()), (K(), P(2)), (K(2), P()), (K(3),))
+
+
 STITCH_PATTERNS: dict[str, StitchPattern] = {
     "stockinette": StitchPattern(
         id="stockinette",
@@ -86,14 +135,14 @@ STITCH_PATTERNS: dict[str, StitchPattern] = {
     ),
     "seed": StitchPattern(
         id="seed",
-        name_key="stitch.seed",
+        name_key="stitch.seed_named",
         technique="needles",
         multiple=2,
         rows=((K(), P()), (P(), K())),
     ),
     "moss": StitchPattern(
         id="moss",
-        name_key="stitch.moss",
+        name_key="stitch.moss_named",
         technique="needles",
         multiple=4,
         rows=((K(2), P(2)), (K(2), P(2)), (P(2), K(2)), (P(2), K(2))),
@@ -239,6 +288,68 @@ STITCH_PATTERNS: dict[str, StitchPattern] = {
         ),
         notes_key="stitch.note.honeycomb",
     ),
+    "reverse_stockinette": StitchPattern(
+        id="reverse_stockinette",
+        name_key="stitch.reverse_stockinette",
+        technique="needles",
+        multiple=1,
+        rows=((P(),), (K(),)),
+        round_rows=((P(),), (P(),)),
+    ),
+    "twisted_rib": StitchPattern(
+        id="twisted_rib",
+        name_key="stitch.twisted_rib",
+        technique="needles",
+        multiple=2,
+        rows=((_op(StitchKind.K1TBL), P()), (K(), _op(StitchKind.P1TBL))),
+        round_rows=((_op(StitchKind.K1TBL), P()),),
+        # ASUNCION: el elastico retorcido cierra el ancho como un elastico 1x1
+        # (unos 20 % mas de pts por 10 cm que el jersey).
+        gauge_factor=(1.2, 1.0),
+        notes_key="stitch.note.twisted_rib",
+    ),
+    "broken_rib": StitchPattern(
+        id="broken_rib",
+        name_key="stitch.broken_rib",
+        technique="needles",
+        multiple=2,
+        rows=((K(2),), (K(), P())),
+        round_rows=_in_the_round(((K(2),), (K(), P()))),
+        gauge_factor=(1.1, 1.0),  # ASUNCION: cierra la mitad que un elastico
+    ),
+    "basketweave": StitchPattern(
+        id="basketweave",
+        name_key="stitch.basketweave",
+        technique="needles",
+        multiple=8,
+        rows=_BASKETWEAVE_ROWS,
+        round_rows=_in_the_round(_BASKETWEAVE_ROWS),
+        gauge_factor=(1.05, 1.1),  # ASUNCION: los reveses juntan un poco
+    ),
+    "waffle": StitchPattern(
+        id="waffle",
+        name_key="stitch.waffle",
+        technique="needles",
+        multiple=3,
+        rows=_WAFFLE_ROWS,
+        round_rows=_in_the_round(_WAFFLE_ROWS),
+        gauge_factor=(1.05, 1.15),  # ASUNCION: textura en relieve, mas hileras
+    ),
+    "linen": StitchPattern(
+        id="linen",
+        name_key="stitch.linen",
+        technique="needles",
+        multiple=2,
+        rows=(
+            (K(), _op(StitchKind.SL1_WYIF)),
+            (P(), _op(StitchKind.SL1_WYIB)),
+        ),
+        round_rows=((K(), _op(StitchKind.SL1_WYIF)), (_op(StitchKind.SL1_WYIF), K())),
+        # ASUNCION: el punto lino es muy denso (cada pt pasado acorta la
+        # hilera); muestras publicadas dan ~1,25 x pts y ~1,7 x hileras.
+        gauge_factor=(1.25, 1.7),
+        notes_key="stitch.note.linen",
+    ),
     "crochet_sc": StitchPattern(
         id="crochet_sc",
         name_key="stitch.crochet_sc",
@@ -262,6 +373,92 @@ STITCH_PATTERNS: dict[str, StitchPattern] = {
         multiple=1,
         rows=((Op(StitchKind.DC),),),
         notes_key="stitch.note.crochet",
+    ),
+    "crochet_tr": StitchPattern(
+        id="crochet_tr",
+        name_key="stitch.crochet_tr",
+        technique="crochet",
+        multiple=1,
+        rows=((Op(StitchKind.TR),),),
+        notes_key="stitch.note.crochet",
+    ),
+    "crochet_ribbing": StitchPattern(
+        id="crochet_ribbing",
+        name_key="stitch.crochet_ribbing",
+        technique="crochet",
+        multiple=1,
+        rows=((Op(StitchKind.SC_BLO),),),
+        notes_key="stitch.note.crochet_ribbing",
+    ),
+    "granny_stitch": StitchPattern(
+        id="granny_stitch",
+        name_key="stitch.granny_stitch",
+        technique="crochet",
+        multiple=3,
+        rows=((Op(StitchKind.GRANNY_GROUP),),),
+        notes_key="stitch.note.granny_stitch",
+    ),
+    # Las hileras van y vuelven: leida desde la otra punta, la secuencia
+    # "pb, cad, saltar 1" pone el pb en el esp de cadena y salta el pb.
+    "crochet_linen": StitchPattern(
+        id="crochet_linen",
+        name_key="stitch.crochet_linen",
+        technique="crochet",
+        multiple=2,
+        rows=((Op(StitchKind.SC), Op(StitchKind.CH), Op(StitchKind.SKIP)),),
+        notes_key="stitch.note.crochet_linen",
+    ),
+    "v_stitch": StitchPattern(
+        id="v_stitch",
+        name_key="stitch.v_stitch",
+        technique="crochet",
+        multiple=3,
+        rows=((Op(StitchKind.SKIP), Op(StitchKind.V_STITCH), Op(StitchKind.SKIP)),),
+        notes_key="stitch.note.v_stitch",
+    ),
+    # Abanico: 5 pa en un pt y 1 pb en el centro del abanico anterior. Con las
+    # hileras de ida y vuelta, la misma secuencia pone el abanico sobre el pb
+    # y el pb sobre el 3.er pa del abanico.
+    "shell": StitchPattern(
+        id="shell",
+        name_key="stitch.shell",
+        technique="crochet",
+        multiple=6,
+        rows=((Op(StitchKind.SHELL), Op(StitchKind.SKIP, times=2), Op(StitchKind.SC), Op(StitchKind.SKIP, times=2)),),
+        notes_key="stitch.note.shell",
+    ),
+    # Red de filet: pa sobre pa y 1 cad sobre cada cadena. Las hileras se
+    # alternan porque al girar la cadena queda primero.
+    "filet": StitchPattern(
+        id="filet",
+        name_key="stitch.filet",
+        technique="crochet",
+        multiple=2,
+        rows=(
+            (Op(StitchKind.DC), Op(StitchKind.CH), Op(StitchKind.SKIP)),
+            (Op(StitchKind.CH), Op(StitchKind.SKIP), Op(StitchKind.DC)),
+        ),
+        notes_key="stitch.note.filet",
+    ),
+    "tunisian": StitchPattern(
+        id="tunisian",
+        name_key="stitch.tunisian",
+        technique="crochet",
+        multiple=1,
+        rows=((Op(StitchKind.TSS),),),
+        row_end=(Op(StitchKind.TUNISIAN_RETURN),),
+        notes_key="stitch.note.tunisian",
+    ),
+    # C2C: la unidad es el bloque. Las diagonales las arma
+    # engine/garments/c2c.py; esta entrada da el nombre, el grafico y la
+    # densidad (bloques por 10 cm).
+    "c2c": StitchPattern(
+        id="c2c",
+        name_key="stitch.c2c",
+        technique="crochet",
+        multiple=1,
+        rows=((Op(StitchKind.C2C_BLOCK),),),
+        notes_key="stitch.note.c2c",
     ),
     "magic_ring": StitchPattern(
         id="magic_ring",
@@ -291,23 +488,21 @@ _PATTERN_NAME_TO_ID: dict[StitchPatternName, str] = {
     StitchPatternName.CROCHET_HDC: "crochet_hdc",
     StitchPatternName.CROCHET_DC: "crochet_dc",
     StitchPatternName.OTHER: "stockinette",
-    # Puntos de la ampliacion D037 sin grafico propio todavia: el mas parecido.
-    # engine/garments/routing.py avisa la aproximacion en el patron.
-    StitchPatternName.REVERSE_STOCKINETTE: "stockinette",
-    StitchPatternName.TWISTED_RIB: "rib_1x1",
-    StitchPatternName.BROKEN_RIB: "rib_2x2",
-    StitchPatternName.BASKETWEAVE: "seed",
-    StitchPatternName.WAFFLE: "seed",
-    StitchPatternName.LINEN: "seed",
-    StitchPatternName.CROCHET_TR: "crochet_dc",
-    StitchPatternName.CROCHET_RIBBING: "crochet_sc",
-    StitchPatternName.GRANNY_STITCH: "crochet_dc",
-    StitchPatternName.CROCHET_LINEN: "crochet_sc",
-    StitchPatternName.V_STITCH: "crochet_dc",
-    StitchPatternName.SHELL: "crochet_dc",
-    StitchPatternName.FILET: "crochet_dc",
-    StitchPatternName.TUNISIAN: "crochet_sc",
-    StitchPatternName.C2C: "crochet_dc",
+    StitchPatternName.REVERSE_STOCKINETTE: "reverse_stockinette",
+    StitchPatternName.TWISTED_RIB: "twisted_rib",
+    StitchPatternName.BROKEN_RIB: "broken_rib",
+    StitchPatternName.BASKETWEAVE: "basketweave",
+    StitchPatternName.WAFFLE: "waffle",
+    StitchPatternName.LINEN: "linen",
+    StitchPatternName.CROCHET_TR: "crochet_tr",
+    StitchPatternName.CROCHET_RIBBING: "crochet_ribbing",
+    StitchPatternName.GRANNY_STITCH: "granny_stitch",
+    StitchPatternName.CROCHET_LINEN: "crochet_linen",
+    StitchPatternName.V_STITCH: "v_stitch",
+    StitchPatternName.SHELL: "shell",
+    StitchPatternName.FILET: "filet",
+    StitchPatternName.TUNISIAN: "tunisian",
+    StitchPatternName.C2C: "c2c",
 }
 
 # Nombres que todavia se aproximan (los usa routing para avisar).
@@ -322,6 +517,19 @@ APPROXIMATED_NAMES = frozenset(
         StitchPatternName.OTHER,
     }
 )
+
+
+# Puntos cuya nota explica como se teje (va en la primera hilera del texto).
+_ROW_NOTES = {
+    "twisted_rib", "linen", "crochet_ribbing", "granny_stitch", "crochet_linen",
+    "v_stitch", "shell", "filet", "tunisian",
+}
+
+
+def stitch_row_note(pattern_id: str, default: str) -> str:
+    """Nota de la primera hilera de una pieza en `pattern_id`."""
+    notes = STITCH_PATTERNS[pattern_id].notes_key
+    return notes if pattern_id in _ROW_NOTES and notes else default
 
 
 def get_stitch(pattern_id: str) -> StitchPattern:
@@ -375,6 +583,7 @@ def expand_row(
         expanded = tuple(Op(op.kind, times=op.times * repeats, width=op.width) for op in base_ops)
     else:
         expanded = (Repeat(times=repeats, ops=tuple(base_ops)),)
+    expanded += pattern.row_end
     consumed = sum(item.consumes for item in expanded)
     produced = sum(item.produces for item in expanded)
     if consumed != stitches or produced != stitches:

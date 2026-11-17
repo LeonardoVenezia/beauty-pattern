@@ -181,6 +181,36 @@ def growth_rounds(steps: tuple[Step, ...]) -> list[Step]:
     return grow
 
 
+# Piezas rectangulares que se tejen enteras en el punto base: se dibuja el
+# grafico del punto si no es liso (jersey, bobo, pb, pa...).
+_ROW_CHART_FAMILIES = {
+    "scarf", "shawl", "blanket", "bag", "flat_piece", "mittens", "hat",
+    "crochet_scarf", "crochet_flat_piece", "crochet_bag", "crochet_cowl", "crochet_shawl",
+    "crochet_pullover", "crochet_cardigan", "crochet_vest",
+}
+_PLAIN_STITCHES = {
+    "stockinette", "garter", "reverse_stockinette", "crochet_sc", "crochet_hdc", "crochet_dc", "crochet_tr", "c2c",
+}
+
+
+def base_stitch_chart(pattern: Pattern) -> StitchPattern | None:
+    """Grafico del punto base de una pieza rectangular, visto del LD."""
+    from dataclasses import replace
+
+    from engine.stitches.catalog import catalog_id_for_name, get_stitch, rs_view_rows
+
+    spec = pattern.spec
+    if pattern.meta.family not in _ROW_CHART_FAMILIES or spec.punto_base is None:
+        return None
+    stitch = get_stitch(catalog_id_for_name(spec.punto_base))
+    crochet = spec.tecnica is Technique.CROCHET
+    if stitch.id in _PLAIN_STITCHES or stitch.technique != ("crochet" if crochet else "needles"):
+        return None
+    if crochet:
+        return stitch
+    return replace(stitch, round_rows=stitch.round_rows or rs_view_rows(stitch.rows))
+
+
 def _round_chart_pieces(pattern: Pattern, lang: str) -> list[str]:
     """Piezas que se tejen exactamente como el dibujo (el de la primera):
     mismas vueltas de aumento, en orden, y sin volver a aumentar despues."""
@@ -251,7 +281,31 @@ def build_document(
                     rows=panel.rows,
                 )
             )
+    stitch_chart = base_stitch_chart(base) if body is None else None
+    if stitch_chart is not None:
+        charts.append(stitch_chart)
+        heading("doc.charts")
+        blocks.append(Block(BlockKind.CHART, "0"))
+        line(
+            t(
+                "doc.chart_note_rows" if is_crochet else "doc.chart_note_flat",
+                language,
+                n=1,
+                name=t(stitch_chart.name_key, language),
+                rows=stitch_chart.row_count(in_the_round=True),
+            )
+        )
     colorwork: list[ColorworkChart] = []
+    c2c = next((s for s in base.sections if "c2c_width" in s.meta), None)
+    if c2c is not None:
+        from engine.garments.c2c import c2c_chart
+
+        pixels = c2c_chart(base.spec, c2c.meta["c2c_width"], c2c.meta["c2c_height"])
+        if pixels is not None:
+            heading("doc.charts")
+            blocks.append(Block(BlockKind.COLORWORK_CHART, "0"))
+            line(t("doc.c2c_chart_note", language))
+            colorwork.append(pixels)
     if base.meta.family == "yoke":
         from engine.garments.yoke import yoke_bands
 
@@ -261,9 +315,9 @@ def build_document(
         heading("doc.charts")
         blocks.append(Block(BlockKind.ROUND_CHART, base.sections[0].id))
         line(t("doc.round_chart_note", language, pieces=", ".join(_round_chart_pieces(base, language))))
-    if colorwork and not charts:
+    if colorwork and not charts and c2c is None:
         heading("doc.charts")
-    for index, chart in enumerate(colorwork):
+    for index, chart in enumerate(colorwork if c2c is None else []):
         blocks.append(Block(BlockKind.COLORWORK_CHART, str(index)))
         line(
             t(
@@ -379,16 +433,20 @@ def build_document(
     if any(s.meta.get("garter_gauge") for s in base.sections):  # hogar: punto bobo
         stitch_key = "doc.gauge_stitch_garter"
     stitch = t(stitch_key, language)
-    line(
-        t(
-            "doc.gauge_line",
-            language,
-            sts=_half(gauge.stitches_per_10cm),
-            rows=_half(gauge.rows_per_10cm),
-            stitch=stitch,
-            tool=t("doc.hook" if is_crochet else "doc.needle", language, mm=f"{tool or 0:g}"),
+    tool_text = t("doc.hook" if is_crochet else "doc.needle", language, mm=f"{tool or 0:g}")
+    if c2c is not None:  # la muestra del C2C se mide en bloques
+        line(t("doc.gauge_c2c", language, n=_half(gauge.stitches_per_10cm), tool=tool_text))
+    else:
+        line(
+            t(
+                "doc.gauge_line",
+                language,
+                sts=_half(gauge.stitches_per_10cm),
+                rows=_half(gauge.rows_per_10cm),
+                stitch=stitch,
+                tool=tool_text,
+            )
         )
-    )
     if base.meta.family == "granny_square":
         rounds_cm = 2 * 3 / gauge.rows_per_cm
         line(t("doc.gauge_granny", language, cm=_half(rounds_cm)))

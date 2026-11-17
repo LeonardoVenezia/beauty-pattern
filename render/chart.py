@@ -149,7 +149,67 @@ def _symbol_svg(symbol: ChartSymbol, x: float, y: float, size: float) -> str:
             f'<line x1="{_f(cx - size * 0.2)}" y1="{_f(cy)}" '
             f'x2="{_f(cx + size * 0.2)}" y2="{_f(cy)}" {line}/>'
         )
+    else:
+        parts.append(_new_symbol_svg(symbol, x, y, size, line))
     return "".join(parts)
+
+
+def _new_symbol_svg(symbol: ChartSymbol, x: float, y: float, size: float, line: str) -> str:
+    """Simbolos de la ampliacion de puntos (convenciones CYC: retorcido = lazo
+    cruzado, pb por la hebra de atras = + con un arco abajo, abanico y V = pa
+    que salen de un mismo punto)."""
+    cx, cy = x + size / 2, y + size / 2
+    pad = max(3.0, size * 0.18)
+    top, bottom = y + pad, y + size - pad
+
+    def ln(x1: float, y1: float, x2: float, y2: float) -> str:
+        return f'<line x1="{_f(x1)}" y1="{_f(y1)}" x2="{_f(x2)}" y2="{_f(y2)}" {line}/>'
+
+    def dc(x_top: float) -> str:  # pa inclinado desde la base central
+        tick_y = top + (bottom - top) * 0.45
+        tick_x = cx + (x_top - cx) * 0.55
+        return ln(cx, bottom, x_top, top) + ln(tick_x - size * 0.08, tick_y, tick_x + size * 0.08, tick_y)
+
+    if symbol in {ChartSymbol.TWISTED_KNIT, ChartSymbol.TWISTED_PURL}:
+        loop = (
+            f'<path d="M {_f(cx - size * 0.18)} {_f(bottom)} C {_f(cx + size * 0.3)} {_f(cy)}, '
+            f'{_f(cx + size * 0.3)} {_f(top)}, {_f(cx)} {_f(top)} C {_f(cx - size * 0.3)} {_f(top)}, '
+            f'{_f(cx - size * 0.3)} {_f(cy)}, {_f(cx + size * 0.18)} {_f(bottom)}" {line}/>'
+        )
+        if symbol is ChartSymbol.TWISTED_PURL:
+            loop += f'<line x1="{_f(x + pad)}" y1="{_f(y + pad * 0.6)}" x2="{_f(x + size - pad)}" y2="{_f(y + pad * 0.6)}" {line}/>'
+        return loop
+    if symbol is ChartSymbol.SLIP_WYIF:
+        return ln(x + pad, cy, x + size - pad, cy) + ln(cx, cy, cx, bottom)
+    if symbol is ChartSymbol.SC_BLO:
+        arc = (
+            f'<path d="M {_f(x + pad)} {_f(bottom)} Q {_f(cx)} {_f(bottom - size * 0.25)} '
+            f'{_f(x + size - pad)} {_f(bottom)}" {line}/>'
+        )
+        return ln(cx, top, cx, cy + size * 0.12) + ln(x + pad, cy - size * 0.05, x + size - pad, cy - size * 0.05) + arc
+    if symbol is ChartSymbol.TR:
+        return (
+            ln(cx, top, cx, bottom)
+            + ln(x + pad, top, x + size - pad, top)
+            + ln(cx - size * 0.15, cy - size * 0.08, cx + size * 0.15, cy - size * 0.02)
+            + ln(cx - size * 0.15, cy + size * 0.06, cx + size * 0.15, cy + size * 0.12)
+        )
+    if symbol is ChartSymbol.V_STITCH:
+        dot = f'<circle cx="{_f(cx)}" cy="{_f(top + 1)}" r="{_f(size * 0.06)}" fill="none" stroke="#222222"/>'
+        return dc(x + pad) + dc(x + size - pad) + dot
+    if symbol is ChartSymbol.SHELL:
+        return "".join(dc(x + pad + (size - 2 * pad) * k / 4) for k in range(5))
+    if symbol is ChartSymbol.GRANNY_GROUP:
+        return "".join(dc(x + pad + (size - 2 * pad) * k / 2) for k in range(3))
+    if symbol is ChartSymbol.TSS:
+        return ln(cx, top, cx, bottom) + ln(cx - size * 0.12, top, cx + size * 0.12, top)
+    if symbol is ChartSymbol.C2C_BLOCK:
+        block = (
+            f'<rect x="{_f(x + pad)}" y="{_f(top)}" width="{_f(size - 2 * pad)}" '
+            f'height="{_f(bottom - top)}" fill="none" stroke="#222222" stroke-width="1"/>'
+        )
+        return block + ln(x + pad, bottom, x + size - pad, top)
+    return ""
 
 
 def _cable_svg(symbol: ChartSymbol, x: float, y: float, width: float, height: float) -> str:

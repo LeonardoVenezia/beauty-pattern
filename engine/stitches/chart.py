@@ -33,13 +33,23 @@ class ChartSymbol(StrEnum):
     CROCHET_DEC = "crochet_dec"
     CAST_ON = "cast_on"
     TURN = "turn"
+    TWISTED_KNIT = "twisted_knit"
+    TWISTED_PURL = "twisted_purl"
+    SLIP_WYIF = "slip_wyif"
+    SC_BLO = "sc_blo"
+    TR = "tr"
+    V_STITCH = "v_stitch"
+    SHELL = "shell"
+    GRANNY_GROUP = "granny_group"
+    TSS = "tss"
+    C2C_BLOCK = "c2c_block"
 
 
 _SYMBOL_BY_KIND: dict[StitchKind, ChartSymbol] = {
     StitchKind.KNIT: ChartSymbol.KNIT,
     StitchKind.PURL: ChartSymbol.PURL,
-    StitchKind.K1TBL: ChartSymbol.KNIT,
-    StitchKind.P1TBL: ChartSymbol.PURL,
+    StitchKind.K1TBL: ChartSymbol.TWISTED_KNIT,
+    StitchKind.P1TBL: ChartSymbol.TWISTED_PURL,
     StitchKind.K2TOG: ChartSymbol.K2TOG,
     StitchKind.P2TOG: ChartSymbol.K2TOG,
     StitchKind.SSK: ChartSymbol.SSK,
@@ -64,7 +74,22 @@ _SYMBOL_BY_KIND: dict[StitchKind, ChartSymbol] = {
     StitchKind.MAGIC_RING: ChartSymbol.MAGIC_RING,
     StitchKind.CAST_ON: ChartSymbol.CAST_ON,
     StitchKind.TURN: ChartSymbol.TURN,
+    StitchKind.SL1_WYIF: ChartSymbol.SLIP_WYIF,
+    StitchKind.SL1_WYIB: ChartSymbol.SLIP,
+    StitchKind.SC_BLO: ChartSymbol.SC_BLO,
+    StitchKind.TR: ChartSymbol.TR,
+    StitchKind.V_STITCH: ChartSymbol.V_STITCH,
+    StitchKind.SHELL: ChartSymbol.SHELL,
+    StitchKind.GRANNY_GROUP: ChartSymbol.GRANNY_GROUP,
+    StitchKind.TSS: ChartSymbol.TSS,
+    StitchKind.C2C_NEW: ChartSymbol.C2C_BLOCK,
+    StitchKind.C2C_BLOCK: ChartSymbol.C2C_BLOCK,
 }
+# Sin casilla propia: saltar un pt, la pasada de vuelta del tunecino y los
+# movimientos del C2C no producen puntos (el grafico muestra lo que queda).
+_NO_CELL = {StitchKind.SKIP, StitchKind.TUNISIAN_RETURN, StitchKind.C2C_SLIDE, StitchKind.C2C_TURN}
+# Grupos que se tejen en un pt: una casilla tan ancha como los pts que dejan.
+_GROUPS = {StitchKind.V_STITCH, StitchKind.SHELL, StitchKind.GRANNY_GROUP}
 
 
 @dataclass(frozen=True)
@@ -74,6 +99,10 @@ class ChartCell:
 
 
 def _cells_for_op(op: Op) -> list[ChartCell]:
+    if op.kind in _NO_CELL:
+        return []
+    if op.kind in _GROUPS:
+        return [ChartCell(_SYMBOL_BY_KIND[op.kind], span=op.produces // op.times)] * op.times
     symbol = _SYMBOL_BY_KIND.get(op.kind)
     if symbol is None:
         raise ValueError(f"no hay simbolo de grafico para {op.kind.value}")
