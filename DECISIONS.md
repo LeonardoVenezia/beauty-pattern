@@ -692,3 +692,37 @@ Decisiones:
 - **Seed/moss:** se mantienen los valores (`seed` = punto arroz, `moss` = punto arroz doble) y el prompt explica cómo distinguirlos; las etiquetas por idioma dicen el nombre local.
 - **Textos por área** (`engine/i18n/areas/*.py`): cada línea de trabajo suma sus claves en su propio módulo, en los cinco idiomas, sin tocar los catálogos base.
 - **Bugs viejos que expuso el barrido**, sin entregar nada mal porque el simulador los frena: mitones con punto arroz (múltiplo); cárdigan con cuello alto + largo corto (delanteros distintos).
+
+## D038 — Hogar con cálculo propio (2026-11-17)
+
+Las cinco categorías de hogar de D037 (`flat_item`, `cozy`, `basket`, `pillow`,
+`rug`) dejan de aproximarse: `engine/garments/home.py` (+ `home_shapes.py`), en
+crochet y dos agujas, con esquema propio (`render/home.py`) y textos en
+`engine/i18n/areas/home.py`.
+
+- **Tres geometrías** (investigación 2026-11): disco/rectángulo, base + tubo,
+  base + paredes. El óvalo es solo de crochet (cadena por los dos lados); en
+  agujas se entrega un rectángulo con aviso (`warning.home.knit_oval`):
+  alternativa descartada, óvalo con aumentos en hileras cortas, porque no es
+  una construcción común ni simple.
+- **Una densidad por patrón** (el simulador usa una sola): en agujas las piezas
+  rectangulares van enteras en punto bobo (densidad propia, el documento lo
+  dice) y las redondas en jersey; no se mezclan bobo y jersey en una pieza
+  salvo bordes de pocas hileras.
+- **Funda redonda** = base cerrada (círculo) + paredes con holgura negativa;
+  mate con cierre hacia la boca; termo con correa. **Bolsita**: crochet sin
+  costuras desde una cadena trabajada por los dos lados; agujas, tira doblada
+  (montar 6-8 pts en redondo en un fondo rectangular es difícil para
+  principiantes).
+- **Dos puntos nuevos** (`StitchKind.CROCHET_EDGE`, `PICK_UP`): puntos tejidos
+  sobre un borde que suman un punto sin consumir uno vivo (otro lado de la
+  cadena base, extremos de hileras, levantar puntos). Sin ellos el óvalo, la
+  bolsita sin costura y el canasto rectangular no se podían escribir en la IR.
+- **Cambios compartidos chicos:** `Section.meta["continue"]` (la sección sigue
+  de la anterior, sin "Con N puntos en la aguja"), `meta["explicit_rounds"]`
+  (el óvalo no se comprime en "repetir las vueltas 5-6": cada vuelta crece
+  distinto), `meta["garter_gauge"]` (la muestra se mide en punto bobo) y
+  `doc.weave_ends_toy`/`technique.toy_assembly` solo para amigurumi (antes
+  dependían de que el patrón tuviera armado).
+- Carpetita o posavasos al crochet con un motivo visible: motor de motivos.
+- ASUNCIONES en docs/fuentes.md, "Hogar".

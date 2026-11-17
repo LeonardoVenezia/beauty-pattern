@@ -708,6 +708,8 @@ def glossary_blocks(pattern: Pattern, lang: str) -> tuple[Block, ...]:
 
 
 def _section_intro(section: Section, lang: str) -> str:
+    if section.meta.get("continue"):  # sigue de la seccion anterior; lo explican sus notas
+        return ""
     if section.meta.get("cast_on_start"):
         return t("pattern.cast_on", lang, n=section.start_stitches)
     if section.id == "granny_square":
@@ -1086,7 +1088,11 @@ def instruction_blocks(pattern: Pattern, language: str) -> tuple[Block, ...]:
         else:
             blocks.extend(
                 render_step_lines(
-                    compress_steps(steps),
+                    # Vueltas que no se pueden "repetir" (el ovalo crece distinto
+                    # en cada vuelta): todas escritas, solo se juntan las iguales.
+                    _identical_lines(steps, 0, len(steps))
+                    if section.meta.get("explicit_rounds")
+                    else compress_steps(steps),
                     section.mode,
                     language,
                     relative=pattern.spec.tecnica.value != "crochet" and not toy,

@@ -207,3 +207,45 @@ Abreviaturas y términos tal como aparecen en patrones publicados en cada idioma
 - Craft Yarn Council, abreviaturas internacionales que se conservan (ssk, m1l/m1r, kfb): https://www.craftyarncouncil.com/standards/knitting-abbreviations
 - DROPS, diccionario de tejido alemán: https://www.garnstudio.com/dictionary.php?lang=de
 - für Sie, "Strickschrift lesen" (símbolos y abreviaturas en alemán): https://www.fuersie.de/stricken/strickschrift-lesen-das-bedeuten-die-zeichen-122.html
+
+## Hogar (engine/garments/home.py)
+
+Construcciones habituales de patrones publicados de hogar (posavasos,
+individuales, agarraderas, fundas, canastos): círculo plano desde un anillo,
+óvalo alrededor de una cadena, rectángulo en hileras, base + paredes con una
+vuelta por la hebra de atrás (crochet) o una vuelta al revés (agujas). Las
+fundas de mate y termo son muy comunes en Argentina y Uruguay (catálogo de
+Mendoza en docs/investigacion-2026-11.md). No se copió ningún patrón.
+
+- Círculo plano de crochet: aumentos por vuelta = 2π × alto de vuelta ×
+  pts/cm (la regla de los motivos: 6 en pb, 8 en mpa, 12 en pa). **ASUNCION:**
+  en las vueltas pares los aumentos se corren medio tramo (convención habitual
+  para que el círculo no quede hexagonal; sin fuente verificada en esta sesión).
+- Círculo de agujas desde el centro: 8 gajos, aumentos repartidos parejo en las
+  vueltas (como el círculo de los juguetes); 2 vueltas finales en punto bobo.
+- Óvalo de crochet: cadena = largo − ancho (en pts) + 2; en la primera vuelta
+  cada cadena de los extremos recibe la mitad de los aumentos de un círculo
+  (3 en pb, 4 en mpa, 6 en pa) y después cada extremo suma esos mismos
+  aumentos por vuelta (medio círculo); los lados rectos van sin aumentos.
+- **ASUNCION:** punto bobo con 2 hileras (un lomo) por cada punto de ancho
+  (el lomo es casi cuadrado; es lo que hace funcionar los cuadrados en
+  inglete). Se usa para piezas planas, alfombras rectangulares y la correa.
+- **ASUNCION:** canasto y agarradera se tejen apretados como los juguetes
+  (pb × 1,25 o jersey × 1,15, ganchillo/agujas de `engine/garments/toy.py`).
+- **ASUNCION:** medidas por defecto. Posavasos 10 cm; individual 45 × 32 cm
+  (35 cm redondo); agarradera 20 cm (doble capa + presilla de 6 cm); paño 25 cm;
+  carpetita 30 cm; alfombra 60 cm redonda o 90 × 60 cm; almohadón de 40 × 40 cm
+  (50 × 30 rectangular), funda 2 cm más chica que el relleno y espalda en sobre
+  de dos mitades del 60 % del alto (se superponen 20 %) con 3 cm de elástico
+  1x1; canasto de 20 cm de diámetro (25 × 18 cm rectangular) y 15 cm de alto,
+  asas de 8 cm a 2,5 cm del borde desde 12 cm de alto.
+- **ASUNCION:** objetos de las fundas. Mate de calabaza o camionero: 8 cm de
+  panza, 9 cm a cubrir, boca de 6,5 cm (el tercio de arriba se cierra hacia la
+  boca); termo de 1 l: 9 cm × 25 cm de cuerpo, correa de 100 cm × 2,5 cm;
+  vaso: 8 × 9,5 cm; botella: 7 × 18 cm; celular 7,5 × 15,5 × 1 cm; anteojos
+  6,5 × 15,5 × 4 cm; cartuchera 20 × 9 × 3 cm; notebook de 13" 30,5 × 21,5 ×
+  1,6 cm con solapa del 40 % del alto.
+- **ASUNCION:** holgura de las fundas redondas: −5 % del contorno al crochet y
+  −10 % en agujas (el punto estira más); bolsitas: +1 cm de ancho y de alto
+  (notebook +2 cm de ancho), cartuchera sin holgura (sus medidas son las de la
+  cartuchera).

@@ -31,6 +31,13 @@ from engine.garments.crochet import (
     generate_granny_square,
 )
 from engine.garments.flat import generate_flat
+from engine.garments.home import (
+    generate_basket,
+    generate_cozy,
+    generate_flat_item,
+    generate_pillow,
+    generate_rug,
+)
 from engine.garments.motif import generate_crochet_motif
 from engine.garments.raglan import generate_raglan_top_down
 from engine.garments.routing import route
@@ -83,11 +90,21 @@ def generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
 
 
 _MOTIF_CATEGORIES = {Category.GRANNY_SQUARE, Category.OTHER, Category.BLANKET}
+# Hogar (engine/garments/home.py), al crochet y a dos agujas.
+_HOME = {
+    Category.FLAT_ITEM: generate_flat_item,
+    Category.COZY: generate_cozy,
+    Category.BASKET: generate_basket,
+    Category.PILLOW: generate_pillow,
+    Category.RUG: generate_rug,
+}
 
 
 def _generate(spec: GarmentSpec, params: PatternParams) -> Pattern:
     if spec.categoria is Category.AMIGURUMI:
         return generate_amigurumi(spec, params)
+    if spec.categoria in _HOME:
+        return _HOME[spec.categoria](spec, params)
     if spec.tecnica is Technique.CROCHET:
         if spec.motivo is not None and spec.categoria in _MOTIF_CATEGORIES:
             return generate_crochet_motif(spec, params)

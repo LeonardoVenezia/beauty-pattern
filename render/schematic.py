@@ -558,6 +558,10 @@ def render_schematic_svg(
             from render.sweater import render_sweater_svg
 
             return render_sweater_svg(pattern, language, values=not letters_only)
+        if fam.startswith("home_"):
+            from render.home import render_home_svg
+
+            return render_home_svg(pattern, language)
         if fam in {"bag", "crochet_bag"}:
             return _bag_svg(pattern, language)
         if fam == "granny_square":

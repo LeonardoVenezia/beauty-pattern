@@ -470,3 +470,20 @@ guantes con dedos; jacquard como gráfico de color; formas de pétalo
 
 - Hecho: patrones en es/en/fr/de/it (mismos números, test); interfaz web en los cinco idiomas, inglés por defecto; último paso con idioma, talle, hilo, papel, guía, fotos de portada y "Diseñado por"; PDF con todas las fotos, esquema y gráficos primero, sin legales; dibujo de aumentos del amigurumi al crochet.
 - Pendiente: revisión de las traducciones por tejedoras nativas (fr/de/it); el extractor de IA sigue devolviendo sus observaciones en español; no se probó la interfaz en un navegador real.
+
+## Hogar con cálculo propio (2026-11-17, D038)
+
+- Hecho: posavasos, individual, agarradera, paño y carpetita (círculo,
+  cuadrado, rectángulo, óvalo al crochet); fundas de mate (se cierra hacia la
+  boca), termo (con correa), vaso y botella (base cerrada, abrazan); fundas de
+  celular, anteojos, cartuchera (cierre) y notebook (solapa y botón); canasto
+  (base redonda, ovalada o rectangular, asas); almohadón (dos caras al crochet,
+  sobre en agujas) y alfombra. Crochet y dos agujas, esquema en 5 idiomas, PDF.
+- Verificado: hypothesis sobre subtipos × técnicas × grosores × medidas
+  propias; círculos con aumentos parejos, óvalos con lados rectos y extremos
+  iguales, cuadrados con lados iguales, asas opuestas; golden a mano de funda
+  de mate y posavasos en DK. Suite y `make lint` en verde.
+- Pendiente: óvalo en agujas (se entrega rectángulo, con aviso); taza con
+  asa (la funda es para vasos sin asa); el dibujo punto por punto de los
+  círculos de crochet (hoy solo esquema); medidas por defecto sin validar con
+  una tejedora.
