@@ -7,6 +7,14 @@ Aplicación web que convierte **una foto de una prenda o pieza tejida** (por eje
 
 Usuaria final: una persona tejedora (no técnica), probablemente desde el celular. Prioridad máxima: que el patrón **cierre matemáticamente** y se pueda tejer.
 
+## Retomar el proyecto (handoff)
+
+Si sos un agente que retoma el trabajo (por ejemplo **commandcode**), leé
+`HANDOFF.md` antes de tocar código. Ahí están el estado real, los comandos
+verificados, las limitaciones conocidas, los próximos pasos y los archivos
+locales que no se deben commitear. Este archivo y `PROYECTO.md` siguen siendo
+la fuente de las reglas y del diseño.
+
 ## Principio rector (no negociable)
 **La IA interpreta; el código calcula.**
 

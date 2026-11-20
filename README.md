@@ -66,6 +66,7 @@ docker compose up --build
 
 ## Documentacion
 
+- `HANDOFF.md` — estado actual, límites y próximos pasos para retomar.
 - `PROYECTO.md` — diseno completo.
 - `AGENTS.md` — reglas de trabajo.
 - `DECISIONS.md` — decisiones y supuestos.

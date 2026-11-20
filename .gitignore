@@ -25,6 +25,14 @@ web/.next/
 web/out/
 web/playwright-report/
 web/test-results/
+*.tsbuildinfo
+
+# Tests
+.hypothesis/
+
+# Configuracion local de agentes
+.claude/
+.commandcode/
 
 # macOS
 .DS_Store
@@ -32,3 +40,14 @@ web/test-results/
 # Salidas de ejemplo generadas
 docs/ejemplos/*.pdf
 docs/ejemplos/*.svg
+
+# Archivos locales de prueba (fotos/PDFs descargados por la usuaria)
+patron*.pdf
+patron.jpeg
+prueba*.pdf
+pruebas/
+
+# Material de referencia de terceros: no redistribuir
+comparaciones/
+patrones-crochet/
+patrones-dos-agujas/
