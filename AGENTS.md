@@ -54,7 +54,7 @@ PROGRESS.md      # estado por hito
 ## Modo de trabajo del agente
 1. **Autonomía total.** No hagas preguntas al usuario durante la ejecución. Ante una ambigüedad, elegí la opción más razonable, implementala y registrala en `DECISIONS.md` (decisión, alternativas, motivo).
 2. **Hitos.** Trabajá en el orden de hitos de `PROYECTO.md`. Cada hito termina con tests en verde, `PROGRESS.md` actualizado y un commit.
-3. **Commits pequeños y frecuentes** en una rama de trabajo (`build/main-agent`), con mensajes claros. No reescribas el historial. Nunca hagas `push --force`.
+3. **Commits pequeños y frecuentes** en `main`, con mensajes claros. No reescribas el historial. Nunca hagas `push --force`.
 4. **Tests primero para el motor.** Cada familia de prenda necesita tests de propiedades (para muchas combinaciones de talle y densidad) y al menos un patrón "golden" verificado a mano o contra una fuente publicada.
 5. **No inventes datos de tejido.** Convenciones (abreviaturas, ease, proporciones de talle, fórmulas de aumentos) se documentan con su fuente en `docs/fuentes.md`. Si algo no está respaldado, marcalo como `ASUNCIÓN` en el código y en `DECISIONS.md`.
 6. **Honestidad de resultados.** Si un hito no se pudo completar o una verificación falla, dejalo escrito en `PROGRESS.md`; no lo marques como hecho.

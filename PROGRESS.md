@@ -7,7 +7,7 @@ pasado tests.
 
 Completado y verificado con `pytest`, `ruff` y `mypy` en verde.
 
-- [x] Repo git, rama `build/main-agent`, Makefile, `.env.example`.
+- [x] Repo git, rama `main`, Makefile, `.env.example`.
 - [x] Unidades cm/pulgadas, redondeo explicito, densidad (gauge).
 - [x] IR de patrones (ops, pasos, secciones, medidas, uniones).
 - [x] Especificacion `GarmentSpec` y `PatternParams` con listas cerradas.

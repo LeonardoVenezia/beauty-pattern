@@ -1,7 +1,7 @@
 # Handoff — Tejedora
 
 **Fecha:** 2026-11-11 (actualizado; ver sección 0)
-**Rama:** `build/main-agent`
+**Rama:** `main`
 **HEAD de código de referencia:** `cd0fe4d` (último commit de implementación;
 esta documentación se agrega en commits posteriores sobre la misma rama)
 **Estado:** hitos 1–11 cerrados con limitaciones declaradas, más correcciones
@@ -403,7 +403,7 @@ usar `FAKE_AI=1`.
 
 ## 10. Reglas de trabajo para el próximo agente
 
-- Trabajar en `build/main-agent`; no reescribir historial ni hacer
+- Trabajar en `main`; no reescribir historial ni hacer
   `push --force`.
 - Tests primero para el motor. Toda familia nueva necesita propiedades,
   golden y paso por el simulador.

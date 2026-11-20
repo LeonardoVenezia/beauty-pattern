@@ -736,3 +736,10 @@ crochet y dos agujas, con esquema propio (`render/home.py`) y textos en
 - Hombro caído modificado (escalón de 4 cm) implementado; T = hombro caído sin aviso. Saddle, dolman y side-to-side siguen aproximados.
 - Bolero de un rectángulo (agujas y crochet), poncho de dos rectángulos y ruana (`GarmentSpec.estilo_poncho`, campo nuevo), talles adulto XS-3XL y niño 2-12.
 - Bugs: delanteros de cardigan corridos 2 hileras (primera disminución ≥2 hileras después del comienzo del escote); contorno de crochet con doble redondeo.
+
+## D040 — Rama principal `main`, higiene de artefactos y remoto (2026-11-19)
+
+- La rama de trabajo `build/main-agent` pasa a ser `main`: era la única rama con historia y el remoto estaba vacío. Se fusionaron los commits pendientes de i18n de accesorios antes de publicar.
+- No se versionan: `.claude/` ni `.commandcode/` (configuración local de agentes), `*.tsbuildinfo` y `.hypothesis/` (artefactos), `pruebas/`, `comparaciones/`, `prueba*.pdf`, `patron*.pdf` y `patron.jpeg` (material de la usuaria).
+- Tampoco se versionan `patrones-crochet/` ni `patrones-dos-agujas/`: son PDFs de terceros descargados como referencia de formato; su propia guía prohíbe redistribuirlos. Quedan solo en local.
+- El remoto `origin` apunta a `github.com/LeonardoVenezia/beauty-pattern` y la rama publicada es `main`.
